@@ -454,8 +454,8 @@ def main():
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── MAIN GRID: Three columns — data left/center, commentary right ──
-    data_left, data_right, commentary_col = st.columns([2, 2, 1.4], gap="large")
+    # ── MAIN GRID: Two columns ──
+    data_left, data_right = st.columns([1, 1], gap="large")
 
     with data_left:
         # Rates
@@ -512,8 +512,9 @@ def main():
                     fig = make_sparkline(raw_data[name], name, days=60)
                     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
-    with commentary_col:
-        render_commentary(metrics_df, timestamp)
+    # ── COMMENTARY: Full width, between data and YTD charts ──
+    st.markdown("<br>", unsafe_allow_html=True)
+    render_commentary(metrics_df, timestamp)
 
     # ── BOTTOM: YTD Performance Charts ──
     st.markdown("<br>", unsafe_allow_html=True)
