@@ -68,10 +68,16 @@ COMMENTARY = {
 def generate_commentary(metrics_df: pd.DataFrame) -> Optional[str]:
     """
     Return market commentary. Uses static text by default.
-    Set ANTHROPIC_API_KEY env var to enable AI-generated commentary.
+    Set ANTHROPIC_API_KEY env var or Streamlit secret to enable AI-generated commentary.
     """
     # Check for AI commentary first
     api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        try:
+            import streamlit as st
+            api_key = st.secrets.get("general", {}).get("ANTHROPIC_API_KEY")
+        except Exception:
+            pass
     if api_key:
         ai_commentary = _generate_ai_commentary(metrics_df, api_key)
         if ai_commentary:

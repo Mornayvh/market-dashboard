@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import pandas as pd
-import requests
 import yfinance as yf
 
 from src.config import Asset, ASSETS, FRED_LOOKBACK_DAYS
@@ -22,7 +21,10 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 def fetch_yf_history(ticker: str, period: str = "ytd") -> Optional[pd.DataFrame]:
-    """Pull OHLCV history from Yahoo Finance."""
+    """
+    Pull OHLCV history from Yahoo Finance.
+    Returns DataFrame with DatetimeIndex and 'Close' column, or None on failure.
+    """
     try:
         t = yf.Ticker(ticker)
         df = t.history(period="1y", auto_adjust=True)
@@ -50,19 +52,30 @@ def fetch_all_yf(assets: list[Asset] = ASSETS) -> dict[str, pd.DataFrame]:
     return results
 
 # ---------------------------------------------------------------------------
-# FRED (direct HTTP — no fredapi package needed)
+# FRED
 # ---------------------------------------------------------------------------
 
 def _get_fred_api_key() -> Optional[str]:
-    """Read FRED API key from environment."""
+    """Read FRED API key from env var or Streamlit Cloud secrets."""
     key = os.environ.get("FRED_API_KEY")
+    if not key:
+        try:
+            import streamlit as st
+            key = st.secrets.get("general", {}).get("FRED_API_KEY")
+        except Exception:
+            pass
     if not key:
         logger.warning("FRED_API_KEY not set — FRED data will be unavailable.")
     return key
 
 
 def fetch_fred_series(series_id: str, api_key: Optional[str] = None) -> Optional[pd.DataFrame]:
-    """Pull a single FRED series via direct HTTP."""
+    """
+    Pull a single FRED series via direct HTTP (no fredapi package needed).
+    Returns DataFrame with DatetimeIndex and 'Close' column.
+    """
+    import requests
+
     if api_key is None:
         api_key = _get_fred_api_key()
     if api_key is None:
@@ -87,6 +100,7 @@ def fetch_fred_series(series_id: str, api_key: Optional[str] = None) -> Optional
             logger.warning(f"FRED returned no observations for {series_id}")
             return None
 
+        # Parse into DataFrame — FRED returns value as string, "." means missing
         rows = []
         for obs in observations:
             val = obs.get("value", ".")
@@ -123,12 +137,17 @@ def fetch_all_fred(assets: list[Asset] = ASSETS) -> dict[str, pd.DataFrame]:
 # ---------------------------------------------------------------------------
 
 def fetch_all_data(assets: list[Asset] = ASSETS) -> dict[str, pd.DataFrame]:
-    """Master fetch: pulls from YF and FRED, merging where both exist."""
+    """
+    Master fetch: pulls from YF and FRED, merging where both exist.
+    YF takes priority for assets available on both sources.
+    Returns {asset_name: DataFrame} with 'Close' column.
+    """
     yf_data = fetch_all_yf(assets)
     fred_data = fetch_all_fred(assets)
 
     combined = {}
     for asset in assets:
+        # Prefer YF data; fall back to FRED
         if asset.name in yf_data:
             combined[asset.name] = yf_data[asset.name]
         elif asset.name in fred_data:

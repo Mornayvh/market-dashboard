@@ -50,7 +50,7 @@ st.markdown("""
     .block-container {
         padding-top: 2rem;
         padding-bottom: 1rem;
-        max-width: 1700px;
+        max-width: 1400px;
     }
 
     /* ── Header ── */
@@ -398,6 +398,11 @@ def render_commentary(metrics_df: pd.DataFrame, timestamp: datetime):
 
         # Determine source label
         is_ai = bool(os.environ.get("ANTHROPIC_API_KEY"))
+        if not is_ai:
+            try:
+                is_ai = bool(st.secrets.get("general", {}).get("ANTHROPIC_API_KEY"))
+            except Exception:
+                pass
         source = "AI-assisted" if is_ai else "Analyst notes"
         from src.commentary import COMMENTARY
         date_str = COMMENTARY.get("date", "")
