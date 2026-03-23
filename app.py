@@ -474,6 +474,12 @@ def main():
         render_section_header("Volatility")
         render_data_table(metrics_df, "Volatility")
 
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Currency
+        render_section_header("Currency")
+        render_data_table(metrics_df, "Currency")
+
     with data_right:
         # Equities
         render_section_header("Equities")

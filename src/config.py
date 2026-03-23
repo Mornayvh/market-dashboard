@@ -52,10 +52,13 @@ ASSETS: list[Asset] = [
 
     # Volatility
     Asset("VIX",                "^VIX",   None,              "Volatility", invert_color=True),
+
+    # Currency
+    Asset("Dollar Index",       "DX-Y.NYB", None,           "Currency"),
 ]
 
 # Convenience lookups
-CATEGORIES = ["Rates", "Credit", "Equities", "Commodities", "Crypto", "Volatility"]
+CATEGORIES = ["Rates", "Credit", "Equities", "Commodities", "Crypto", "Volatility", "Currency"]
 ASSETS_BY_CATEGORY = {cat: [a for a in ASSETS if a.category == cat] for cat in CATEGORIES}
 
 # ---------------------------------------------------------------------------
