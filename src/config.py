@@ -55,6 +55,10 @@ ASSETS: list[Asset] = [
 
     # Currency
     Asset("Dollar Index",       "DX-Y.NYB", None,           "Currency"),
+    Asset("EUR/USD",            "EURUSD=X", None,            "Currency"),
+    Asset("GBP/USD",            "GBPUSD=X", None,            "Currency"),
+    Asset("USD/ZAR",            "ZAR=X",    None,            "Currency"),
+    Asset("USD/JPY",            "JPY=X",    None,            "Currency"),
 ]
 
 # Convenience lookups
