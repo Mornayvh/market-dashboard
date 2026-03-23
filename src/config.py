@@ -1,0 +1,65 @@
+"""
+config.py — Asset universe and data source configuration.
+Central registry for all tracked instruments. Add or remove assets here only.
+"""
+
+from dataclasses import dataclass
+from typing import Optional
+
+# ---------------------------------------------------------------------------
+# Asset definition
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class Asset:
+    name: str
+    ticker: Optional[str]          # Yahoo Finance ticker (None if FRED-only)
+    fred_id: Optional[str]         # FRED series ID (None if YF-only)
+    category: str                  # Grouping key for dashboard layout
+    is_rate: bool = False          # True for yields/rates (display as %, not % change)
+    is_spread: bool = False        # True for credit spreads (display as bps)
+    invert_color: bool = False     # True if "up = bad" (e.g. VIX, spreads)
+
+# ---------------------------------------------------------------------------
+# Asset universe — single source of truth
+# ---------------------------------------------------------------------------
+
+ASSETS: list[Asset] = [
+    # Rates
+    Asset("US 10Y Yield",       "^TNX",   "DGS10",          "Rates",   is_rate=True),
+    Asset("US 5Y Yield",        "^FVX",   "DGS5",           "Rates",   is_rate=True),
+    Asset("Fed Funds Rate",     None,     "DFF",             "Rates",   is_rate=True),
+
+    # Credit Spreads
+    Asset("IG Spread",          None,     "BAMLC0A4CBBB",    "Credit",  is_spread=True, invert_color=True),
+    Asset("HY Spread",          None,     "BAMLH0A0HYM2",    "Credit",  is_spread=True, invert_color=True),
+    Asset("EM Spread",          None,     "BAMLEMCBPIOAS",    "Credit",  is_spread=True, invert_color=True),
+
+    # Equities
+    Asset("S&P 500",            "^GSPC",  None,              "Equities"),
+    Asset("Russell 2000",       "^RUT",   None,              "Equities"),
+    Asset("Nasdaq 100",         "^NDX",   None,              "Equities"),
+
+    # Commodities
+    Asset("Gold",               "GC=F",   None,              "Commodities"),
+    Asset("Silver",             "SI=F",   None,              "Commodities"),
+    Asset("Copper",             "HG=F",   None,              "Commodities"),
+    Asset("Oil (WTI)",          "CL=F",   None,              "Commodities"),
+
+    # Crypto
+    Asset("Bitcoin",            "BTC-USD", None,             "Crypto"),
+    Asset("Ethereum",           "ETH-USD", None,             "Crypto"),
+
+    # Volatility
+    Asset("VIX",                "^VIX",   None,              "Volatility", invert_color=True),
+]
+
+# Convenience lookups
+CATEGORIES = ["Rates", "Credit", "Equities", "Commodities", "Crypto", "Volatility"]
+ASSETS_BY_CATEGORY = {cat: [a for a in ASSETS if a.category == cat] for cat in CATEGORIES}
+
+# ---------------------------------------------------------------------------
+# FRED configuration
+# ---------------------------------------------------------------------------
+# Users must set FRED_API_KEY env var. Free key from https://fred.stlouisfed.org/docs/api/api_key.html
+FRED_LOOKBACK_DAYS = 365  # How far back to pull FRED history
