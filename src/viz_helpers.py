@@ -129,12 +129,30 @@ def make_sparkline(
 
     fig.update_layout(
         height=height,
-        margin=dict(l=0, r=0, t=0, b=0),
+        margin=dict(l=0, r=0, t=14, b=0),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         xaxis=dict(visible=False),
         yaxis=dict(visible=False, range=y_range),
         showlegend=False,
+        annotations=[
+            # Start date (left)
+            dict(
+                x=recent.index[0], y=y_range[1],
+                text=recent.index[0].strftime("%d %b"),
+                showarrow=False, xanchor="left", yanchor="bottom",
+                font=dict(size=9, color=COLORS["text_secondary"], family="JetBrains Mono, monospace"),
+                yref="y", xref="x",
+            ),
+            # End date (right)
+            dict(
+                x=recent.index[-1], y=y_range[1],
+                text=recent.index[-1].strftime("%d %b"),
+                showarrow=False, xanchor="right", yanchor="bottom",
+                font=dict(size=9, color=COLORS["text_secondary"], family="JetBrains Mono, monospace"),
+                yref="y", xref="x",
+            ),
+        ],
     )
     return fig
 
