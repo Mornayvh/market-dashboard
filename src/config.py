@@ -54,11 +54,11 @@ ASSETS: list[Asset] = [
     Asset("VIX",                "^VIX",   None,              "Volatility", invert_color=True),
 
     # Currency
-    Asset("Dollar Index",       "DX-Y.NYB", None,           "Currency"),
-    Asset("EUR/USD",            "EURUSD=X", None,            "Currency"),
-    Asset("GBP/USD",            "GBPUSD=X", None,            "Currency"),
-    Asset("USD/ZAR",            "ZAR=X",    None,            "Currency"),
-    Asset("USD/JPY",            "JPY=X",    None,            "Currency"),
+    Asset("Dollar Index",       "DX-Y.NYB",  None,           "Currency"),
+    Asset("EUR/USD",            "EURUSD=X",  None,            "Currency"),
+    Asset("GBP/USD",            "GBPUSD=X",  None,            "Currency"),
+    Asset("USD/ZAR",            "USDZAR=X",  None,            "Currency"),
+    Asset("USD/JPY",            "USDJPY=X",  None,            "Currency"),
 ]
 
 # Convenience lookups
