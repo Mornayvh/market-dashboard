@@ -71,11 +71,12 @@ def make_sparkline(
     name: str = "",
     days: int = 30,
     invert_color: bool = False,
-    height: int = 80,
+    height: int = 120,
 ) -> go.Figure:
     """
     Create a minimal sparkline chart from a Close-price DataFrame.
-    Shows the last `days` trading days.
+    Shows the last `days` trading days. Y-axis scaled to data range
+    so price movements are clearly visible.
     """
     if df is None or df.empty:
         return _empty_fig(height)
@@ -94,17 +95,36 @@ def make_sparkline(
     # Convert hex color to rgba for fill
     hex_c = line_color.lstrip("#")
     r, g, b = int(hex_c[0:2], 16), int(hex_c[2:4], 16), int(hex_c[4:6], 16)
-    fill_color = f"rgba({r},{g},{b},0.08)"
+    fill_color = f"rgba({r},{g},{b},0.12)"
+
+    # Y-axis range: tight to data with 10% padding so moves are visible
+    y_min = float(recent["Close"].min())
+    y_max = float(recent["Close"].max())
+    y_pad = (y_max - y_min) * 0.1 if y_max > y_min else y_max * 0.01
+    y_range = [y_min - y_pad, y_max + y_pad]
 
     fig = go.Figure()
+
+    # Baseline trace at the bottom of visible range (for fill reference)
+    fig.add_trace(go.Scatter(
+        x=recent.index,
+        y=[y_range[0]] * len(recent),
+        mode="lines",
+        line=dict(width=0),
+        hoverinfo="skip",
+        showlegend=False,
+    ))
+
+    # Actual price line with fill down to the baseline
     fig.add_trace(go.Scatter(
         x=recent.index,
         y=recent["Close"],
         mode="lines",
-        line=dict(color=line_color, width=1.5),
-        fill="tozeroy",
+        line=dict(color=line_color, width=1.8),
+        fill="tonexty",
         fillcolor=fill_color,
         hoverinfo="skip",
+        showlegend=False,
     ))
 
     fig.update_layout(
@@ -113,7 +133,7 @@ def make_sparkline(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
+        yaxis=dict(visible=False, range=y_range),
         showlegend=False,
     )
     return fig
