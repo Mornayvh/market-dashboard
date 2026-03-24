@@ -384,6 +384,32 @@ def render_section_header(text: str):
     st.markdown(f'<div class="section-header">{text}</div>', unsafe_allow_html=True)
 
 
+def render_volatility_table(metrics_df: pd.DataFrame, vix_avg: float | None):
+    """Render the Volatility table with a 1Y Average VIX row appended."""
+    cat_df = get_category_df(metrics_df, "Volatility")
+    if cat_df.empty:
+        st.caption("No data available")
+        return
+
+    rows_html = ""
+    for idx, row in cat_df.iterrows():
+        invert = row["invert_color"]
+        val_str = fmt_value(row["latest"], False, False)
+        cells = ""
+        for key in ["daily_chg", "weekly_chg", "ltm_chg"]:
+            v = row[key]
+            color = change_color(v, invert)
+            cells += f'<td style="color:{color}">{fmt_change(v, False, False)}</td>'
+        rows_html += f"<tr><td>{idx}</td><td>{val_str}</td>{cells}</tr>"
+
+    # Add 1Y Average row
+    if vix_avg is not None:
+        rows_html += f'<tr><td>1Y Average</td><td>{vix_avg:.1f}</td><td>\u2014</td><td>\u2014</td><td>\u2014</td></tr>'
+
+    html = f"""<table class="data-table"><thead><tr><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:left; font-family:'DM Sans',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">Asset</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:right; font-family:'DM Sans',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">Last</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:right; font-family:'DM Sans',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">1D (%)</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:right; font-family:'DM Sans',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">1W (%)</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:right; font-family:'DM Sans',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">LTM (%)</th></tr></thead><tbody>{rows_html}</tbody></table>"""
+    st.markdown(html, unsafe_allow_html=True)
+
+
 def render_commentary(metrics_df: pd.DataFrame, timestamp: datetime):
     """Render the commentary panel."""
     import hashlib
@@ -464,18 +490,13 @@ def main():
         render_section_header("Equities")
         render_data_table(metrics_df, "Equities")
 
-        # Equity P/E multiples
+        # Equity P/E multiples as a table
         if equity_pe and any(v is not None for v in equity_pe.values()):
-            pe_items = " · ".join(
-                f'<span style="color:#1E293B; font-weight:500;">{name}</span> '
-                f'<span style="font-family:\'JetBrains Mono\',monospace; color:#2563EB;">{pe:.1f}x</span>'
-                for name, pe in equity_pe.items() if pe is not None
-            )
-            st.markdown(
-                f'<div style="font-family:\'DM Sans\',sans-serif; font-size:0.72rem; color:#64748B; '
-                f'padding:6px 0 4px 0;">Trailing P/E: {pe_items}</div>',
-                unsafe_allow_html=True,
-            )
+            pe_rows = ""
+            for name, pe in equity_pe.items():
+                pe_str = f"{pe:.1f}x" if pe is not None else "\u2014"
+                pe_rows += f'<tr><td style="padding:0.55rem 0.6rem; border-bottom:1px solid #F1F5F9; text-align:left; color:#1E293B; font-weight:500; font-family:\'DM Sans\',sans-serif; font-size:0.78rem;">{name}</td><td style="padding:0.55rem 0.6rem; border-bottom:1px solid #F1F5F9; text-align:right; font-family:\'JetBrains Mono\',monospace; font-size:0.76rem; color:#1E293B;">{pe_str}</td></tr>'
+            st.markdown(f'<div class="section-header" style="margin-top:12px;">Equity Multiples</div><table class="data-table"><thead><tr><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:left; font-family:\'DM Sans\',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">Index</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:right; font-family:\'DM Sans\',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">Trailing P/E</th></tr></thead><tbody>{pe_rows}</tbody></table>', unsafe_allow_html=True)
 
         # Equities sparklines
         eq_names = ["S&P 500", "Russell 2000", "Nasdaq 100", "JSE All Share"]
@@ -523,17 +544,9 @@ def main():
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # Volatility with 1Y average
+        # Volatility with 1Y average as a table row
         render_section_header("Volatility")
-        render_data_table(metrics_df, "Volatility")
-        if vix_avg is not None:
-            st.markdown(
-                f'<div style="font-family:\'DM Sans\',sans-serif; font-size:0.72rem; color:#64748B; '
-                f'padding:6px 0 4px 0;">1Y Average VIX: '
-                f'<span style="font-family:\'JetBrains Mono\',monospace; color:#1E293B; font-weight:600;">'
-                f'{vix_avg:.1f}</span></div>',
-                unsafe_allow_html=True,
-            )
+        render_volatility_table(metrics_df, vix_avg)
 
     # ── COMMENTARY: Full width, between data and LTM charts ──
     st.markdown("<br>", unsafe_allow_html=True)

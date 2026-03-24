@@ -55,7 +55,7 @@ ASSETS: list[Asset] = [
 
     # Currency
     Asset("Dollar Index",       "DX-Y.NYB",  None,           "Currency"),
-    Asset("EUR/USD",            "EURUSD=X",  None,            "Currency"),
+    Asset("USD/EUR",            "USDEUR=X",  None,            "Currency"),
     Asset("USD/GBP",            "USDGBP=X",  None,            "Currency"),
     Asset("USD/ZAR",            "USDZAR=X",  None,            "Currency"),
     Asset("USD/JPY",            "USDJPY=X",  None,            "Currency"),
@@ -74,7 +74,6 @@ EQUITY_PE_MAP = {
     "S&P 500": "SPY",
     "Russell 2000": "IWM",
     "Nasdaq 100": "QQQ",
-    # JSE not available via yfinance ETF info
 }
 
 # ---------------------------------------------------------------------------
