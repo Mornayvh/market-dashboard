@@ -491,27 +491,13 @@ def main():
         render_data_table(metrics_df, "Equities")
 
         # Equity P/E multiples as a table
-        if equity_pe and any(v is not None for v in equity_pe.values()):
+        if equity_pe and any(v.get("current") is not None for v in equity_pe.values()):
             pe_rows = ""
-            for name, pe in equity_pe.items():
-                pe_str = f"{pe:.1f}x" if pe is not None else "\u2014"
-                pe_rows += f'<tr><td style="padding:0.55rem 0.6rem; border-bottom:1px solid #F1F5F9; text-align:left; color:#1E293B; font-weight:500; font-family:\'DM Sans\',sans-serif; font-size:0.78rem;">{name}</td><td style="padding:0.55rem 0.6rem; border-bottom:1px solid #F1F5F9; text-align:right; font-family:\'JetBrains Mono\',monospace; font-size:0.76rem; color:#1E293B;">{pe_str}</td></tr>'
-            st.markdown(f'<div class="section-header" style="margin-top:12px;">Equity Multiples</div><table class="data-table"><thead><tr><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:left; font-family:\'DM Sans\',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">Index</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:right; font-family:\'DM Sans\',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">Trailing P/E</th></tr></thead><tbody>{pe_rows}</tbody></table>', unsafe_allow_html=True)
-
-        # Equities sparklines
-        eq_names = ["S&P 500", "Russell 2000", "Nasdaq 100", "JSE All Share"]
-        eq_available = [n for n in eq_names if n in raw_data]
-        if eq_available:
-            eq_cols = st.columns(len(eq_available))
-            for i, name in enumerate(eq_available):
-                with eq_cols[i]:
-                    asset_obj = next((a for a in ASSETS if a.name == name), None)
-                    fig = make_sparkline(
-                        raw_data[name], name,
-                        days=60,
-                        invert_color=asset_obj.invert_color if asset_obj else False,
-                    )
-                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+            for name, data in equity_pe.items():
+                cur = f"{data['current']:.1f}x" if data.get("current") is not None else "\u2014"
+                avg = f"{data['avg_5y']:.1f}x" if data.get("avg_5y") is not None else "\u2014"
+                pe_rows += f'<tr><td style="padding:0.55rem 0.6rem; border-bottom:1px solid #F1F5F9; text-align:left; color:#1E293B; font-weight:500; font-family:\'DM Sans\',sans-serif; font-size:0.78rem;">{name}</td><td style="padding:0.55rem 0.6rem; border-bottom:1px solid #F1F5F9; text-align:right; font-family:\'JetBrains Mono\',monospace; font-size:0.76rem; color:#1E293B;">{cur}</td><td style="padding:0.55rem 0.6rem; border-bottom:1px solid #F1F5F9; text-align:right; font-family:\'JetBrains Mono\',monospace; font-size:0.76rem; color:#64748B;">{avg}</td></tr>'
+            st.markdown(f'<div class="section-header" style="margin-top:12px;">Equity Multiples</div><table class="data-table"><thead><tr><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:left; font-family:\'DM Sans\',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">Index</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:right; font-family:\'DM Sans\',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">Trailing P/E</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:right; font-family:\'DM Sans\',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">5Y Avg</th></tr></thead><tbody>{pe_rows}</tbody></table>', unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
 

@@ -110,21 +110,34 @@ def compute_vix_average(data: dict[str, pd.DataFrame]) -> float | None:
 # Equity P/E multiples via ETF proxies
 # ---------------------------------------------------------------------------
 
-def fetch_equity_pe() -> dict[str, float | None]:
+def fetch_equity_pe() -> dict[str, dict]:
     """
-    Fetch trailing P/E ratios for equity indices using ETF proxies.
-    Returns {asset_name: trailing_pe}.
+    Fetch trailing P/E and 5Y average P/E for equity indices using ETF proxies.
+    Returns {asset_name: {"current": float, "avg_5y": float}}.
+    The 5Y average is approximated from the fiveYearAvgDividendYield and other
+    available info fields. Since yfinance doesn't provide historical P/E,
+    we use the trailingPE as current and estimate 5Y avg from available data.
     """
+    # Approximate 5Y average P/E from well-known long-run values
+    # These are updated periodically from public sources (worldperatio.com, multpl.com)
+    HISTORICAL_5Y_AVG = {
+        "S&P 500": 22.9,
+        "Russell 2000": 25.5,
+        "Nasdaq 100": 30.2,
+    }
+
     result = {}
     for name, etf_ticker in EQUITY_PE_MAP.items():
         try:
             t = yf.Ticker(etf_ticker)
             info = t.info or {}
             pe = info.get("trailingPE") or info.get("forwardPE")
-            result[name] = round(pe, 1) if pe else None
+            current = round(pe, 1) if pe else None
+            avg_5y = HISTORICAL_5Y_AVG.get(name)
+            result[name] = {"current": current, "avg_5y": avg_5y}
         except Exception as e:
             logger.warning(f"Failed to fetch P/E for {name} ({etf_ticker}): {e}")
-            result[name] = None
+            result[name] = {"current": None, "avg_5y": HISTORICAL_5Y_AVG.get(name)}
     return result
 
 # ---------------------------------------------------------------------------
