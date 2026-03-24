@@ -16,7 +16,7 @@ from src.data_process import process_all, get_category_df, compute_vix_average, 
 from src.commentary import generate_commentary
 from src.viz_helpers import (
     COLORS, fmt_value, fmt_change, change_color,
-    make_sparkline, make_ltm_bar_chart,
+    make_sparkline, make_vix_sparkline, make_ltm_bar_chart,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -468,7 +468,7 @@ def main():
             st.cache_data.clear()
             st.rerun()
 
-    # ── TOP ROW: Key metrics as cards ──
+    # ── TOP ROW: Key metrics as cards with sparklines ──
     st.markdown("")
     render_section_header("Key Indicators")
     key_assets = ["S&P 500", "US 10Y Yield", "VIX", "Bitcoin", "Gold", "Oil (Brent)"]
@@ -477,6 +477,21 @@ def main():
         with col:
             if name in metrics_df.index:
                 render_metric_card(metrics_df.loc[name])
+                # Sparkline below the card
+                if name in raw_data:
+                    asset_obj = next((a for a in ASSETS if a.name == name), None)
+                    if name == "VIX":
+                        fig = make_vix_sparkline(
+                            raw_data[name], vix_avg=vix_avg,
+                            days=90, height=100,
+                        )
+                    else:
+                        fig = make_sparkline(
+                            raw_data[name], name,
+                            days=90, height=100,
+                            invert_color=asset_obj.invert_color if asset_obj else False,
+                        )
+                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
             else:
                 st.caption(f"{name}: No data")
 

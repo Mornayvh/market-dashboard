@@ -157,6 +157,103 @@ def make_sparkline(
     return fig
 
 
+def make_vix_sparkline(
+    df: pd.DataFrame,
+    vix_avg: float | None = None,
+    days: int = 90,
+    height: int = 100,
+) -> go.Figure:
+    """
+    VIX sparkline with a horizontal 1Y average line overlay.
+    """
+    if df is None or df.empty:
+        return _empty_fig(height)
+
+    recent = df.tail(days)
+    if recent.empty:
+        return _empty_fig(height)
+
+    first_val = float(recent["Close"].iloc[0])
+    last_val = float(recent["Close"].iloc[-1])
+    # VIX: up = bad (red)
+    line_color = COLORS["red"] if last_val >= first_val else COLORS["green"]
+
+    hex_c = line_color.lstrip("#")
+    r, g, b = int(hex_c[0:2], 16), int(hex_c[2:4], 16), int(hex_c[4:6], 16)
+    fill_color = f"rgba({r},{g},{b},0.12)"
+
+    y_min = float(recent["Close"].min())
+    y_max = float(recent["Close"].max())
+    # Extend range to fit average line if needed
+    if vix_avg is not None:
+        y_min = min(y_min, vix_avg)
+        y_max = max(y_max, vix_avg)
+    y_pad = (y_max - y_min) * 0.1 if y_max > y_min else y_max * 0.01
+    y_range = [y_min - y_pad, y_max + y_pad]
+
+    fig = go.Figure()
+
+    # Baseline
+    fig.add_trace(go.Scatter(
+        x=recent.index, y=[y_range[0]] * len(recent),
+        mode="lines", line=dict(width=0), hoverinfo="skip", showlegend=False,
+    ))
+
+    # VIX line
+    fig.add_trace(go.Scatter(
+        x=recent.index, y=recent["Close"],
+        mode="lines", line=dict(color=line_color, width=1.8),
+        fill="tonexty", fillcolor=fill_color,
+        hoverinfo="skip", showlegend=False,
+    ))
+
+    # 1Y average line
+    annotations = []
+    if vix_avg is not None:
+        fig.add_trace(go.Scatter(
+            x=[recent.index[0], recent.index[-1]],
+            y=[vix_avg, vix_avg],
+            mode="lines",
+            line=dict(color=COLORS["accent"], width=1.2, dash="dash"),
+            hoverinfo="skip", showlegend=False,
+        ))
+        annotations.append(dict(
+            x=recent.index[-1], y=vix_avg,
+            text=f"1Y avg: {vix_avg:.0f}",
+            showarrow=False, xanchor="right", yanchor="bottom",
+            font=dict(size=8, color=COLORS["accent"], family="JetBrains Mono, monospace"),
+            yref="y", xref="x",
+        ))
+
+    # Date labels
+    annotations.extend([
+        dict(
+            x=recent.index[0], y=y_range[1],
+            text=recent.index[0].strftime("%d %b"),
+            showarrow=False, xanchor="left", yanchor="bottom",
+            font=dict(size=9, color=COLORS["text_secondary"], family="JetBrains Mono, monospace"),
+        ),
+        dict(
+            x=recent.index[-1], y=y_range[1],
+            text=recent.index[-1].strftime("%d %b"),
+            showarrow=False, xanchor="right", yanchor="bottom",
+            font=dict(size=9, color=COLORS["text_secondary"], family="JetBrains Mono, monospace"),
+        ),
+    ])
+
+    fig.update_layout(
+        height=height,
+        margin=dict(l=0, r=0, t=14, b=0),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False, range=y_range),
+        showlegend=False,
+        annotations=annotations,
+    )
+    return fig
+
+
 def _empty_fig(height: int = 80) -> go.Figure:
     """Return a blank placeholder figure."""
     fig = go.Figure()
