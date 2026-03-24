@@ -45,7 +45,7 @@ ASSETS: list[Asset] = [
     Asset("Gold",               "GC=F",   None,              "Commodities"),
     Asset("Silver",             "SI=F",   None,              "Commodities"),
     Asset("Copper",             "HG=F",   None,              "Commodities"),
-    Asset("Oil (Brent)",          "BZ=F",   None,              "Commodities"),
+    Asset("Oil (Brent)",          "BZ=F",   "DCOILBRENTEU",    "Commodities"),
 
     # Sentiment (Bitcoin only, renamed from Crypto)
     Asset("Bitcoin",            "BTC-USD", None,             "Sentiment"),
