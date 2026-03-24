@@ -10,13 +10,13 @@ from datetime import datetime
 import streamlit as st
 import pandas as pd
 
-from src.config import ASSETS, ASSETS_BY_CATEGORY, CATEGORIES, Asset
+from src.config import ASSETS, ASSETS_BY_CATEGORY, CATEGORIES, Asset, EQUITY_PE_MAP
 from src.data_ingest import fetch_all_data
-from src.data_process import process_all, get_category_df
+from src.data_process import process_all, get_category_df, compute_vix_average, fetch_equity_pe
 from src.commentary import generate_commentary
 from src.viz_helpers import (
     COLORS, fmt_value, fmt_change, change_color,
-    make_sparkline, make_ytd_bar_chart,
+    make_sparkline, make_ltm_bar_chart,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -265,7 +265,9 @@ def load_data():
     """Fetch and process all market data. Cached for 5 min."""
     raw = fetch_all_data()
     metrics = process_all(raw)
-    return raw, metrics, datetime.now()
+    vix_avg = compute_vix_average(raw)
+    equity_pe = fetch_equity_pe()
+    return raw, metrics, vix_avg, equity_pe, datetime.now()
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -310,9 +312,9 @@ def render_metric_card(row: pd.Series):
 
     value_str = fmt_value(row["latest"], is_rate, is_spread)
 
-    # Build change chips — 1W and YTD only (keeps cards compact)
+    # Build change chips — 1W and LTM only (keeps cards compact)
     changes_html = ""
-    for label, key in [("1W", "weekly_chg"), ("YTD", "ytd_chg")]:
+    for label, key in [("1W", "weekly_chg"), ("LTM", "ltm_chg")]:
         val = row.get(key)
         color = change_color(val, invert)
         formatted = fmt_change(val, is_rate, is_spread)
@@ -354,7 +356,7 @@ def render_data_table(metrics_df: pd.DataFrame, category: str):
         val_str = fmt_value(row["latest"], is_rate, is_spread)
 
         cells = ""
-        for key in ["daily_chg", "weekly_chg", "ytd_chg"]:
+        for key in ["daily_chg", "weekly_chg", "ltm_chg"]:
             v = row[key]
             color = change_color(v, invert)
             cells += f'<td style="color:{color}">{fmt_change(v, is_rate, is_spread)}</td>'
@@ -369,7 +371,7 @@ def render_data_table(metrics_df: pd.DataFrame, category: str):
                 <th>Last</th>
                 <th>1D{chg_suffix}</th>
                 <th>1W{chg_suffix}</th>
-                <th>YTD{chg_suffix}</th>
+                <th>LTM{chg_suffix}</th>
             </tr>
         </thead>
         <tbody>{rows_html}</tbody>
@@ -428,7 +430,7 @@ def main():
 
     # Load data
     with st.spinner("Fetching market data..."):
-        raw_data, metrics_df, timestamp = load_data()
+        raw_data, metrics_df, vix_avg, equity_pe, timestamp = load_data()
 
     # Header
     render_header(timestamp)
@@ -458,38 +460,30 @@ def main():
     data_left, data_right = st.columns([1, 1], gap="large")
 
     with data_left:
-        # Rates
-        render_section_header("Rates")
-        render_data_table(metrics_df, "Rates")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # Credit Spreads
-        render_section_header("Credit Spreads")
-        render_data_table(metrics_df, "Credit")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # Volatility
-        render_section_header("Volatility")
-        render_data_table(metrics_df, "Volatility")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # Currency
-        render_section_header("Currency")
-        render_data_table(metrics_df, "Currency")
-
-    with data_right:
         # Equities
         render_section_header("Equities")
         render_data_table(metrics_df, "Equities")
 
+        # Equity P/E multiples
+        if equity_pe and any(v is not None for v in equity_pe.values()):
+            pe_items = " · ".join(
+                f'<span style="color:#1E293B; font-weight:500;">{name}</span> '
+                f'<span style="font-family:\'JetBrains Mono\',monospace; color:#2563EB;">{pe:.1f}x</span>'
+                for name, pe in equity_pe.items() if pe is not None
+            )
+            st.markdown(
+                f'<div style="font-family:\'DM Sans\',sans-serif; font-size:0.72rem; color:#64748B; '
+                f'padding:6px 0 4px 0;">Trailing P/E: {pe_items}</div>',
+                unsafe_allow_html=True,
+            )
+
         # Equities sparklines
-        eq_cols = st.columns(3)
-        for i, name in enumerate(["S&P 500", "Russell 2000", "Nasdaq 100"]):
-            with eq_cols[i]:
-                if name in raw_data:
+        eq_names = ["S&P 500", "Russell 2000", "Nasdaq 100", "JSE All Share"]
+        eq_available = [n for n in eq_names if n in raw_data]
+        if eq_available:
+            eq_cols = st.columns(len(eq_available))
+            for i, name in enumerate(eq_available):
+                with eq_cols[i]:
                     asset_obj = next((a for a in ASSETS if a.name == name), None)
                     fig = make_sparkline(
                         raw_data[name], name,
@@ -500,38 +494,61 @@ def main():
 
         st.markdown("<br>", unsafe_allow_html=True)
 
+        # Rates
+        render_section_header("Rates")
+        render_data_table(metrics_df, "Rates")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Currency
+        render_section_header("Currency")
+        render_data_table(metrics_df, "Currency")
+
+    with data_right:
+        # Credit Spreads
+        render_section_header("Credit Spreads")
+        render_data_table(metrics_df, "Credit")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
         # Commodities
         render_section_header("Commodities")
         render_data_table(metrics_df, "Commodities")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # Crypto
-        render_section_header("Crypto")
-        render_data_table(metrics_df, "Crypto")
+        # Sentiment (Bitcoin only, no sparklines)
+        render_section_header("Sentiment")
+        render_data_table(metrics_df, "Sentiment")
 
-        # Crypto sparklines
-        cr_cols = st.columns(2)
-        for i, name in enumerate(["Bitcoin", "Ethereum"]):
-            with cr_cols[i]:
-                if name in raw_data:
-                    fig = make_sparkline(raw_data[name], name, days=60)
-                    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── COMMENTARY: Full width, between data and YTD charts ──
+        # Volatility with 1Y average
+        render_section_header("Volatility")
+        render_data_table(metrics_df, "Volatility")
+        if vix_avg is not None:
+            st.markdown(
+                f'<div style="font-family:\'DM Sans\',sans-serif; font-size:0.72rem; color:#64748B; '
+                f'padding:6px 0 4px 0;">1Y Average VIX: '
+                f'<span style="font-family:\'JetBrains Mono\',monospace; color:#1E293B; font-weight:600;">'
+                f'{vix_avg:.1f}</span></div>',
+                unsafe_allow_html=True,
+            )
+
+    # ── COMMENTARY: Full width, between data and LTM charts ──
     st.markdown("<br>", unsafe_allow_html=True)
     render_commentary(metrics_df, timestamp)
 
-    # ── BOTTOM: YTD Performance Charts ──
+    # ── BOTTOM: LTM Performance Charts ──
     st.markdown("<br>", unsafe_allow_html=True)
-    render_section_header("YTD Performance")
+    render_section_header("LTM Performance")
 
     chart_cols = st.columns(3)
-    chart_categories = ["Equities", "Commodities", "Crypto"]
+    chart_categories = ["Equities", "Commodities", "Sentiment"]
     for col, cat in zip(chart_cols, chart_categories):
         with col:
             st.caption(cat)
-            fig = make_ytd_bar_chart(metrics_df, cat)
+            fig = make_ltm_bar_chart(metrics_df, cat)
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
     # ── Footer ──

@@ -76,7 +76,7 @@ def build_table_html(metrics_df, category):
 
         daily = build_change_html(row["daily_chg"], is_rate, is_spread, invert)
         weekly = build_change_html(row["weekly_chg"], is_rate, is_spread, invert)
-        ytd = build_change_html(row["ytd_chg"], is_rate, is_spread, invert)
+        ltm = build_change_html(row["ltm_chg"], is_rate, is_spread, invert)
 
         rows_html += f"""
         <tr>
@@ -84,7 +84,7 @@ def build_table_html(metrics_df, category):
             <td style="padding:6px 10px; border-bottom:1px solid #E2E8F0; text-align:right; font-family:'Courier New',monospace; color:#1E293B;">{val_str}</td>
             <td style="padding:6px 10px; border-bottom:1px solid #E2E8F0; text-align:right; font-family:'Courier New',monospace;">{daily}</td>
             <td style="padding:6px 10px; border-bottom:1px solid #E2E8F0; text-align:right; font-family:'Courier New',monospace;">{weekly}</td>
-            <td style="padding:6px 10px; border-bottom:1px solid #E2E8F0; text-align:right; font-family:'Courier New',monospace;">{ytd}</td>
+            <td style="padding:6px 10px; border-bottom:1px solid #E2E8F0; text-align:right; font-family:'Courier New',monospace;">{ltm}</td>
         </tr>"""
 
     return f"""
@@ -95,7 +95,7 @@ def build_table_html(metrics_df, category):
                 <th style="padding:8px 10px; border-bottom:2px solid #CBD5E1; text-align:right; font-size:11px; color:#64748B; text-transform:uppercase;">Last</th>
                 <th style="padding:8px 10px; border-bottom:2px solid #CBD5E1; text-align:right; font-size:11px; color:#64748B; text-transform:uppercase;">1D ({chg_label})</th>
                 <th style="padding:8px 10px; border-bottom:2px solid #CBD5E1; text-align:right; font-size:11px; color:#64748B; text-transform:uppercase;">1W ({chg_label})</th>
-                <th style="padding:8px 10px; border-bottom:2px solid #CBD5E1; text-align:right; font-size:11px; color:#64748B; text-transform:uppercase;">YTD ({chg_label})</th>
+                <th style="padding:8px 10px; border-bottom:2px solid #CBD5E1; text-align:right; font-size:11px; color:#64748B; text-transform:uppercase;">LTM ({chg_label})</th>
             </tr>
         </thead>
         <tbody>{rows_html}</tbody>
@@ -123,36 +123,19 @@ def build_email_html(metrics_df, commentary_text):
         "Credit": "Credit Spreads",
         "Equities": "Equities",
         "Commodities": "Commodities",
-        "Crypto": "Crypto",
+        "Sentiment": "Sentiment",
         "Volatility": "Volatility",
         "Currency": "Currency",
     }
-    for cat in CATEGORIES:
+    # Email table order: Equities, Rates, Currencies, Credit, Commodities, Sentiment, Volatility
+    email_order = ["Equities", "Rates", "Currency", "Credit", "Commodities", "Sentiment", "Volatility"]
+    for cat in email_order:
         label = section_labels.get(cat, cat)
         table = build_table_html(metrics_df, cat)
         if table:
             tables_html += build_section_header(label) + table
 
-    # Build commentary section
-    commentary_html = ""
-    if commentary_text:
-        paragraphs = [p.strip() for p in commentary_text.split("\n\n") if p.strip()]
-        commentary_paras = "".join(
-            f'<p style="margin:0 0 10px 0; line-height:1.6;">{p}</p>'
-            for p in paragraphs
-        )
-        commentary_html = f"""
-        {build_section_header("Morning Commentary")}
-        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px;
-             padding:16px 20px; font-family:Arial,sans-serif; font-size:13px; color:#334155;
-             margin-bottom:20px;">
-            {commentary_paras}
-            <div style="font-size:10px; color:#94A3B8; margin-top:12px; padding-top:8px; border-top:1px solid #E2E8F0;">
-                Analyst notes · Not investment advice
-            </div>
-        </div>"""
-
-    # Assemble full email
+    # Assemble full email (no commentary)
     html = f"""
     <!DOCTYPE html>
     <html>
@@ -173,7 +156,6 @@ def build_email_html(metrics_df, commentary_text):
             <!-- Body -->
             <div style="padding:20px 24px;">
                 {tables_html}
-                {commentary_html}
 
                 <!-- Dashboard link -->
                 <div style="text-align:center; margin:24px 0 16px 0;">
@@ -249,13 +231,10 @@ def main():
     metrics_df = process_all(raw_data)
     logger.info(f"Data loaded for {len(raw_data)} assets")
 
-    # Generate commentary
-    commentary = generate_commentary(metrics_df)
-
-    # Build email
+    # Build email (no commentary)
     today_str = datetime.now().strftime("%d %b %Y")
     subject = f"Market Snapshot \u2014 {today_str}"
-    html = build_email_html(metrics_df, commentary)
+    html = build_email_html(metrics_df, None)
 
     # Send
     send_email(html, subject, api_key, recipients)

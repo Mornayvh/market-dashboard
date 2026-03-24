@@ -177,29 +177,29 @@ def _empty_fig(height: int = 80) -> go.Figure:
     return fig
 
 # ---------------------------------------------------------------------------
-# Bar chart for YTD returns
+# Bar chart for LTM returns
 # ---------------------------------------------------------------------------
 
-def make_ytd_bar_chart(metrics_df: pd.DataFrame, category: str) -> go.Figure:
-    """Horizontal bar chart of YTD changes for a given category."""
+def make_ltm_bar_chart(metrics_df: pd.DataFrame, category: str) -> go.Figure:
+    """Horizontal bar chart of LTM (last twelve months) changes for a given category."""
     cat_df = metrics_df[metrics_df["category"] == category].copy()
-    cat_df = cat_df.dropna(subset=["ytd_chg"])
+    cat_df = cat_df.dropna(subset=["ltm_chg"])
 
     if cat_df.empty:
         return _empty_fig(200)
 
     colors = [
-        change_color(row["ytd_chg"], row["invert_color"])
+        change_color(row["ltm_chg"], row["invert_color"])
         for _, row in cat_df.iterrows()
     ]
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
         y=cat_df.index,
-        x=cat_df["ytd_chg"],
+        x=cat_df["ltm_chg"],
         orientation="h",
         marker_color=colors,
-        text=[fmt_change(v, row["is_rate"], row["is_spread"]) for v, (_, row) in zip(cat_df["ytd_chg"], cat_df.iterrows())],
+        text=[fmt_change(v, row["is_rate"], row["is_spread"]) for v, (_, row) in zip(cat_df["ltm_chg"], cat_df.iterrows())],
         textposition="outside",
         textfont=dict(color=COLORS["text_primary"], size=11),
         cliponaxis=False,
@@ -207,7 +207,7 @@ def make_ytd_bar_chart(metrics_df: pd.DataFrame, category: str) -> go.Figure:
     ))
 
     # Pad the x-axis so outside labels aren't cut off
-    vals = cat_df["ytd_chg"].abs()
+    vals = cat_df["ltm_chg"].abs()
     x_max = vals.max() if not vals.empty else 10
     padding = x_max * 0.35
 
@@ -223,7 +223,7 @@ def make_ytd_bar_chart(metrics_df: pd.DataFrame, category: str) -> go.Figure:
             zerolinecolor=COLORS["text_secondary"],
             zerolinewidth=1,
             tickfont=dict(color=COLORS["text_secondary"], size=10),
-            range=[-(vals.max() + padding) if cat_df["ytd_chg"].min() < 0 else 0,
+            range=[-(vals.max() + padding) if cat_df["ltm_chg"].min() < 0 else 0,
                    x_max + padding],
         ),
         yaxis=dict(
