@@ -24,13 +24,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install streamlit yfinance pandas plotly requests azure-communication-email
+          pip install streamlit yfinance pandas plotly requests
 
       - name: Send morning email
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-          AZURE_COMM_CONNECTION_STR: ${{ secrets.AZURE_COMM_CONNECTION_STR }}
-          AZURE_SENDER_ADDRESS: ${{ secrets.AZURE_SENDER_ADDRESS }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           EMAIL_RECIPIENTS: ${{ secrets.EMAIL_RECIPIENTS }}
         run: |
           python morning_email.py

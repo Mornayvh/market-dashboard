@@ -1,21 +1,18 @@
 """
-morning_email.py — Sends a morning market snapshot email via Azure Communication Services.
+morning_email.py — Sends a morning market snapshot email via Resend.
 
 Usage:
     python morning_email.py
 
 Environment variables required:
-    FRED_API_KEY                — FRED API key for rates/spreads
-    AZURE_COMM_CONNECTION_STR   — Azure Communication Services connection string
-    AZURE_SENDER_ADDRESS        — Sender address from your verified domain (e.g. donotreply@xxxxx.azurecomm.net)
-    EMAIL_RECIPIENTS            — Comma-separated list of recipient emails
+    FRED_API_KEY        — FRED API key for rates/spreads
+    RESEND_API_KEY      — Resend API key (free at resend.com)
+    EMAIL_RECIPIENTS    — Comma-separated list of recipient emails
 
-Azure Setup (one-time, ~10 minutes):
-    1. Go to https://portal.azure.com
-    2. Create a "Communication Services" resource (free tier available)
-    3. Inside it, go to "Email" > "Try Email" > set up a free Azure subdomain
-    4. Copy the connection string from Settings > Keys
-    5. Copy the sender address (e.g. donotreply@xxxxx.azurecomm.net)
+Setup:
+    1. Sign up at https://resend.com (free, 100 emails/day)
+    2. Create an API key in the dashboard
+    3. Set the env vars above
 
 Schedule via GitHub Actions (see .github/workflows/morning_email.yml)
 """
@@ -23,6 +20,7 @@ Schedule via GitHub Actions (see .github/workflows/morning_email.yml)
 import os
 import sys
 import logging
+import requests
 from datetime import datetime
 
 # Add project root to path so we can import src modules
@@ -203,31 +201,29 @@ def build_email_html(metrics_df, commentary_text):
 # Send email
 # ---------------------------------------------------------------------------
 
-def send_email(html_body, subject, sender, connection_string, recipients):
-    """Send the email via Azure Communication Services."""
-    from azure.communication.email import EmailClient
-
-    client = EmailClient.from_connection_string(connection_string)
-
-    message = {
-        "senderAddress": sender,
-        "recipients": {
-            "to": [{"address": r, "displayName": ""} for r in recipients],
+def send_email(html_body, subject, api_key, recipients):
+    """Send the email via Resend API (single HTTP POST, no SDK needed)."""
+    resp = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
         },
-        "content": {
+        json={
+            "from": "Market Dashboard <onboarding@resend.dev>",
+            "to": recipients,
             "subject": subject,
             "html": html_body,
-            "plainText": "Market Dashboard — open the live dashboard: " + DASHBOARD_URL,
         },
-    }
+        timeout=30,
+    )
 
-    try:
-        poller = client.begin_send(message)
-        result = poller.result()
-        logger.info(f"Email sent successfully. ID: {result['id']}, Status: {result['status']}")
-    except Exception as e:
-        logger.error(f"Failed to send email: {e}")
-        raise
+    if resp.status_code == 200:
+        email_id = resp.json().get("id", "unknown")
+        logger.info(f"Email sent successfully. ID: {email_id}")
+    else:
+        logger.error(f"Resend API error {resp.status_code}: {resp.text}")
+        raise RuntimeError(f"Email failed: {resp.status_code} {resp.text}")
 
 # ---------------------------------------------------------------------------
 # Main
@@ -235,14 +231,12 @@ def send_email(html_body, subject, sender, connection_string, recipients):
 
 def main():
     # Check env vars
-    connection_string = os.environ.get("AZURE_COMM_CONNECTION_STR")
-    sender = os.environ.get("AZURE_SENDER_ADDRESS")
+    api_key = os.environ.get("RESEND_API_KEY")
     recipients_str = os.environ.get("EMAIL_RECIPIENTS")
 
-    if not all([connection_string, sender, recipients_str]):
+    if not all([api_key, recipients_str]):
         print("\nMissing environment variables. Set the following:\n")
-        print('  export AZURE_COMM_CONNECTION_STR="endpoint=https://...;accessKey=..."')
-        print('  export AZURE_SENDER_ADDRESS="donotreply@xxxxx.azurecomm.net"')
+        print('  export RESEND_API_KEY="re_xxxxxxxxx"')
         print('  export EMAIL_RECIPIENTS="boss@company.com,partner2@company.com"')
         print()
         sys.exit(1)
@@ -260,12 +254,12 @@ def main():
 
     # Build email
     today_str = datetime.now().strftime("%d %b %Y")
-    subject = f"Market Snapshot — {today_str}"
+    subject = f"Market Snapshot \u2014 {today_str}"
     html = build_email_html(metrics_df, commentary)
 
     # Send
-    send_email(html, subject, sender, connection_string, recipients)
-    print(f"\n✓ Morning snapshot sent to {', '.join(recipients)}\n")
+    send_email(html, subject, api_key, recipients)
+    print(f"\n\u2713 Morning snapshot sent to {', '.join(recipients)}\n")
 
 
 if __name__ == "__main__":
