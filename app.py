@@ -471,7 +471,7 @@ def main():
     # ── TOP ROW: Key metrics as cards ──
     st.markdown("")
     render_section_header("Key Indicators")
-    key_assets = ["S&P 500", "US 10Y Yield", "VIX", "Bitcoin", "Gold", "Oil (WTI)"]
+    key_assets = ["S&P 500", "US 10Y Yield", "VIX", "Bitcoin", "Gold", "Oil (Brent)"]
     cols = st.columns(len(key_assets))
     for col, name in zip(cols, key_assets):
         with col:
