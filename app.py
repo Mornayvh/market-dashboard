@@ -549,10 +549,6 @@ def main():
         render_section_header("Volatility")
         render_volatility_table(metrics_df, vix_avg)
 
-    # ── COMMENTARY: Full width, between data and LTM charts ──
-    st.markdown("<br>", unsafe_allow_html=True)
-    render_commentary(metrics_df, timestamp)
-
     # ── BOTTOM: LTM Performance Charts ──
     st.markdown("<br>", unsafe_allow_html=True)
     render_section_header("LTM Performance")
