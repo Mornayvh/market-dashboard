@@ -25,7 +25,7 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
 
     .stApp { background-color: #F8FAFC; color: #1E293B; }
-    .block-container { padding-top: 2rem; padding-bottom: 1rem; max-width: 100%; }
+    .block-container { padding-top: 2rem; padding-bottom: 1rem; max-width: 1400px; }
 
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
@@ -144,13 +144,13 @@ def check_password():
     if not correct_pw:
         import os
         correct_pw = os.environ.get("PORTFOLIO_PASSWORD")
- 
+
     if "portfolio_authenticated" not in st.session_state:
         st.session_state.portfolio_authenticated = False
- 
+
     if st.session_state.portfolio_authenticated:
         return True
- 
+
     st.markdown("")
     st.markdown("")
     col1, col2, col3 = st.columns([1, 1.5, 1])
@@ -165,8 +165,8 @@ def check_password():
             else:
                 st.error("Incorrect password")
     return False
- 
- 
+
+
 if not check_password():
     st.stop()
 
@@ -336,7 +336,7 @@ def build_world_map(df):
             projection_type="equirectangular",
         )
         fig.update_layout(
-            height=600, width=600, margin=dict(l=0, r=0, t=0, b=0),
+            height=500, margin=dict(l=0, r=0, t=0, b=0),
             paper_bgcolor="rgba(0,0,0,0)", geo=dict(bgcolor="rgba(0,0,0,0)"),
             dragmode=False,
         )
@@ -369,12 +369,12 @@ def build_world_map(df):
         showland=True, landcolor="#F1F5F9",
         showocean=True, oceancolor="#EFF6FF",
         showcountries=True, countrycolor="#E2E8F0",
-        showframe=False, framecolor="#E2E8F0", framewidth=1,
+        showframe=True, framecolor="#E2E8F0", framewidth=1,
         projection_type="equirectangular",
     )
 
     fig.update_layout(
-        height=800,
+        height=500,
         margin=dict(l=0, r=0, t=0, b=0),
         paper_bgcolor="rgba(0,0,0,0)",
         geo=dict(bgcolor="rgba(0,0,0,0)"),
