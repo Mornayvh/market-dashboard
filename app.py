@@ -75,7 +75,13 @@ st.markdown("""
 
     .nav-card-overlay {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background: linear-gradient(180deg, rgba(248,250,252,0.3) 0%, rgba(255,255,255,0.92) 55%);
+        /*background: linear-gradient(180deg, rgba(248,250,252,0.3) 0%, rgba(255,255,255,0.92) 55%);*/
+    }
+
+    @media (min-width: 768px) {
+        .nav-grid {
+            display: flex; flex-direction: column;
+        }
     }
 
     .nav-card-content {
@@ -137,7 +143,7 @@ portfolio_bg_css = """
 
 logo_img = ""
 if logo_b64:
-    logo_img = f'<img src="data:{logo_mime};base64,{logo_b64}" style="display:flex; height:300px; margin:0.8rem auto;" />'
+    logo_img = f'<img src="data:{logo_mime};base64,{logo_b64}" style="height:300px; margin-bottom:0.8rem;" />'
 
 st.markdown(f"""<div class="home-header">{logo_img}<div class="home-subtitle">Investment Intelligence Platform</div></div>""", unsafe_allow_html=True)
 
