@@ -292,7 +292,7 @@ GEO_COORDS = {
     "South-East Asia": (5, 105),
     "South Asia": (22, 78),
     "United Kingdom": (54, -2),
-    "Global with exclusions": (20, 0),
+    "Global with exclusions": (30, 0),
     "East Asia": (36, 138),
 }
 
