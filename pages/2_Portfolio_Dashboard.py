@@ -215,8 +215,16 @@ portfolio = load_portfolio()
 if portfolio.empty:
     st.warning("No portfolio data loaded. Check that the Excel file is in the data/ folder.")
     st.stop()
+
+# DEBUG — remove after fixing
+st.caption(f"DEBUG: {len(portfolio)} rows loaded. Columns: {list(portfolio.columns)}")
+st.caption(f"DEBUG invested values: {portfolio['invested'].unique().tolist()}")
+st.caption(f"DEBUG geographies sample: {portfolio['geographies'].iloc[0] if len(portfolio) > 0 else 'none'}")
+st.caption(f"DEBUG asset_classes sample: {portfolio['asset_classes'].iloc[0] if len(portfolio) > 0 else 'none'}")
+
 invested = portfolio[portfolio["invested"] == "Invested"]
 pipeline = portfolio[portfolio["invested"] == "Not Invested"]
+st.caption(f"DEBUG: {len(invested)} invested, {len(pipeline)} pipeline")
 
 # ---------------------------------------------------------------------------
 # Helpers
