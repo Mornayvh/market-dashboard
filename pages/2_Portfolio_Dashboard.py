@@ -5,6 +5,7 @@ Password-protected view of current and pipeline investments.
 
 import streamlit as st
 import pandas as pd
+import plotly.graph_objects as go
 from pathlib import Path
 from collections import Counter
 
@@ -16,7 +17,7 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------------
-# CSS (shared light theme)
+# CSS
 # ---------------------------------------------------------------------------
 
 st.markdown("""
@@ -52,14 +53,16 @@ st.markdown("""
     .stat-card {
         background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px;
         padding: 1rem 1.2rem; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        min-height: 110px;
     }
     .stat-label {
         font-family: 'DM Sans', sans-serif; font-size: 0.7rem; font-weight: 500;
         color: #64748B; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.3rem;
     }
     .stat-value {
-        font-family: 'JetBrains Mono', monospace; font-size: 1.5rem;
+        font-family: 'JetBrains Mono', monospace; font-size: 1.4rem;
         font-weight: 700; color: #1E293B; line-height: 1.2;
+        white-space: nowrap;
     }
     .stat-sub {
         font-family: 'DM Sans', sans-serif; font-size: 0.72rem; color: #64748B; margin-top: 0.2rem;
@@ -96,7 +99,6 @@ st.markdown("""
     }
     .bar-track {
         flex: 1; height: 22px; background: #F1F5F9; border-radius: 4px; overflow: hidden;
-        position: relative;
     }
     .bar-fill {
         height: 100%; border-radius: 4px; display: flex; align-items: center;
@@ -105,18 +107,6 @@ st.markdown("""
     .bar-count {
         font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
         color: #FFFFFF; font-weight: 600;
-    }
-
-    .gap-card {
-        background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 6px;
-        padding: 0.8rem 1rem; margin-bottom: 0.5rem;
-    }
-    .gap-title {
-        font-family: 'DM Sans', sans-serif; font-size: 0.78rem;
-        font-weight: 600; color: #92400E; margin-bottom: 0.2rem;
-    }
-    .gap-desc {
-        font-family: 'DM Sans', sans-serif; font-size: 0.72rem; color: #A16207;
     }
 
     .stButton > button {
@@ -133,8 +123,6 @@ st.markdown("""
 # ---------------------------------------------------------------------------
 
 def check_password():
-    """Simple password protection. Password set in Streamlit secrets."""
-    # Try to get password from secrets, fall back to env var
     correct_pw = None
     try:
         correct_pw = st.secrets.get("portfolio", {}).get("password")
@@ -175,14 +163,26 @@ if not check_password():
 
 @st.cache_data(ttl=600)
 def load_portfolio():
-    """Load and normalize portfolio data from Excel."""
-    xlsx_path = Path(__file__).parent.parent / "data" / "Internal_Investments_Dashboard.xlsx"
-    df = pd.read_excel(xlsx_path, sheet_name="Investments Map Data")
+    # Try multiple paths to find the Excel file
+    possible_paths = [
+        Path(__file__).parent.parent / "data" / "Internal_Investments_Dashboard.xlsx",
+        Path.cwd() / "data" / "Internal_Investments_Dashboard.xlsx",
+        Path("/mount/src/market-dashboard/data/Internal_Investments_Dashboard.xlsx"),
+    ]
+    
+    xlsx_path = None
+    for p in possible_paths:
+        if p.exists():
+            xlsx_path = p
+            break
+    
+    if xlsx_path is None:
+        st.error(f"Excel file not found. Searched: {[str(p) for p in possible_paths]}")
+        return pd.DataFrame()
 
-    # Normalize column names
+    df = pd.read_excel(xlsx_path, sheet_name="Investments Map Data")
     df.columns = [c.strip() for c in df.columns]
 
-    # Flatten multi-column fields into lists
     def merge_cols(row, prefix, count):
         vals = []
         for i in range(count):
@@ -212,6 +212,9 @@ def load_portfolio():
 
 
 portfolio = load_portfolio()
+if portfolio.empty:
+    st.warning("No portfolio data loaded. Check that the Excel file is in the data/ folder.")
+    st.stop()
 invested = portfolio[portfolio["invested"] == "Invested"]
 pipeline = portfolio[portfolio["invested"] == "Not Invested"]
 
@@ -227,21 +230,19 @@ def stat_card(label, value, sub=""):
     st.markdown(f'<div class="stat-card"><div class="stat-label">{label}</div><div class="stat-value">{value}</div>{sub_html}</div>', unsafe_allow_html=True)
 
 def count_items(df, col):
-    """Count occurrences across list-valued column."""
     c = Counter()
     for items in df[col]:
         for item in items:
             c[item] += 1
     return c
 
-def render_bar_chart(counts, color="#2563EB", max_width=100):
-    """Render a horizontal bar chart as HTML."""
+def render_bar_chart(counts, color="#2563EB"):
     if not counts:
         return
     max_val = max(counts.values())
     html = ""
     for label, count in counts.most_common():
-        pct = (count / max_val) * max_width
+        pct = (count / max_val) * 100
         html += f'<div class="bar-row"><div class="bar-label">{label}</div><div class="bar-track"><div class="bar-fill" style="width:{pct}%; background:{color};"><span class="bar-count">{count}</span></div></div></div>'
     st.markdown(html, unsafe_allow_html=True)
 
@@ -256,30 +257,102 @@ def fmt_ticket(val):
     return f"${v:,.0f}"
 
 # ---------------------------------------------------------------------------
+# World map
+# ---------------------------------------------------------------------------
+
+# Map region names to approximate lat/lon for plotting
+GEO_COORDS = {
+    "North America": (40, -100),
+    "Europe": (50, 10),
+    "Asia-Pacific": (20, 120),
+    "South-East Asia": (5, 105),
+    "India": (22, 78),
+    "United Kingdom": (54, -2),
+    "Global": (20, 0),
+    "Global with exclusions": (20, 0),
+    "Africa": (-5, 25),
+    "Latin America": (-15, -60),
+    "Middle East": (28, 45),
+    "Japan": (36, 138),
+    "China": (35, 105),
+}
+
+def build_world_map(df):
+    """Build a Plotly world map showing geographic exposures."""
+    geo_counts = count_items(df, "geographies")
+
+    lats, lons, texts, sizes = [], [], [], []
+    for geo, count in geo_counts.items():
+        coords = GEO_COORDS.get(geo)
+        if coords:
+            lats.append(coords[0])
+            lons.append(coords[1])
+            texts.append(f"{geo}: {count} partner{'s' if count > 1 else ''}")
+            sizes.append(max(12, count * 8))
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scattergeo(
+        lat=lats, lon=lons,
+        text=texts, hoverinfo="text",
+        marker=dict(
+            size=sizes,
+            color="#2563EB",
+            opacity=0.7,
+            line=dict(width=1, color="#1D4ED8"),
+        ),
+    ))
+
+    fig.update_geos(
+        showcoastlines=True, coastlinecolor="#CBD5E1",
+        showland=True, landcolor="#F8FAFC",
+        showocean=True, oceancolor="#EFF6FF",
+        showcountries=True, countrycolor="#E2E8F0",
+        showframe=False,
+        projection_type="natural earth",
+    )
+
+    fig.update_layout(
+        height=320,
+        margin=dict(l=0, r=0, t=0, b=0),
+        paper_bgcolor="rgba(0,0,0,0)",
+        geo=dict(bgcolor="rgba(0,0,0,0)"),
+        showlegend=False,
+    )
+    return fig
+
+# ---------------------------------------------------------------------------
 # Layout
 # ---------------------------------------------------------------------------
 
 # Header
-st.markdown("""<div class="port-header"><div><div class="port-title">◼ Portfolio Dashboard</div><div class="port-subtitle">Investment Allocation & Strategy Map</div></div></div>""", unsafe_allow_html=True)
+st.markdown("""<div class="port-header"><div><div class="port-title">\u25FC Portfolio Dashboard</div><div class="port-subtitle">Investment Allocation & Strategy Map</div></div></div>""", unsafe_allow_html=True)
 
 # ── Summary cards ──
 section_header("Summary")
 c1, c2, c3, c4 = st.columns(4)
 with c1:
-    stat_card("Total Partners", str(len(portfolio)))
+    stat_card("Total Partners", str(len(portfolio)), f"{len(invested)} invested · {len(pipeline)} pipeline")
 with c2:
-    stat_card("Invested", str(len(invested)), f"{len(pipeline)} in pipeline")
+    geo_count = len(count_items(invested, "geographies"))
+    stat_card("Geographies", str(geo_count), "Distinct regions covered")
 with c3:
-    # Ticket range across invested
+    ac_count = len(count_items(invested, "asset_classes"))
+    stat_card("Asset Classes", str(ac_count), "Strategies deployed")
+with c4:
     min_tickets = invested["min_ticket"].dropna()
     max_tickets = invested["max_ticket"].dropna()
     if not min_tickets.empty and not max_tickets.empty:
-        stat_card("Ticket Range", f"{fmt_ticket(min_tickets.min())} – {fmt_ticket(max_tickets.max())}", "Across invested partners")
+        stat_card("Ticket Range", f"{fmt_ticket(min_tickets.min())} \u2013 {fmt_ticket(max_tickets.max())}", "Across invested partners")
     else:
         stat_card("Ticket Range", "\u2014")
-with c4:
-    geo_count = len(count_items(invested, "geographies"))
-    stat_card("Geographies", str(geo_count), "Distinct regions covered")
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# ── World map ──
+section_header("Geographic Exposure")
+fig_map = build_world_map(invested)
+st.plotly_chart(fig_map, use_container_width=True, config={"displayModeBar": False})
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -287,66 +360,26 @@ st.markdown("<br>", unsafe_allow_html=True)
 left, right = st.columns([1, 1], gap="large")
 
 with left:
-    # Geography breakdown
     section_header("Geography Allocation")
     geo_invested = count_items(invested, "geographies")
-    geo_pipeline = count_items(pipeline, "geographies")
     render_bar_chart(geo_invested, color="#2563EB")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Asset class breakdown
     section_header("Asset Class / Strategy")
     ac_invested = count_items(invested, "asset_classes")
     render_bar_chart(ac_invested, color="#7C3AED")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Sector breakdown
     section_header("Sector Exposure")
     sec_invested = count_items(invested, "sectors")
     render_bar_chart(sec_invested, color="#0891B2")
 
 with right:
-    # Investment stage breakdown
     section_header("Investment Stage")
     stage_invested = count_items(invested, "stages")
     render_bar_chart(stage_invested, color="#059669")
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # Gap analysis
-    section_header("Gap Analysis")
-
-    # Geographic gaps
-    all_major_geos = {"North America", "Europe", "Asia-Pacific", "South-East Asia", "India",
-                      "United Kingdom", "Africa", "Latin America", "Middle East", "Japan", "China"}
-    covered_geos = set(geo_invested.keys())
-    missing_geos = all_major_geos - covered_geos
-    if missing_geos:
-        st.markdown(f'<div class="gap-card"><div class="gap-title">Geographic Gaps</div><div class="gap-desc">No invested exposure to: {", ".join(sorted(missing_geos))}</div></div>', unsafe_allow_html=True)
-
-    # Asset class gaps
-    all_ac = {"Private Equity", "Venture Capital", "Private Credit", "Real Estate",
-              "Infrastructure", "Public Equities", "Hedge Funds"}
-    covered_ac = set(ac_invested.keys())
-    missing_ac = all_ac - covered_ac
-    if missing_ac:
-        st.markdown(f'<div class="gap-card"><div class="gap-title">Asset Class Gaps</div><div class="gap-desc">No invested exposure to: {", ".join(sorted(missing_ac))}</div></div>', unsafe_allow_html=True)
-
-    # Stage gaps
-    all_stages = {"Seed", "Early-Stage", "Growth", "Mature", "Later-Stage"}
-    covered_stages = set(stage_invested.keys())
-    missing_stages = all_stages - covered_stages
-    if missing_stages:
-        st.markdown(f'<div class="gap-card"><div class="gap-title">Stage Gaps</div><div class="gap-desc">No invested exposure to: {", ".join(sorted(missing_stages))}</div></div>', unsafe_allow_html=True)
-
-    # Sector concentration warning
-    if sec_invested:
-        broad_count = sec_invested.get("Broad", 0)
-        total_invested = len(invested)
-        if broad_count > 0 and broad_count / total_invested > 0.5:
-            st.markdown(f'<div class="gap-card"><div class="gap-title">Sector Concentration</div><div class="gap-desc">{broad_count} of {total_invested} invested partners are "Broad" sector — consider targeted sector bets for higher conviction exposure.</div></div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -358,7 +391,7 @@ with right:
             acs = ", ".join(row["asset_classes"]) if row["asset_classes"] else "\u2014"
             stages = ", ".join(row["stages"]) if row["stages"] else "\u2014"
             sectors = ", ".join(row["sectors"]) if row["sectors"] else "\u2014"
-            st.markdown(f'<div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:6px; padding:0.7rem 1rem; margin-bottom:0.5rem; box-shadow:0 1px 2px rgba(0,0,0,0.04);"><div style="font-family:\'DM Sans\',sans-serif; font-size:0.82rem; font-weight:600; color:#1E293B;">{row["partner"]}</div><div style="font-family:\'DM Sans\',sans-serif; font-size:0.7rem; color:#64748B; margin-top:0.3rem;">{geos} · {acs} · {stages}</div><div style="font-family:\'DM Sans\',sans-serif; font-size:0.68rem; color:#94A3B8; margin-top:0.15rem;">{sectors} · {fmt_ticket(row["min_ticket"])} – {fmt_ticket(row["max_ticket"])}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:6px; padding:0.7rem 1rem; margin-bottom:0.5rem; box-shadow:0 1px 2px rgba(0,0,0,0.04);"><div style="font-family:\'DM Sans\',sans-serif; font-size:0.82rem; font-weight:600; color:#1E293B;">{row["partner"]}</div><div style="font-family:\'DM Sans\',sans-serif; font-size:0.7rem; color:#64748B; margin-top:0.3rem;">{geos} · {acs} · {stages}</div><div style="font-family:\'DM Sans\',sans-serif; font-size:0.68rem; color:#94A3B8; margin-top:0.15rem;">{sectors} · {fmt_ticket(row["min_ticket"])} \u2013 {fmt_ticket(row["max_ticket"])}</div></div>', unsafe_allow_html=True)
     else:
         st.caption("No pipeline investments")
 
@@ -366,7 +399,6 @@ with right:
 st.markdown("<br>", unsafe_allow_html=True)
 section_header("All Investments")
 
-# Build HTML table
 rows_html = ""
 for _, row in portfolio.iterrows():
     status_class = "tag-invested" if row["invested"] == "Invested" else "tag-pipeline"
@@ -375,7 +407,7 @@ for _, row in portfolio.iterrows():
     acs = ", ".join(row["asset_classes"]) if row["asset_classes"] else "\u2014"
     stages = ", ".join(row["stages"]) if row["stages"] else "\u2014"
     sectors = ", ".join(row["sectors"]) if row["sectors"] else "\u2014"
-    ticket = f"{fmt_ticket(row['min_ticket'])} – {fmt_ticket(row['max_ticket'])}"
+    ticket = f"{fmt_ticket(row['min_ticket'])} \u2013 {fmt_ticket(row['max_ticket'])}"
 
     rows_html += f"""<tr>
         <td style="font-family:'DM Sans',sans-serif; font-weight:500; font-size:0.76rem;">{row['partner']}</td>
@@ -384,7 +416,7 @@ for _, row in portfolio.iterrows():
         <td>{acs}</td>
         <td>{stages}</td>
         <td>{sectors}</td>
-        <td style="text-align:right;">{ticket}</td>
+        <td style="text-align:right; white-space:nowrap;">{ticket}</td>
     </tr>"""
 
 st.markdown(f"""<table class="data-table"><thead><tr><th>Partner</th><th>Status</th><th>Geography</th><th>Asset Class</th><th>Stage</th><th>Sector</th><th style="text-align:right;">Ticket Range</th></tr></thead><tbody>{rows_html}</tbody></table>""", unsafe_allow_html=True)
