@@ -83,7 +83,7 @@ st.markdown("""
             display: flex; 
             flex-direction: column; 
             justify-content: center; 
-            margin: 0 auto; 
+            margin: 1rem auto; 
             width: 100%;
         }
     }
