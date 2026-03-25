@@ -282,50 +282,76 @@ def fmt_ticket(val):
     return f"${v:,.0f}"
 
 # ---------------------------------------------------------------------------
-# World map
+# World map — Choropleth
 # ---------------------------------------------------------------------------
 
-# Map region names to approximate lat/lon for plotting
-GEO_COORDS = {
-    "North America": (40, -100),
-    "Europe": (50, 10),
-    "South-East Asia": (5, 105),
-    "South Asia": (22, 78),
-    "United Kingdom": (54, -2),
-    "Global with exclusions": (30, -45),
-    "East Asia": (36, 138),
+# Map portfolio region names to lists of ISO-3 country codes
+REGION_TO_COUNTRIES = {
+    "North America": ["USA", "CAN", "MEX"],
+    "Europe": ["GBR", "FRA", "DEU", "ITA", "ESP", "NLD", "BEL", "CHE", "AUT",
+               "SWE", "NOR", "DNK", "FIN", "IRL", "PRT", "POL", "CZE", "GRC", "ROU", "HUN"],
+    "South-East Asia": ["SGP", "IDN", "THA", "VNM", "MYS", "PHL", "MMR", "KHM", "LAO"],
+    "South Asia": ["IND", "PAK", "BGD", "LKA", "NPL"],
+    "United Kingdom": ["GBR"],
+    "East Asia": ["JPN", "KOR", "CHN", "TWN", "HKG"],
+    "Global with exclusions": [],  # No specific countries to shade
 }
 
 def build_world_map(df):
-    """Build a Plotly world map showing geographic exposures."""
+    """Build a Plotly choropleth map showing geographic exposures."""
     geo_counts = count_items(df, "geographies")
 
-    lats, lons, texts, sizes = [], [], [], []
-    for geo, count in geo_counts.items():
-        coords = GEO_COORDS.get(geo)
-        if coords:
-            lats.append(coords[0])
-            lons.append(coords[1])
-            texts.append(f"{geo}: {count} partner{'s' if count > 1 else ''}")
-            sizes.append(max(12, count * 8))
+    # Build country-level exposure counts
+    country_counts = {}
+    country_labels = {}
+    for region, count in geo_counts.items():
+        countries = REGION_TO_COUNTRIES.get(region, [])
+        for iso in countries:
+            country_counts[iso] = country_counts.get(iso, 0) + count
+            if iso not in country_labels:
+                country_labels[iso] = []
+            country_labels[iso].append(f"{region} ({count})")
+
+    if not country_counts:
+        fig = go.Figure()
+        fig.update_geos(
+            showcoastlines=True, coastlinecolor="#CBD5E1",
+            showland=True, landcolor="#F1F5F9",
+            showocean=True, oceancolor="#EFF6FF",
+            showcountries=True, countrycolor="#E2E8F0",
+            showframe=False, projection_type="natural earth",
+        )
+        fig.update_layout(
+            height=500, margin=dict(l=0, r=0, t=0, b=0),
+            paper_bgcolor="rgba(0,0,0,0)", geo=dict(bgcolor="rgba(0,0,0,0)"),
+        )
+        return fig
+
+    isos = list(country_counts.keys())
+    values = [country_counts[iso] for iso in isos]
+    hover = [", ".join(country_labels.get(iso, [])) for iso in isos]
 
     fig = go.Figure()
 
-    if lats:
-        fig.add_trace(go.Scattergeo(
-            lat=lats, lon=lons,
-            text=texts, hoverinfo="text",
-            marker=dict(
-                size=sizes,
-                color="#2563EB",
-                opacity=0.7,
-                line=dict(width=1, color="#1D4ED8"),
-            ),
-        ))
+    fig.add_trace(go.Choropleth(
+        locations=isos,
+        z=values,
+        text=hover,
+        hovertemplate="%{text}<extra></extra>",
+        colorscale=[
+            [0, "#DBEAFE"],
+            [0.33, "#93C5FD"],
+            [0.66, "#3B82F6"],
+            [1, "#1E3A8A"],
+        ],
+        showscale=False,
+        marker_line_color="#CBD5E1",
+        marker_line_width=0.5,
+    ))
 
     fig.update_geos(
         showcoastlines=True, coastlinecolor="#CBD5E1",
-        showland=True, landcolor="#F8FAFC",
+        showland=True, landcolor="#F1F5F9",
         showocean=True, oceancolor="#EFF6FF",
         showcountries=True, countrycolor="#E2E8F0",
         showframe=False,

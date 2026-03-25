@@ -68,7 +68,7 @@ st.markdown("""
         gap: 0.75rem;
     }
     .dashboard-logo {
-        height: 36px;
+        height: 300px;
         width: auto;
     }
     .dashboard-title {
