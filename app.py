@@ -78,7 +78,7 @@ st.markdown("""
         /*background: linear-gradient(180deg, rgba(248,250,252,0.3) 0%, rgba(255,255,255,0.92) 55%);*/
     }
 
-    @media (min-width: 768px) {
+    @media (max-width: 768px) {
         .nav-grid {
             display: flex; flex-direction: column;
         }
