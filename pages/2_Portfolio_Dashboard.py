@@ -180,7 +180,7 @@ def load_portfolio():
         st.error(f"Excel file not found. Searched: {[str(p) for p in possible_paths]}")
         return pd.DataFrame()
 
-    df = pd.read_excel(xlsx_path, sheet_name="Investments Map Data")
+    df = pd.read_excel(xlsx_path, sheet_name="Master Sheet")
     df.columns = [c.strip() for c in df.columns]
 
     def merge_cols(row, prefix, count):
@@ -346,7 +346,7 @@ def build_world_map(df):
 # ---------------------------------------------------------------------------
 
 # Header
-st.markdown("""<div class="port-header"><div><div class="port-title">\u25FC Portfolio Dashboard</div><div class="port-subtitle">Investment Allocation & Strategy Map</div></div></div>""", unsafe_allow_html=True)
+st.markdown("""<div class="port-header"><div><div class="port-title">\u25FC Portfolio Dashboard</div><div class="port-subtitle">Investment Allocation & Strategy Map</div></div><a href="/" target="_self" style="font-family:'DM Sans',sans-serif; font-size:0.75rem; color:#64748B; text-decoration:none; border:1px solid #E2E8F0; border-radius:4px; padding:0.3rem 0.8rem;">\u2190 Home</a></div>""", unsafe_allow_html=True)
 
 # ── World map ──
 section_header("Geographic Exposure")
