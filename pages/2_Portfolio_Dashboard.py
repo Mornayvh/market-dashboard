@@ -239,12 +239,30 @@ def count_items(df, col):
 def render_bar_chart(counts, color="#2563EB"):
     if not counts:
         return
-    max_val = max(counts.values())
-    html = ""
-    for label, count in counts.most_common():
-        pct = (count / max_val) * 100
-        html += f'<div class="bar-row"><div class="bar-label">{label}</div><div class="bar-track"><div class="bar-fill" style="width:{pct}%; background:{color};"><span class="bar-count">{count}</span></div></div></div>'
-    st.markdown(html, unsafe_allow_html=True)
+    labels = list(reversed([k for k, v in counts.most_common()]))
+    values = list(reversed([v for k, v in counts.most_common()]))
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        y=labels, x=values, orientation="h",
+        marker_color=color,
+        text=values, textposition="outside",
+        textfont=dict(size=11, color="#1E293B"),
+        hoverinfo="skip",
+    ))
+    fig.update_layout(
+        height=max(120, 32 * len(labels)),
+        margin=dict(l=10, r=40, t=5, b=5),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(visible=False),
+        yaxis=dict(
+            tickfont=dict(size=12, color="#1E293B", family="DM Sans, sans-serif"),
+        ),
+        showlegend=False,
+        bargap=0.3,
+    )
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 def fmt_ticket(val):
     if pd.isna(val) or val is None:
@@ -332,20 +350,20 @@ st.markdown("""<div class="port-header"><div><div class="port-title">\u25FC Port
 section_header("Summary")
 c1, c2, c3, c4 = st.columns(4)
 with c1:
-    stat_card("Total Partners", str(len(portfolio)), f"{len(invested)} invested · {len(pipeline)} pipeline")
+    st.metric("Total Partners", len(portfolio), f"{len(invested)} invested · {len(pipeline)} pipeline")
 with c2:
     geo_count = len(count_items(invested, "geographies"))
-    stat_card("Geographies", str(geo_count), "Distinct regions covered")
+    st.metric("Geographies", geo_count, "Distinct regions covered")
 with c3:
     ac_count = len(count_items(invested, "asset_classes"))
-    stat_card("Asset Classes", str(ac_count), "Strategies deployed")
+    st.metric("Asset Classes", ac_count, "Strategies deployed")
 with c4:
     min_tickets = invested["min_ticket"].dropna()
     max_tickets = invested["max_ticket"].dropna()
     if not min_tickets.empty and not max_tickets.empty:
-        stat_card("Ticket Range", f"{fmt_ticket(min_tickets.min())} \u2013 {fmt_ticket(max_tickets.max())}", "Across invested partners")
+        st.metric("Ticket Range", f"{fmt_ticket(min_tickets.min())} \u2013 {fmt_ticket(max_tickets.max())}")
     else:
-        stat_card("Ticket Range", "\u2014")
+        st.metric("Ticket Range", "\u2014")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
