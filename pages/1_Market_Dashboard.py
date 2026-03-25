@@ -316,7 +316,8 @@ def render_header(timestamp: datetime):
 
     html = f"""<div class="dashboard-header"><div class="dashboard-header-left">{logo_html}<div><div class="dashboard-title">Market Dashboard</div><div class="dashboard-subtitle">Daily Macro & Market Snapshot</div></div></div><div class="dashboard-timestamp"><span class="status-dot status-live"></span>Last refresh: {ts_str}</div></div>"""
     st.markdown(html, unsafe_allow_html=True)
-    st.page_link("app.py", label="\u2190 Home", icon=None)
+    if st.button("\u2190 Home", key="home_btn"):
+        st.switch_page("app.py")
 
 
 def render_metric_card(row: pd.Series):

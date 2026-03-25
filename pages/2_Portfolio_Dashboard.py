@@ -389,7 +389,8 @@ def build_world_map(df):
 
 # Header
 st.markdown("""<div class="port-header"><div><div class="port-title">\u25FC Portfolio Dashboard</div><div class="port-subtitle">Investment Allocation & Strategy Map</div></div></div>""", unsafe_allow_html=True)
-st.page_link("app.py", label="\u2190 Home", icon=None)
+if st.button("\u2190 Home", key="home_btn"):
+    st.switch_page("app.py")
 
 # ── World map ──
 section_header("Geographic Exposure")
