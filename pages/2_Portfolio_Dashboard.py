@@ -145,7 +145,7 @@ def check_password():
         st.markdown('<div class="port-title" style="text-align:center; margin-bottom:0.5rem;">Portfolio Dashboard</div>', unsafe_allow_html=True)
         st.markdown('<div class="port-subtitle" style="text-align:center; margin-bottom:1.5rem;">Enter password to continue</div>', unsafe_allow_html=True)
         pw = st.text_input("Password", type="password", label_visibility="collapsed", placeholder="Enter password")
-        if st.button("Access Dashboard", width="stretch"):
+        if st.button("Access Dashboard", use_container_width=True):
             if pw == correct_pw:
                 st.session_state.portfolio_authenticated = True
                 st.rerun()
@@ -216,15 +216,9 @@ if portfolio.empty:
     st.warning("No portfolio data loaded. Check that the Excel file is in the data/ folder.")
     st.stop()
 
-# DEBUG — remove after fixing
-st.caption(f"DEBUG: {len(portfolio)} rows loaded. Columns: {list(portfolio.columns)}")
-st.caption(f"DEBUG invested values: {portfolio['invested'].unique().tolist()}")
-st.caption(f"DEBUG geographies sample: {portfolio['geographies'].iloc[0] if len(portfolio) > 0 else 'none'}")
-st.caption(f"DEBUG asset_classes sample: {portfolio['asset_classes'].iloc[0] if len(portfolio) > 0 else 'none'}")
 
 invested = portfolio[portfolio["invested"] == "Invested"]
 pipeline = portfolio[portfolio["invested"] == "Not Invested"]
-st.caption(f"DEBUG: {len(invested)} invested, {len(pipeline)} pipeline")
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -270,7 +264,7 @@ def render_bar_chart(counts, color="#2563EB"):
         showlegend=False,
         bargap=0.3,
     )
-    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    st.plotly_chart(fig, use_container_width=True)
 
 def fmt_ticket(val):
     if pd.isna(val) or val is None:
@@ -378,7 +372,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ── World map ──
 section_header("Geographic Exposure")
 fig_map = build_world_map(invested)
-st.plotly_chart(fig_map, width="stretch", config={"displayModeBar": False})
+st.plotly_chart(fig_map, use_container_width=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 

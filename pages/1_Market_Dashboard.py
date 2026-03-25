@@ -447,7 +447,7 @@ def main():
     # Refresh button in sidebar
     with st.sidebar:
         st.markdown("### Settings")
-        if st.button("🔄 Refresh Data", width="stretch"):
+        if st.button("🔄 Refresh Data", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
         st.markdown("---")
@@ -491,7 +491,7 @@ def main():
                             days=252, height=100,
                             invert_color=asset_obj.invert_color if asset_obj else False,
                         )
-                    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+                    st.plotly_chart(fig, use_container_width=True)
             else:
                 st.caption(f"{name}: No data")
 
@@ -559,7 +559,7 @@ def main():
         with col:
             st.caption(cat)
             fig = make_ltm_bar_chart(metrics_df, cat)
-            st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+            st.plotly_chart(fig, use_container_width=True)
 
     # ── Footer ──
     st.markdown("---")
