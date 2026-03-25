@@ -145,7 +145,7 @@ def check_password():
         st.markdown('<div class="port-title" style="text-align:center; margin-bottom:0.5rem;">Portfolio Dashboard</div>', unsafe_allow_html=True)
         st.markdown('<div class="port-subtitle" style="text-align:center; margin-bottom:1.5rem;">Enter password to continue</div>', unsafe_allow_html=True)
         pw = st.text_input("Password", type="password", label_visibility="collapsed", placeholder="Enter password")
-        if st.button("Access Dashboard", use_container_width=True):
+        if st.button("Access Dashboard", width="stretch"):
             if pw == correct_pw:
                 st.session_state.portfolio_authenticated = True
                 st.rerun()
@@ -270,7 +270,7 @@ def render_bar_chart(counts, color="#2563EB"):
         showlegend=False,
         bargap=0.3,
     )
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
 
 def fmt_ticket(val):
     if pd.isna(val) or val is None:
@@ -378,7 +378,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 # ── World map ──
 section_header("Geographic Exposure")
 fig_map = build_world_map(invested)
-st.plotly_chart(fig_map, use_container_width=True, config={"displayModeBar": False})
+st.plotly_chart(fig_map, width="stretch", config={"displayModeBar": False})
 
 st.markdown("<br>", unsafe_allow_html=True)
 
