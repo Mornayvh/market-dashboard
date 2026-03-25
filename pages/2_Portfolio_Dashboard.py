@@ -115,6 +115,19 @@ st.markdown("""
         border-radius: 6px; padding: 0.5rem 2rem;
     }
     .stButton > button:hover { background: #1D4ED8; color: #FFFFFF; }
+    /* ── Mobile responsive ── */
+    @media (max-width: 768px) {
+        .block-container { padding-left: 0.5rem; padding-right: 0.5rem; max-width: 100%; }
+        .port-header { flex-direction: column; gap: 0.5rem; align-items: flex-start; }
+        .port-title { font-size: 1.1rem; }
+        .stat-card { padding: 0.7rem 0.8rem; min-height: 80px; }
+        .stat-value { font-size: 1.1rem; }
+        .data-table { font-size: 0.65rem; }
+        .data-table th { font-size: 0.55rem; padding: 0.3rem; }
+        .data-table td { padding: 0.3rem; }
+        .section-header { font-size: 0.6rem; }
+        .tag { font-size: 0.6rem; padding: 1px 5px; }
+    }
 </style>
 """, unsafe_allow_html=True)
 

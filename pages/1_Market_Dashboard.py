@@ -253,6 +253,20 @@ st.markdown("""
         padding-top: 0.5rem;
         border-top: 1px solid #E2E8F0;
     }
+    /* ── Mobile responsive ── */
+    @media (max-width: 768px) {
+        .block-container { padding-left: 0.5rem; padding-right: 0.5rem; max-width: 100%; }
+        .dashboard-header { flex-direction: column; gap: 0.5rem; }
+        .dashboard-header-left { gap: 0.5rem; }
+        .dashboard-title { font-size: 1.1rem; }
+        .metric-card { padding: 0.5rem 0.6rem; }
+        .metric-value { font-size: 1rem; }
+        .metric-change-item { font-size: 0.6rem; }
+        .data-table { font-size: 0.65rem; }
+        .data-table th { font-size: 0.55rem; padding: 0.3rem; }
+        .data-table td { padding: 0.3rem; }
+        .section-header { font-size: 0.6rem; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
