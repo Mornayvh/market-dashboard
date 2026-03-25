@@ -25,7 +25,7 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
 
     .stApp { background-color: #F8FAFC; color: #1E293B; }
-    .block-container { padding-top: 2rem; padding-bottom: 1rem; max-width: 100%; }
+    .block-container { padding-top: 2rem; padding-bottom: 1rem; max-width: 1400px; }
 
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
@@ -332,11 +332,13 @@ def build_world_map(df):
             showland=True, landcolor="#F1F5F9",
             showocean=True, oceancolor="#EFF6FF",
             showcountries=True, countrycolor="#E2E8F0",
-            showframe=False, projection_type="natural earth",
+            showframe=True, framecolor="#E2E8F0", framewidth=1,
+            projection_type="equirectangular",
         )
         fig.update_layout(
             height=500, margin=dict(l=0, r=0, t=0, b=0),
             paper_bgcolor="rgba(0,0,0,0)", geo=dict(bgcolor="rgba(0,0,0,0)"),
+            dragmode=False,
         )
         return fig
 
@@ -367,8 +369,8 @@ def build_world_map(df):
         showland=True, landcolor="#F1F5F9",
         showocean=True, oceancolor="#EFF6FF",
         showcountries=True, countrycolor="#E2E8F0",
-        showframe=False,
-        projection_type="natural earth",
+        showframe=True, framecolor="#E2E8F0", framewidth=1,
+        projection_type="equirectangular",
     )
 
     fig.update_layout(
@@ -377,6 +379,7 @@ def build_world_map(df):
         paper_bgcolor="rgba(0,0,0,0)",
         geo=dict(bgcolor="rgba(0,0,0,0)"),
         showlegend=False,
+        dragmode=False,
     )
     return fig
 
