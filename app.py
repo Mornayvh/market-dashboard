@@ -62,7 +62,7 @@ st.markdown("""
     .home-logo-wrap {
         display: flex; justify-content: center; width: 100%; margin-bottom: 0.8rem;
     }
-    .home-logo-wrap img { height: 36px; display: block; }
+    .home-logo-wrap img { height: 300px; display: block; }
     .home-subtitle {
         font-family: 'DM Sans', sans-serif;
         font-size: 0.95rem; color: #64748B;
@@ -124,7 +124,7 @@ st.markdown("""
     @media (max-width: 768px) {
         .block-container { padding-top: 1rem; padding-left: 1rem; padding-right: 1rem; }
         .home-header { padding: 1rem 0 0.5rem 0; }
-        .home-logo-wrap img { height: 28px; }
+        .home-logo-wrap img { height: 280px; }
         .home-subtitle { font-size: 0.82rem; }
         .nav-grid { flex-direction: column; align-items: center; gap: 1rem; margin-top: 1.5rem; }
         .nav-card { width: 100%; max-width: 400px; }
