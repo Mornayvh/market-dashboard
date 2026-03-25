@@ -288,7 +288,6 @@ GEO_COORDS = {
     "South-East Asia": (5, 105),
     "India": (22, 78),
     "United Kingdom": (54, -2),
-    "Global": (20, 0),
     "Global with exclusions": (20, 0),
     "Africa": (-5, 25),
     "Latin America": (-15, -60),
@@ -333,7 +332,7 @@ def build_world_map(df):
     )
 
     fig.update_layout(
-        height=320,
+        height=500,
         margin=dict(l=0, r=0, t=0, b=0),
         paper_bgcolor="rgba(0,0,0,0)",
         geo=dict(bgcolor="rgba(0,0,0,0)"),
