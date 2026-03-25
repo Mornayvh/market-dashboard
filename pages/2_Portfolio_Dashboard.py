@@ -288,6 +288,7 @@ GEO_COORDS = {
     "South-East Asia": (5, 105),
     "India": (22, 78),
     "United Kingdom": (54, -2),
+    "Global": (20, 0),
     "Global with exclusions": (20, 0),
     "Africa": (-5, 25),
     "Latin America": (-15, -60),
