@@ -68,7 +68,7 @@ st.markdown("""
         gap: 0.75rem;
     }
     .dashboard-logo {
-        height: 300px;
+        height: 36px;
         width: auto;
     }
     .dashboard-title {
@@ -300,8 +300,9 @@ def render_header(timestamp: datetime):
                 logo_html = f'<img class="dashboard-logo" src="data:{mime};base64,{b64}" />'
             break
 
-    html = f"""<div class="dashboard-header"><div class="dashboard-header-left">{logo_html}<div><div class="dashboard-title">Market Dashboard</div><div class="dashboard-subtitle">Daily Macro & Market Snapshot</div></div></div><div style="display:flex; align-items:center; gap:1.5rem;"><div class="dashboard-timestamp"><span class="status-dot status-live"></span>Last refresh: {ts_str}</div><a href="/" target="_self" style="font-family:'DM Sans',sans-serif; font-size:0.75rem; color:#64748B; text-decoration:none; border:1px solid #E2E8F0; border-radius:4px; padding:0.3rem 0.8rem;">← Home</a></div></div>"""
+    html = f"""<div class="dashboard-header"><div class="dashboard-header-left">{logo_html}<div><div class="dashboard-title">Market Dashboard</div><div class="dashboard-subtitle">Daily Macro & Market Snapshot</div></div></div><div class="dashboard-timestamp"><span class="status-dot status-live"></span>Last refresh: {ts_str}</div></div>"""
     st.markdown(html, unsafe_allow_html=True)
+    st.page_link("app.py", label="\u2190 Home", icon=None)
 
 
 def render_metric_card(row: pd.Series):
