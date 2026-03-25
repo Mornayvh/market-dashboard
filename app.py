@@ -80,7 +80,7 @@ st.markdown("""
 
     @media (max-width: 768px) {
         .nav-grid {
-            display: flex; flex-direction: column;
+            display: flex; flex-direction: column; margin: 0 auto;
         }
     }
 
