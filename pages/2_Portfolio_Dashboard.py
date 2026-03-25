@@ -143,14 +143,14 @@ def check_password():
         pass
     if not correct_pw:
         import os
-        correct_pw = os.environ.get("PORTFOLIO_PASSWORD", "secco2026")
-
+        correct_pw = os.environ.get("PORTFOLIO_PASSWORD")
+ 
     if "portfolio_authenticated" not in st.session_state:
         st.session_state.portfolio_authenticated = False
-
+ 
     if st.session_state.portfolio_authenticated:
         return True
-
+ 
     st.markdown("")
     st.markdown("")
     col1, col2, col3 = st.columns([1, 1.5, 1])
@@ -165,8 +165,8 @@ def check_password():
             else:
                 st.error("Incorrect password")
     return False
-
-
+ 
+ 
 if not check_password():
     st.stop()
 
