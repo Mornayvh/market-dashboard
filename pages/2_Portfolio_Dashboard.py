@@ -25,7 +25,7 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
 
     .stApp { background-color: #F8FAFC; color: #1E293B; }
-    .block-container { padding-top: 2rem; padding-bottom: 1rem; max-width: 1400px; }
+    .block-container { padding-top: 2rem; padding-bottom: 1rem; max-width: 95% }
 
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
