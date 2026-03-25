@@ -483,12 +483,12 @@ def main():
                     if name == "VIX":
                         fig = make_vix_sparkline(
                             raw_data[name], vix_avg=vix_avg,
-                            days=90, height=100,
+                            days=252, height=100,
                         )
                     else:
                         fig = make_sparkline(
                             raw_data[name], name,
-                            days=90, height=100,
+                            days=252, height=100,
                             invert_color=asset_obj.invert_color if asset_obj else False,
                         )
                     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
