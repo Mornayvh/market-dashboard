@@ -31,10 +31,10 @@ if not logo_path.exists():
 if logo_path.exists():
     if logo_path.suffix == ".svg":
         svg_content = logo_path.read_text()
-        logo_html = f'<div style="display:flex; justify-content:center; margin-bottom:1rem;">{svg_content}</div>'
+        logo_html = f'<div style="display:flex; justify-content:center; margin-bottom:0.8rem;"><div style="height:32px; overflow:hidden;">{svg_content}</div></div>'
     else:
         b64 = base64.b64encode(logo_path.read_bytes()).decode()
-        logo_html = f'<div style="display:flex; justify-content:center; margin-bottom:1rem;"><img style="height:48px;" src="data:image/{logo_path.suffix[1:]};base64,{b64}" /></div>'
+        logo_html = f'<div style="display:flex; justify-content:center; margin-bottom:0.8rem;"><img style="height:32px;" src="data:image/{logo_path.suffix[1:]};base64,{b64}" /></div>'
 else:
     logo_html = ""
 
@@ -93,7 +93,7 @@ st.markdown(f"""
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
 
     .stApp {{ background-color: #F8FAFC; }}
-    .block-container {{ padding-top: 3rem; padding-bottom: 2rem; max-width: 900px; }}
+    .block-container {{ padding-top: 3rem; padding-bottom: 2rem; max-width: 1000px; }}
 
     #MainMenu {{ visibility: hidden; }}
     footer {{ visibility: hidden; }}
@@ -177,7 +177,7 @@ st.markdown(f"""
 # Layout
 # ---------------------------------------------------------------------------
 
-st.markdown(f"""<div class="home-header">{logo_html}<div class="home-title">Secco Capital</div><div class="home-subtitle">Investment Intelligence Platform</div></div>""", unsafe_allow_html=True)
+st.markdown(f"""<div class="home-header">{logo_html}<div class="home-subtitle">Investment Intelligence Platform</div></div>""", unsafe_allow_html=True)
 
 st.markdown(f"""<div class="nav-grid"><a class="nav-card" href="/Market_Dashboard" target="_self"><div class="nav-card-bg" style="background-image:url('data:image/svg+xml;base64,{market_b64}');"></div><div class="nav-card-overlay"></div><div class="nav-card-content"><div class="nav-card-title">Market Dashboard</div><div class="nav-card-desc">Daily macro and market snapshot. Rates, equities, commodities, credit spreads, currencies, and volatility.</div></div></a><a class="nav-card" href="/Portfolio_Dashboard" target="_self"><div class="nav-card-bg" style="background-image:url('data:image/svg+xml;base64,{portfolio_b64}');"></div><div class="nav-card-overlay"></div><div class="nav-card-content"><div class="nav-card-title">Portfolio Dashboard</div><div class="nav-card-desc">Current investment allocations by geography, asset class, sector, and stage. Identify gaps and inform strategy.</div></div></a></div>""", unsafe_allow_html=True)
 
