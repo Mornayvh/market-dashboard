@@ -374,7 +374,7 @@ def build_world_map(df):
     )
 
     fig.update_layout(
-        height=500,
+        height=800,
         margin=dict(l=0, r=0, t=0, b=0),
         paper_bgcolor="rgba(0,0,0,0)",
         geo=dict(bgcolor="rgba(0,0,0,0)"),
