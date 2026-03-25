@@ -369,7 +369,7 @@ def build_world_map(df):
         showland=True, landcolor="#F1F5F9",
         showocean=True, oceancolor="#EFF6FF",
         showcountries=True, countrycolor="#E2E8F0",
-        showframe=True, framecolor="#E2E8F0", framewidth=1,
+        showframe=False, framecolor="#E2E8F0", framewidth=1,
         projection_type="equirectangular",
     )
 
