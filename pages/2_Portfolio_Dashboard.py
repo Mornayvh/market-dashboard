@@ -239,10 +239,15 @@ def count_items(df, col):
     return c
 
 def render_bar_chart(counts, color="#2563EB"):
-    if not counts:
+    if not counts or len(counts) == 0:
+        st.caption("No data available")
         return
-    labels = list(reversed([k for k, v in counts.most_common()]))
-    values = list(reversed([v for k, v in counts.most_common()]))
+    items = counts.most_common()
+    if not items:
+        st.caption("No data available")
+        return
+    labels = list(reversed([k for k, v in items]))
+    values = list(reversed([v for k, v in items]))
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
@@ -312,16 +317,17 @@ def build_world_map(df):
 
     fig = go.Figure()
 
-    fig.add_trace(go.Scattergeo(
-        lat=lats, lon=lons,
-        text=texts, hoverinfo="text",
-        marker=dict(
-            size=sizes,
-            color="#2563EB",
-            opacity=0.7,
-            line=dict(width=1, color="#1D4ED8"),
-        ),
-    ))
+    if lats:
+        fig.add_trace(go.Scattergeo(
+            lat=lats, lon=lons,
+            text=texts, hoverinfo="text",
+            marker=dict(
+                size=sizes,
+                color="#2563EB",
+                opacity=0.7,
+                line=dict(width=1, color="#1D4ED8"),
+            ),
+        ))
 
     fig.update_geos(
         showcoastlines=True, coastlinecolor="#CBD5E1",
@@ -347,27 +353,6 @@ def build_world_map(df):
 
 # Header
 st.markdown("""<div class="port-header"><div><div class="port-title">\u25FC Portfolio Dashboard</div><div class="port-subtitle">Investment Allocation & Strategy Map</div></div></div>""", unsafe_allow_html=True)
-
-# ── Summary cards ──
-section_header("Summary")
-c1, c2, c3, c4 = st.columns(4)
-with c1:
-    st.metric("Total Partners", len(portfolio), f"{len(invested)} invested · {len(pipeline)} pipeline")
-with c2:
-    geo_count = len(count_items(invested, "geographies"))
-    st.metric("Geographies", geo_count, "Distinct regions covered")
-with c3:
-    ac_count = len(count_items(invested, "asset_classes"))
-    st.metric("Asset Classes", ac_count, "Strategies deployed")
-with c4:
-    min_tickets = invested["min_ticket"].dropna()
-    max_tickets = invested["max_ticket"].dropna()
-    if not min_tickets.empty and not max_tickets.empty:
-        st.metric("Ticket Range", f"{fmt_ticket(min_tickets.min())} \u2013 {fmt_ticket(max_tickets.max())}")
-    else:
-        st.metric("Ticket Range", "\u2014")
-
-st.markdown("<br>", unsafe_allow_html=True)
 
 # ── World map ──
 section_header("Geographic Exposure")
