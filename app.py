@@ -137,7 +137,7 @@ portfolio_bg_css = """
 
 logo_img = ""
 if logo_b64:
-    logo_img = f'<img src="data:{logo_mime};base64,{logo_b64}" style="height:300px; margin-bottom:0.8rem;" />'
+    logo_img = f'<img src="data:{logo_mime};base64,{logo_b64}" style="height:300px; margin-bottom:0.8rem auto;" />'
 
 st.markdown(f"""<div class="home-header">{logo_img}<div class="home-subtitle">Investment Intelligence Platform</div></div>""", unsafe_allow_html=True)
 
