@@ -124,7 +124,7 @@ st.markdown("""
     @media (max-width: 768px) {
         .block-container { padding-top: 1rem; padding-left: 1rem; padding-right: 1rem; }
         .home-header { padding: 1rem 0 0.5rem 0; }
-        .home-logo-wrap img { height: 280px; }
+        .home-logo-wrap img { height: 200px; }
         .home-subtitle { font-size: 0.82rem; }
         .nav-grid { flex-direction: column; align-items: center; gap: 1rem; margin-top: 1.5rem; }
         .nav-card { width: 100%; max-width: 400px; }
