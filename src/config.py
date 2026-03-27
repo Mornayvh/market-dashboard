@@ -47,8 +47,10 @@ ASSETS: list[Asset] = [
     Asset("Copper",             "HG=F",   None,              "Commodities"),
     Asset("Oil (Brent)",          "BZ=F",   "DCOILBRENTEU",    "Commodities"),
 
-    # Sentiment (Bitcoin only, renamed from Crypto)
+    # Sentiment
     Asset("Bitcoin",            "BTC-USD", None,             "Sentiment"),
+    Asset("GameStop",           "GME",     None,             "Sentiment"),
+    Asset("Mag 7",              "MAGS",    None,             "Sentiment"),
 
     # Volatility
     Asset("VIX",                "^VIX",   None,              "Volatility", invert_color=True),
