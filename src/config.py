@@ -29,7 +29,7 @@ ASSETS: list[Asset] = [
     Asset("US 10Y Yield",       "^TNX",   "DGS10",          "Rates",   is_rate=True),
     Asset("US 5Y Yield",        "^FVX",   "DGS5",           "Rates",   is_rate=True),
     Asset("Fed Funds Rate",     None,     "DFF",             "Rates",   is_rate=True),
-    
+
     # Credit Spreads (order: HY, EM, IG)
     Asset("HY Spread",          None,     "BAMLH0A0HYM2",    "Credit",  is_spread=True, invert_color=True),
     Asset("EM Spread",          None,     "BAMLEMCBPIOAS",    "Credit",  is_spread=True, invert_color=True),
@@ -51,8 +51,7 @@ ASSETS: list[Asset] = [
     Asset("Bitcoin",            "BTC-USD", None,             "Sentiment"),
     Asset("GameStop",           "GME",     None,             "Sentiment"),
     Asset("Mag 7",              "MAGS",    None,             "Sentiment"),
-    Asset("10Y-2Y Spread",       None,     "T10Y2Y",         "Rates", is_rate=True, invert_color=True),
-
+    Asset("10Y-2Y Spread",      None,     "T10Y2Y",          "Sentiment",  is_rate=True, invert_color=True),
 
     # Volatility
     Asset("VIX",                "^VIX",   None,              "Volatility", invert_color=True),
