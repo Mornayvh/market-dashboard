@@ -249,7 +249,8 @@ def make_mini_sparkline(close_series, height=60):
     fig.add_trace(go.Scatter(
         x=close_series.index, y=close_series.values,
         mode="lines", line=dict(color=color, width=1.5),
-        fill="tozeroy", fillcolor=color.replace(")", ",0.06)").replace("rgb", "rgba") if "rgb" in color else (color + "0F"),
+        fill="tozeroy",
+        fillcolor="rgba(22,163,74,0.06)" if last_val >= first_val else "rgba(220,38,38,0.06)",
         hoverinfo="skip",
     ))
 
