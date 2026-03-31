@@ -62,7 +62,7 @@ st.markdown("""
     .home-logo-wrap {
         display: flex; justify-content: center; width: 100%; margin-bottom: 0.8rem;
     }
-    .home-logo-wrap img { height: 36px; display: block; }
+    .home-logo-wrap img { height: 300px; display: block; }
     .home-subtitle {
         font-family: 'DM Sans', sans-serif;
         font-size: 0.95rem; color: #64748B;
