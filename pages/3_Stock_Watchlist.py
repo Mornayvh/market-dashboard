@@ -230,13 +230,13 @@ def fmt_chg(val):
 def section_header(text):
     st.markdown(f'<div class="section-header">{text}</div>', unsafe_allow_html=True)
 
-def make_mini_sparkline(close_series, height=60):
+def make_mini_sparkline(close_series, height=120):
     """Create a minimal LTM line sparkline from a close price series."""
     import plotly.graph_objects as go
 
     if close_series is None or len(close_series) < 2:
         fig = go.Figure()
-        fig.update_layout(height=height, margin=dict(l=0,r=0,t=0,b=0),
+        fig.update_layout(height=height, margin=dict(l=0,r=0,t=14,b=0),
                           paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                           xaxis=dict(visible=False), yaxis=dict(visible=False))
         return fig
@@ -256,13 +256,31 @@ def make_mini_sparkline(close_series, height=60):
 
     y_min = float(close_series.min())
     y_max = float(close_series.max())
-    y_pad = (y_max - y_min) * 0.05 if y_max > y_min else 1
+    y_pad = (y_max - y_min) * 0.08 if y_max > y_min else 1
+    y_range = [y_min - y_pad, y_max + y_pad]
+
+    # Date annotations
+    start_date = close_series.index[0].strftime("%b %y")
+    end_date = close_series.index[-1].strftime("%b %y")
 
     fig.update_layout(
-        height=height, margin=dict(l=0, r=0, t=0, b=0),
+        height=height, margin=dict(l=0, r=0, t=14, b=0),
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        xaxis=dict(visible=False), yaxis=dict(visible=False, range=[y_min - y_pad, y_max + y_pad]),
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False, range=y_range),
         showlegend=False,
+        annotations=[
+            dict(
+                x=close_series.index[0], y=y_range[1],
+                text=start_date, showarrow=False, xanchor="left", yanchor="bottom",
+                font=dict(size=9, color="#94A3B8", family="JetBrains Mono, monospace"),
+            ),
+            dict(
+                x=close_series.index[-1], y=y_range[1],
+                text=end_date, showarrow=False, xanchor="right", yanchor="bottom",
+                font=dict(size=9, color="#94A3B8", family="JetBrains Mono, monospace"),
+            ),
+        ],
     )
     return fig
 
