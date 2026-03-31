@@ -48,7 +48,7 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
 
     .stApp { background-color: #F8FAFC; }
-    .block-container { padding-top: 2rem; padding-bottom: 2rem; max-width: 1000px; }
+    .block-container { padding-top: 2rem; padding-bottom: 2rem; max-width: 1300px; }
 
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
@@ -62,7 +62,7 @@ st.markdown("""
     .home-logo-wrap {
         display: flex; justify-content: center; width: 100%; margin-bottom: 0.8rem;
     }
-    .home-logo-wrap img { height: 300px; display: block; }
+    .home-logo-wrap img { height: 36px; display: block; }
     .home-subtitle {
         font-family: 'DM Sans', sans-serif;
         font-size: 0.95rem; color: #64748B;
@@ -124,7 +124,7 @@ st.markdown("""
     @media (max-width: 768px) {
         .block-container { padding-top: 1rem; padding-left: 1rem; padding-right: 1rem; }
         .home-header { padding: 1rem 0 0.5rem 0; }
-        .home-logo-wrap img { height: 150px; }
+        .home-logo-wrap img { height: 28px; }
         .home-subtitle { font-size: 0.82rem; }
         .nav-grid { flex-direction: column; align-items: center; gap: 1rem; margin-top: 1.5rem; }
         .nav-card { width: 100%; max-width: 400px; }
@@ -145,8 +145,11 @@ logo_img = ""
 if logo_b64:
     logo_img = f'<div class="home-logo-wrap"><img src="data:{logo_mime};base64,{logo_b64}" /></div>'
 
+watchlist_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200"><rect width="400" height="200" fill="#F8FAFC"/><rect x="15" y="12" width="370" height="6" rx="2" fill="#CBD5E1"/><rect x="15" y="28" width="120" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="28" width="40" height="4" rx="1" fill="#16A34A" opacity="0.5"/><rect x="260" y="28" width="35" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="320" y="28" width="40" height="4" rx="1" fill="#DC2626" opacity="0.4"/><rect x="15" y="40" width="100" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="40" width="30" height="4" rx="1" fill="#DC2626" opacity="0.5"/><rect x="260" y="40" width="45" height="4" rx="1" fill="#DC2626" opacity="0.4"/><rect x="320" y="40" width="35" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="15" y="52" width="110" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="52" width="35" height="4" rx="1" fill="#16A34A" opacity="0.5"/><rect x="260" y="52" width="30" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="320" y="52" width="45" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="15" y="72" width="370" height="6" rx="2" fill="#CBD5E1"/><rect x="15" y="88" width="90" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="88" width="35" height="4" rx="1" fill="#16A34A" opacity="0.5"/><rect x="260" y="88" width="40" height="4" rx="1" fill="#DC2626" opacity="0.4"/><rect x="320" y="88" width="30" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="15" y="100" width="105" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="100" width="40" height="4" rx="1" fill="#DC2626" opacity="0.5"/><rect x="260" y="100" width="35" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="320" y="100" width="40" height="4" rx="1" fill="#DC2626" opacity="0.4"/><rect x="15" y="120" width="370" height="6" rx="2" fill="#CBD5E1"/><rect x="15" y="136" width="80" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="136" width="35" height="4" rx="1" fill="#16A34A" opacity="0.5"/><rect x="15" y="148" width="95" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="148" width="40" height="4" rx="1" fill="#DC2626" opacity="0.5"/><rect x="15" y="160" width="85" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="160" width="30" height="4" rx="1" fill="#16A34A" opacity="0.5"/><rect x="15" y="172" width="110" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="172" width="45" height="4" rx="1" fill="#16A34A" opacity="0.5"/><rect x="15" y="184" width="75" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="184" width="35" height="4" rx="1" fill="#DC2626" opacity="0.5"/></svg>'
+watchlist_b64 = base64.b64encode(watchlist_svg.encode()).decode()
+
 st.markdown(f"""<div class="home-header">{logo_img}<div class="home-subtitle">Investment Intelligence Platform</div></div>""", unsafe_allow_html=True)
 
-st.markdown(f"""<div class="nav-grid"><a class="nav-card" href="/Market_Dashboard" target="_self"><div class="nav-card-preview"><img src="data:image/svg+xml;base64,{market_b64}" /></div><div class="nav-card-body"><div class="nav-card-title">Market Dashboard</div><div class="nav-card-desc">Daily macro and market snapshot. Rates, equities, commodities, credit spreads, currencies, and volatility.</div></div></a><a class="nav-card" href="/Portfolio_Dashboard" target="_self"><div class="nav-card-preview"><img src="data:image/svg+xml;base64,{portfolio_b64}" /></div><div class="nav-card-body"><div class="nav-card-title">Portfolio Dashboard</div><div class="nav-card-desc">Current investment allocations by geography, asset class, sector, and stage. Identify gaps and inform strategy.</div></div></a></div>""", unsafe_allow_html=True)
+st.markdown(f"""<div class="nav-grid"><a class="nav-card" href="/Market_Dashboard" target="_self"><div class="nav-card-preview"><img src="data:image/svg+xml;base64,{market_b64}" /></div><div class="nav-card-body"><div class="nav-card-title">Market Dashboard</div><div class="nav-card-desc">Daily macro and market snapshot. Rates, equities, commodities, credit spreads, currencies, and volatility.</div></div></a><a class="nav-card" href="/Portfolio_Dashboard" target="_self"><div class="nav-card-preview"><img src="data:image/svg+xml;base64,{portfolio_b64}" /></div><div class="nav-card-body"><div class="nav-card-title">Portfolio Dashboard</div><div class="nav-card-desc">Current investment allocations by geography, asset class, sector, and stage. Identify gaps and inform strategy.</div></div></a><a class="nav-card" href="/Stock_Watchlist" target="_self"><div class="nav-card-preview"><img src="data:image/svg+xml;base64,{watchlist_b64}" /></div><div class="nav-card-body"><div class="nav-card-title">Stock Watchlist</div><div class="nav-card-desc">Live prices for core, connected, and global holdings. Track performance across exchanges and currencies.</div></div></a></div>""", unsafe_allow_html=True)
 
 st.markdown("""<div class="home-footer">Secco Capital \u00b7 Investment Intelligence Platform \u00b7 Confidential</div>""", unsafe_allow_html=True)
