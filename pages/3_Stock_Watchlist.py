@@ -76,6 +76,13 @@ st.markdown("""
     .chg-down { color: #DC2626; }
     .chg-flat { color: #64748B; }
 
+    .stButton > button {
+        background: #FFFFFF; color: #1E293B; border: 1px solid #CBD5E1;
+        font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
+        border-radius: 4px; padding: 0.4rem 1.2rem;
+    }
+    .stButton > button:hover { background: #F1F5F9; border-color: #2563EB; color: #1E293B; }
+
     @media (max-width: 768px) {
         .block-container { padding-left: 0.5rem; padding-right: 0.5rem; max-width: 100%; }
         .watch-header { flex-direction: column; gap: 0.5rem; }

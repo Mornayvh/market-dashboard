@@ -110,11 +110,11 @@ st.markdown("""
     }
 
     .stButton > button {
-        background: #2563EB; color: #FFFFFF; border: none;
-        font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 600;
-        border-radius: 6px; padding: 0.5rem 2rem;
+        background: #FFFFFF; color: #1E293B; border: 1px solid #CBD5E1;
+        font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
+        border-radius: 4px; padding: 0.4rem 1.2rem;
     }
-    .stButton > button:hover { background: #1D4ED8; color: #FFFFFF; }
+    .stButton > button:hover { background: #F1F5F9; border-color: #2563EB; color: #1E293B; }
     /* ── Mobile responsive ── */
     @media (max-width: 768px) {
         .block-container { padding-left: 0.5rem; padding-right: 0.5rem; max-width: 100%; }
