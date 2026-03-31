@@ -150,6 +150,7 @@ def fetch_watchlist_data():
             ticker_map[ticker] = (name, currency, group)
 
     results = []
+    histories = {}  # ticker -> close series for sparklines
     for ticker in all_tickers:
         name, currency, group = ticker_map[ticker]
         try:
@@ -166,6 +167,9 @@ def fetch_watchlist_data():
             hist.index = pd.to_datetime(hist.index).tz_localize(None)
             close = hist["Close"]
             last = float(close.iloc[-1])
+
+            # Store history for sparklines
+            histories[ticker] = close
 
             # 1D change
             chg_1d = None
@@ -200,7 +204,7 @@ def fetch_watchlist_data():
                 "high_52w": None, "low_52w": None,
             })
 
-    return pd.DataFrame(results), datetime.now()
+    return pd.DataFrame(results), histories, datetime.now()
 
 # ---------------------------------------------------------------------------
 # Formatting helpers
@@ -225,6 +229,41 @@ def fmt_chg(val):
 
 def section_header(text):
     st.markdown(f'<div class="section-header">{text}</div>', unsafe_allow_html=True)
+
+def make_mini_sparkline(close_series, height=60):
+    """Create a minimal LTM line sparkline from a close price series."""
+    import plotly.graph_objects as go
+
+    if close_series is None or len(close_series) < 2:
+        fig = go.Figure()
+        fig.update_layout(height=height, margin=dict(l=0,r=0,t=0,b=0),
+                          paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                          xaxis=dict(visible=False), yaxis=dict(visible=False))
+        return fig
+
+    first_val = float(close_series.iloc[0])
+    last_val = float(close_series.iloc[-1])
+    color = "#16A34A" if last_val >= first_val else "#DC2626"
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=close_series.index, y=close_series.values,
+        mode="lines", line=dict(color=color, width=1.5),
+        fill="tozeroy", fillcolor=color.replace(")", ",0.06)").replace("rgb", "rgba") if "rgb" in color else (color + "0F"),
+        hoverinfo="skip",
+    ))
+
+    y_min = float(close_series.min())
+    y_max = float(close_series.max())
+    y_pad = (y_max - y_min) * 0.05 if y_max > y_min else 1
+
+    fig.update_layout(
+        height=height, margin=dict(l=0, r=0, t=0, b=0),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(visible=False), yaxis=dict(visible=False, range=[y_min - y_pad, y_max + y_pad]),
+        showlegend=False,
+    )
+    return fig
 
 # ---------------------------------------------------------------------------
 # Render table
@@ -268,14 +307,28 @@ if st.button("\u2190 Home", key="home_btn"):
     st.switch_page("app.py")
 
 with st.spinner("Fetching stock data..."):
-    data, timestamp = fetch_watchlist_data()
+    data, histories, timestamp = fetch_watchlist_data()
 
 st.caption(f"Last refresh: {timestamp.strftime('%d %b %Y, %H:%M')}")
+
+SPARKLINE_GROUPS = {"Core Holdings", "Connected Holdings"}
 
 for group_name in WATCHLIST.keys():
     section_header(group_name)
     group_df = data[data["group"] == group_name]
     render_stock_table(group_df)
+
+    # Sparklines for Core and Connected holdings
+    if group_name in SPARKLINE_GROUPS:
+        stocks_in_group = [s for s in WATCHLIST[group_name]]
+        cols = st.columns(len(stocks_in_group))
+        for col, (name, ticker, currency) in zip(cols, stocks_in_group):
+            with col:
+                st.caption(name)
+                if ticker in histories:
+                    fig = make_mini_sparkline(histories[ticker])
+                    st.plotly_chart(fig, use_container_width=True)
+
     st.markdown("<br>", unsafe_allow_html=True)
 
 # Footer
