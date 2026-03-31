@@ -70,7 +70,7 @@ st.markdown("""
 
     .nav-grid {
         display: flex; gap: 1.5rem; justify-content: center;
-        margin-top: 2.5rem; flex-wrap: wrap;
+        margin-top: 2.5rem;
     }
 
     .nav-card {
