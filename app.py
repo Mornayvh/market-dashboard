@@ -62,7 +62,7 @@ st.markdown("""
     .home-logo-wrap {
         display: flex; justify-content: center; width: 100%; margin-bottom: 0.8rem;
     }
-    .home-logo-wrap img { height: 36px; display: block; }
+    .home-logo-wrap img { height: 300px; display: block; }
     .home-subtitle {
         font-family: 'DM Sans', sans-serif;
         font-size: 0.95rem; color: #64748B;
@@ -70,7 +70,7 @@ st.markdown("""
 
     .nav-grid {
         display: flex; gap: 1.5rem; justify-content: center;
-        margin-top: 2.5rem; flex-wrap: wrap;
+        margin-top: 2.5rem;
     }
 
     .nav-card {
@@ -150,6 +150,6 @@ watchlist_b64 = base64.b64encode(watchlist_svg.encode()).decode()
 
 st.markdown(f"""<div class="home-header">{logo_img}<div class="home-subtitle">Investment Intelligence Platform</div></div>""", unsafe_allow_html=True)
 
-st.markdown(f"""<div class="nav-grid"><a class="nav-card" href="/Market_Dashboard" target="_self"><div class="nav-card-preview"><img src="data:image/svg+xml;base64,{market_b64}" /></div><div class="nav-card-body"><div class="nav-card-title">Market Dashboard</div><div class="nav-card-desc">Daily macro and market snapshot. Rates, equities, commodities, credit spreads, currencies, and volatility.</div></div></a><a class="nav-card" href="/Stock_Watchlist" target="_self"><div class="nav-card-preview"><img src="data:image/svg+xml;base64,{watchlist_b64}" /></div><div class="nav-card-body"><div class="nav-card-title">Stock Watchlist</div><div class="nav-card-desc">Live prices for core, connected, and global holdings. Track performance across exchanges and currencies.</div></div></a><a class="nav-card" href="/Portfolio_Dashboard" target="_self"><div class="nav-card-preview"><img src="data:image/svg+xml;base64,{portfolio_b64}" /></div><div class="nav-card-body"><div class="nav-card-title">Portfolio Dashboard</div><div class="nav-card-desc">Current investment allocations by geography, asset class, sector, and stage. Identify gaps and inform strategy.</div></div></a></div>""", unsafe_allow_html=True)
+st.markdown(f"""<div class="nav-grid"><a class="nav-card" href="/Market_Dashboard" target="_self"><div class="nav-card-preview"><img src="data:image/svg+xml;base64,{market_b64}" /></div><div class="nav-card-body"><div class="nav-card-title">Market Dashboard</div><div class="nav-card-desc">Daily macro and market snapshot. Rates, equities, commodities, credit spreads, currencies, and volatility.</div></div></a><a class="nav-card" href="/Portfolio_Dashboard" target="_self"><div class="nav-card-preview"><img src="data:image/svg+xml;base64,{portfolio_b64}" /></div><div class="nav-card-body"><div class="nav-card-title">Portfolio Dashboard</div><div class="nav-card-desc">Current investment allocations by geography, asset class, sector, and stage. Identify gaps and inform strategy.</div></div></a><a class="nav-card" href="/Stock_Watchlist" target="_self"><div class="nav-card-preview"><img src="data:image/svg+xml;base64,{watchlist_b64}" /></div><div class="nav-card-body"><div class="nav-card-title">Stock Watchlist</div><div class="nav-card-desc">Live prices for core, connected, and global holdings. Track performance across exchanges and currencies.</div></div></a></div>""", unsafe_allow_html=True)
 
 st.markdown("""<div class="home-footer">Secco Capital \u00b7 Investment Intelligence Platform \u00b7 Confidential</div>""", unsafe_allow_html=True)
