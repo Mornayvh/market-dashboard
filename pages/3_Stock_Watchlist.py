@@ -111,6 +111,9 @@ WATCHLIST = {
         ("OUTsurance", "OUT.JO", "ZAR"),
         ("Discovery", "DSY.JO", "ZAR"),
     ],
+    "Tiger Global IPO's": [
+        ("Cerebras", "CBRS", "USD"),
+    ],
     "Global": [
         ("Berkshire Hathaway", "BRK-B", "USD"),
         ("Apple", "AAPL", "USD"),
@@ -130,6 +133,8 @@ WATCHLIST = {
         ("Deere & Co", "DE", "USD"),
         ("Teledyne", "TDY", "USD"),
         ("Waste Management", "WM", "USD"),
+        ("Uber", "UBER", "USD"),
+        ("Markel", "MKL", "USD"),
     ],
 }
 
