@@ -124,7 +124,7 @@ WATCHLIST = {
         ("Nvidia", "NVDA", "USD"),
         ("Tesla", "TSLA", "USD"),
         ("Alibaba", "BABA", "USD"),
-        ("BYD", "BYDDY", "USD"),
+        ("BYD", "002594.SZ", "CNY"),
         ("Tencent", "TCEHY", "USD"),
         ("Apollo", "APO", "USD"),
         ("KKR", "KKR", "USD"),
@@ -138,7 +138,7 @@ WATCHLIST = {
     ],
 }
 
-CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "EUR": "€", "CHF": "CHF ", "ZAR": "R"}
+CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "EUR": "€", "CHF": "CHF ", "ZAR": "R", "CNY": "¥"}
 
 # ---------------------------------------------------------------------------
 # Data fetching
