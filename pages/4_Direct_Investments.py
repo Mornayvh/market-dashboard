@@ -118,6 +118,33 @@ st.markdown("""
         letter-spacing: 0.05em;
     }
 
+    .rationale-block {
+        background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px;
+        padding: 0.75rem 1rem; margin: 0.5rem 0 1rem 0;
+    }
+    .rationale-title {
+        font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 600;
+        color: #94A3B8; text-transform: uppercase; letter-spacing: 0.1em;
+        margin-bottom: 0.5rem;
+    }
+    .rationale-row {
+        display: flex; gap: 0.75rem; align-items: baseline;
+        padding: 0.3rem 0; border-top: 1px solid #F1F5F9;
+        font-family: 'DM Sans', sans-serif;
+    }
+    .rationale-row:first-of-type { border-top: none; }
+    .rationale-name {
+        font-size: 0.78rem; font-weight: 600; color: #1E293B;
+        min-width: 160px; flex-shrink: 0;
+    }
+    .rationale-ticker {
+        font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
+        color: #94A3B8; margin-left: 0.4rem; font-weight: 400;
+    }
+    .rationale-text {
+        font-size: 0.78rem; color: #475569; line-height: 1.45;
+    }
+
     .spark-label {
         display: flex; justify-content: space-between; align-items: baseline;
         font-family: 'DM Sans', sans-serif;

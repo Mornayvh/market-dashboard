@@ -13,13 +13,14 @@ class Comp:
     name: str
     ticker: str
     is_primary: bool = False
+    rationale: str = ""              # one-line "why we watch this comp"
 
 
 @dataclass(frozen=True)
 class Sparkline:
     name: str
     ticker: str
-    caption: str = ""
+    caption: str = ""                # one-line "why this ETF/commodity matters"
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,7 @@ class FredSeries:
     series_id: str
     unit_suffix: str = ""          # "%", "bps", etc.
     invert_color: bool = False     # True when "up = bad"
+    caption: str = ""              # one-line "why this indicator matters"
 
 
 @dataclass(frozen=True)
@@ -36,6 +38,7 @@ class TrendsQuery:
     keywords: tuple                  # passed to pytrends as keyword list
     geo: str = "US"
     timeframe: str = "today 12-m"
+    caption: str = ""                # one-line "why this search trend matters"
 
 
 @dataclass(frozen=True)
@@ -84,31 +87,45 @@ NOVOLEX = Holding(
     thesis="CPG and food-service demand recovery; integration of Pactiv assets driving margin expansion.",
     risk="Resin/oil input cost volatility; restaurant traffic softness; freight inflation.",
     comps=(
-        Comp("Amcor",            "AMCR", is_primary=True),
-        Comp("Sealed Air",       "SEE"),
-        Comp("Huhtamaki",        "HUH1V.HE"),
-        Comp("Graphic Packaging","GPK"),
-        Comp("Sonoco",           "SON"),
+        Comp("Amcor",             "AMCR",      is_primary=True,
+             rationale="Global packaging leader; closest read on Novolex's flexible + rigid product mix."),
+        Comp("Sealed Air",        "SEE",
+             rationale="Protective & food-packaging pure-play; same resin and freight cost exposure as Novolex."),
+        Comp("Huhtamaki",         "HUH1V.HE",
+             rationale="European food-service & retail packaging; signal on EMEA demand and pricing power."),
+        Comp("Graphic Packaging", "GPK",
+             rationale="Paperboard / folding cartons; cross-check on fibre-vs-plastics substitution dynamic."),
+        Comp("Sonoco",            "SON",
+             rationale="Diversified industrial packaging; reads on broader CPG buyer capex appetite."),
     ),
     sparklines=(
-        Sparkline("Consumer Discretionary", "XLY", "Restaurant / dining proxy"),
-        Sparkline("Consumer Staples",       "XLP", "CPG demand proxy"),
+        Sparkline("Consumer Discretionary", "XLY",
+                  "Restaurant traffic and dining demand — Novolex's largest end-market."),
+        Sparkline("Consumer Staples",       "XLP",
+                  "CPG buyers (food, household products) that drive Novolex packaging volumes."),
     ),
     commodities=(
-        Sparkline("Brent",       "BZ=F",  "Resin feedstock proxy"),
-        Sparkline("WTI",         "CL=F",  "Resin feedstock proxy"),
-        Sparkline("Henry Hub NG","NG=F",  "Petrochemical feedstock"),
+        Sparkline("Brent",        "BZ=F",
+                  "Crude benchmark; sets the cost floor for resin and polymer feedstocks."),
+        Sparkline("WTI",          "CL=F",
+                  "US crude; closer proxy for Novolex's domestic feedstock costs."),
+        Sparkline("Henry Hub NG", "NG=F",
+                  "Natural gas; key petrochemical input and a major US-specific cost variable."),
     ),
     fred_series=(
         # NAPM was discontinued; ISM Manufacturing is no longer redistributed on FRED.
         # MANEMP (Manufacturing employees) and IPMAN (Industrial Production: Manufacturing)
         # are the closest free proxies. INDPRO is a broader fallback.
-        FredSeries("US Manufacturing IP",   "IPMAN",                ""),
-        FredSeries("Consumer Sentiment",    "UMCSENT",              ""),
+        FredSeries("US Manufacturing IP", "IPMAN",   "",
+                   caption="Industrial production for manufacturing — demand-side gauge for industrial-packaging customers."),
+        FredSeries("Consumer Sentiment",  "UMCSENT", "",
+                   caption="University of Michigan sentiment — leading indicator for eating-out and CPG spending."),
     ),
     trends_queries=(
-        TrendsQuery("Eating out interest",    ("eating out",)),
-        TrendsQuery("Restaurant inflation",   ("restaurant prices",)),
+        TrendsQuery("Eating out interest",  ("eating out",),
+                    caption="Search interest as a proxy for restaurant demand; correlates with food-service packaging volume."),
+        TrendsQuery("Restaurant inflation", ("restaurant prices",),
+                    caption="Consumer awareness of menu prices; rising trend may signal restaurant-traffic risk."),
     ),
     static_caption="Resin prices (ICIS/Platts) are subscription-only — not included.",
 )
@@ -125,25 +142,38 @@ KELVION = Holding(
     thesis="AI-driven data-centre buildout lifting liquid-cooling and HVAC demand; hyperscaler capex tailwind.",
     risk="Capex cycle reversal; community opposition to DC siting; competing cooling tech.",
     comps=(
-        Comp("Alfa Laval",       "ALFA.ST", is_primary=True),
-        Comp("GEA Group",        "G1A.DE"),
-        Comp("Vertiv",           "VRT"),
-        Comp("Munters",          "MTRS.ST"),
-        Comp("Modine",           "MOD"),
+        Comp("Alfa Laval", "ALFA.ST", is_primary=True,
+             rationale="Closest global heat-exchanger pure-play; primary read on Kelvion's core market."),
+        Comp("GEA Group",  "G1A.DE",
+             rationale="Direct industrial-cooling competitor; tracks the same European industrial cycle."),
+        Comp("Vertiv",     "VRT",
+             rationale="DC infrastructure leader; cleanest signal on data-centre capex flowing into cooling."),
+        Comp("Munters",    "MTRS.ST",
+             rationale="Climate solutions & DC air handling; complementary read on DC cooling demand."),
+        Comp("Modine",     "MOD",
+             rationale="Thermal management spanning HVAC and DC; reads on US liquid-cooling adoption."),
     ),
     sparklines=(
-        Sparkline("Industrials",            "XLI", "Broad industrial demand"),
-        Sparkline("Infrastructure",         "IGF", "Capex / infra cycle proxy"),
+        Sparkline("Industrials",    "XLI",
+                  "Broad industrial demand baseline that drives heat-exchanger order intake."),
+        Sparkline("Infrastructure", "IGF",
+                  "Global infra capex cycle proxy for large project pipeline."),
     ),
     extra_tickers=(
-        Sparkline("Nvidia",      "NVDA",  "AI compute leader"),
-        Sparkline("CoreWeave",   "CRWV",  "Neocloud — pure-play GPU compute"),
-        Sparkline("Nebius",      "NBIS",  "Neocloud — European GPU compute"),
+        Sparkline("Nvidia",    "NVDA",
+                  "AI compute leader; DC buildout demand starts with GPU shipments."),
+        Sparkline("CoreWeave", "CRWV",
+                  "Pure-play GPU-cloud capex flowing directly into DC cooling demand."),
+        Sparkline("Nebius",    "NBIS",
+                  "European GPU cloud; useful for EMEA DC-buildout signal."),
     ),
     trends_queries=(
-        TrendsQuery("DC protest",      ("data center protest",)),
-        TrendsQuery("DC moratorium",   ("data center moratorium",)),
-        TrendsQuery("DC water use",    ("data center water use",)),
+        TrendsQuery("DC protest",    ("data center protest",),
+                    caption="Local opposition signal — permitting and siting risk for new DCs."),
+        TrendsQuery("DC moratorium", ("data center moratorium",),
+                    caption="Municipal action against DCs; quantifies the regulatory/political headwind."),
+        TrendsQuery("DC water use",  ("data center water use",),
+                    caption="Public concern over DC cooling water use; can shift cooling-tech specification."),
     ),
     static_blocks=(
         StaticBlock(
@@ -185,30 +215,43 @@ REAL_CHEMISTRY = Holding(
     thesis="Pharma marketing-spend cycle; growing demand for GLP-1 and obesity launch support.",
     risk="Drug-approval slowdown; biotech funding winter; pharma cost cuts; IRA pricing pressure.",
     comps=(
-        Comp("IQVIA",             "IQV",   is_primary=True),
-        Comp("Definitive Health", "DH"),
-        Comp("Doximity",          "DOCS"),
-        Comp("Veeva",             "VEEV"),
-        Comp("Publicis Groupe",   "PUB.PA"),
+        Comp("IQVIA",             "IQV",    is_primary=True,
+             rationale="Largest healthcare services & real-world data peer; primary read on pharma marketing and analytics spend."),
+        Comp("Definitive Health", "DH",
+             rationale="Healthcare commercial intelligence; tracks pharma R&D and commercial budget cycles."),
+        Comp("Doximity",          "DOCS",
+             rationale="Physician-engagement platform; direct read on HCP-marketing demand."),
+        Comp("Veeva",             "VEEV",
+             rationale="Life-sciences SaaS leader; signal on pharma's digital-marketing infrastructure spend."),
+        Comp("Publicis Groupe",   "PUB.PA",
+             rationale="Owner of Publicis Health, the largest healthcare marketing agency; direct comp on agency spend."),
     ),
     # Sparklines (sector ETFs) — pharma ETF selected at runtime; placeholder here is overridden.
     sparklines=(
-        Sparkline("Pharma ETF (auto)", "XLV", "Most-liquid of XLV / IHE / XPH selected at runtime"),
-        Sparkline("Health Insurers",   "IHF", "US healthcare providers"),
+        Sparkline("Pharma ETF (auto)", "XLV",
+                  "Pharma sector return is the demand baseline for marketing-services spend. Most-liquid of XLV / IHE / XPH picked at runtime."),
+        Sparkline("Health Insurers",   "IHF",
+                  "US healthcare providers & payors; reads on payor-side budget environment."),
     ),
     fred_series=(
-        FredSeries("US 10Y Real Yield", "DFII10", "%"),
-        FredSeries("US 30Y Treasury",   "DGS30",  "%"),
+        FredSeries("US 10Y Real Yield", "DFII10", "%",
+                   caption="Cost-of-capital input for pharma R&D and biotech funding cycles."),
+        FredSeries("US 30Y Treasury",   "DGS30",  "%",
+                   caption="Long-duration discount rate for pharma valuations & deal activity."),
     ),
     commodities=(
-        Sparkline("EUR/USD", "EURUSD=X", "FX exposure on Publicis comp"),
+        Sparkline("EUR/USD", "EURUSD=X",
+                  "FX cross used to translate Publicis performance; also captures EMEA pharma demand exposure."),
     ),
     extra_tickers=(
-        Sparkline("Biotech (XBI)", "XBI", "Biotech sentiment / funding proxy"),
+        Sparkline("Biotech (XBI)", "XBI",
+                  "Cleanest read on early-stage biotech funding; drives launch and marketing budgets."),
     ),
     trends_queries=(
-        TrendsQuery("GLP-1 interest", ("GLP-1",)),
-        TrendsQuery("Ozempic interest", ("Ozempic",)),
+        TrendsQuery("GLP-1 interest",   ("GLP-1",),
+                    caption="Search demand for the obesity-drug class; proxy for branded pharma launch marketing."),
+        TrendsQuery("Ozempic interest", ("Ozempic",),
+                    caption="Specific GLP-1 launch demand; bellwether for high-spend campaigns Real Chemistry services."),
     ),
     static_blocks=(
         StaticBlock(

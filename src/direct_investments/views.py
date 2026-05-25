@@ -113,6 +113,28 @@ def render_comps(holding: Holding):
         unsafe_allow_html=True,
     )
 
+    # Why-we-watch block — concise rationale per comp
+    rationale_rows = ""
+    for c in holding.comps:
+        if not c.rationale:
+            continue
+        chip = ' <span class="primary-chip">PRIMARY</span>' if c.is_primary else ""
+        rationale_rows += (
+            f'<div class="rationale-row">'
+            f'<span class="rationale-name">{c.name}{chip}'
+            f'<span class="rationale-ticker">{c.ticker}</span></span>'
+            f'<span class="rationale-text">{c.rationale}</span>'
+            f'</div>'
+        )
+    if rationale_rows:
+        st.markdown(
+            f'<div class="rationale-block">'
+            f'<div class="rationale-title">Why we watch each comp</div>'
+            f'{rationale_rows}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
     # Rebased chart
     tickers = [c.ticker for c in holding.comps]
     primary = next((c.ticker for c in holding.comps if c.is_primary), None)
@@ -221,6 +243,8 @@ def render_fred_indicators(title: str, series_list: list[FredSeries]):
             st.markdown(label + metric_html, unsafe_allow_html=True)
             fig = make_sparkline(df, name=s.name, days=252, height=80, invert_color=s.invert_color)
             st.plotly_chart(fig, use_container_width=True)
+            if s.caption:
+                st.caption(s.caption)
 
 
 # ---------------------------------------------------------------------------
@@ -269,6 +293,22 @@ def render_trends(title: str, queries: list[TrendsQuery], note: str = ""):
         legend=dict(orientation="h", yanchor="bottom", y=-0.3, font=dict(size=10)),
     )
     st.plotly_chart(fig, use_container_width=True)
+
+    # Per-query rationale captions
+    rationale_rows = ""
+    for q in queries:
+        if q.caption:
+            rationale_rows += (
+                f'<div class="rationale-row">'
+                f'<span class="rationale-name">{q.label}</span>'
+                f'<span class="rationale-text">{q.caption}</span>'
+                f'</div>'
+            )
+    if rationale_rows:
+        st.markdown(
+            f'<div class="rationale-block">{rationale_rows}</div>',
+            unsafe_allow_html=True,
+        )
     if note:
         st.caption(note)
 
