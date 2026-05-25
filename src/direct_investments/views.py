@@ -138,25 +138,29 @@ def render_comps(holding: Holding):
         return
 
     fig = go.Figure()
-    palette = ["#94A3B8", "#94A3B8", "#94A3B8", "#94A3B8", "#94A3B8"]
-    for i, tk in enumerate(rebased.columns):
+    # Distinct muted palette for non-primary lines; primary uses the accent blue.
+    palette = ["#94A3B8", "#6366F1", "#F59E0B", "#14B8A6", "#EC4899"]
+    palette_idx = 0
+    for tk in rebased.columns:
         is_primary = (tk == primary)
         comp_name = next((c.name for c in holding.comps if c.ticker == tk), tk)
+        if is_primary:
+            color = COLORS["accent"]
+        else:
+            color = palette[palette_idx % len(palette)]
+            palette_idx += 1
         fig.add_trace(go.Scatter(
             x=rebased.index,
             y=rebased[tk],
             mode="lines",
-            line=dict(
-                color=COLORS["accent"] if is_primary else palette[i % len(palette)],
-                width=2.2 if is_primary else 1.0,
-            ),
-            opacity=1.0 if is_primary else 0.55,
+            line=dict(color=color, width=2.4 if is_primary else 1.4),
+            opacity=1.0 if is_primary else 0.75,
             name=f"{comp_name} ({tk})",
             hovertemplate="%{y:.1f}<extra>%{fullData.name}</extra>",
         ))
     fig.update_layout(
-        height=280,
-        margin=dict(l=10, r=20, t=20, b=20),
+        height=360,
+        margin=dict(l=10, r=20, t=20, b=90),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         xaxis=dict(showgrid=False, tickfont=dict(color=COLORS["text_secondary"], size=10)),
@@ -165,7 +169,14 @@ def render_comps(holding: Holding):
             tickfont=dict(color=COLORS["text_secondary"], size=10),
             title=dict(text="Rebased to 100", font=dict(size=10, color=COLORS["text_secondary"])),
         ),
-        legend=dict(orientation="h", yanchor="bottom", y=-0.25, font=dict(size=10)),
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="top", y=-0.15,
+            xanchor="center", x=0.5,
+            font=dict(size=11, color=COLORS["text_primary"]),
+            bgcolor="rgba(0,0,0,0)",
+        ),
     )
     st.plotly_chart(fig, use_container_width=True)
 
