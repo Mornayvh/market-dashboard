@@ -118,31 +118,38 @@ st.markdown("""
         letter-spacing: 0.05em;
     }
 
-    .rationale-block {
-        background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px;
-        padding: 0.75rem 1rem; margin: 0.5rem 0 1rem 0;
+    /* Hoverable tooltip on indicator/comp names */
+    .has-tooltip {
+        position: relative;
+        cursor: help;
+        border-bottom: 1px dotted #94A3B8;
     }
-    .rationale-title {
-        font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 600;
-        color: #94A3B8; text-transform: uppercase; letter-spacing: 0.1em;
-        margin-bottom: 0.5rem;
+    .has-tooltip::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: calc(100% + 6px); left: 0;
+        background: #1E293B; color: #F8FAFC;
+        padding: 0.55rem 0.75rem; border-radius: 4px;
+        font-family: 'DM Sans', sans-serif; font-size: 0.72rem; font-weight: 400;
+        line-height: 1.4; letter-spacing: normal; text-transform: none;
+        white-space: normal; width: 280px;
+        z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+        opacity: 0; visibility: hidden; transform: translateY(4px);
+        transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
+        pointer-events: none;
     }
-    .rationale-row {
-        display: flex; gap: 0.75rem; align-items: baseline;
-        padding: 0.3rem 0; border-top: 1px solid #F1F5F9;
-        font-family: 'DM Sans', sans-serif;
+    .has-tooltip:hover::after {
+        opacity: 1; visibility: visible; transform: translateY(0);
     }
-    .rationale-row:first-of-type { border-top: none; }
-    .rationale-name {
-        font-size: 0.78rem; font-weight: 600; color: #1E293B;
-        min-width: 160px; flex-shrink: 0;
+    /* Chip strip used for Trends queries — each chip is a hoverable label */
+    .tooltip-chip-row {
+        display: flex; flex-wrap: wrap; gap: 0.4rem;
+        margin: 0.25rem 0 0.75rem 0;
     }
-    .rationale-ticker {
-        font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
-        color: #94A3B8; margin-left: 0.4rem; font-weight: 400;
-    }
-    .rationale-text {
-        font-size: 0.78rem; color: #475569; line-height: 1.45;
+    .tooltip-chip {
+        font-family: 'DM Sans', sans-serif; font-size: 0.72rem; font-weight: 500;
+        color: #1E293B; background: #F1F5F9; border: 1px solid #E2E8F0;
+        padding: 0.25rem 0.6rem; border-radius: 999px;
     }
 
     .spark-label {

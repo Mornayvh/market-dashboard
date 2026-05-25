@@ -5,6 +5,7 @@ Each render_* function consumes the Holding config + live data and emits Streaml
 
 from __future__ import annotations
 
+import html
 from typing import Optional
 
 import pandas as pd
@@ -56,6 +57,14 @@ def _fmt_price(val: Optional[float]) -> str:
     return f"{val:.2f}"
 
 
+def _tooltip_wrap(text: str, tooltip: str) -> str:
+    """Wrap text in a span with a hoverable tooltip; falls back to plain text if no tooltip."""
+    if not tooltip:
+        return text
+    esc = html.escape(tooltip, quote=True)
+    return f'<span class="has-tooltip" data-tooltip="{esc}" title="{esc}">{text}</span>'
+
+
 # ---------------------------------------------------------------------------
 # Header block
 # ---------------------------------------------------------------------------
@@ -88,10 +97,17 @@ def render_comps(holding: Holding):
         q["is_primary"] = c.is_primary
         quotes.append(q)
 
+    rationale_by_ticker = {c.ticker: c.rationale for c in holding.comps}
+
     rows_html = ""
     for q in quotes:
         chip = ' <span class="primary-chip">PRIMARY</span>' if q["is_primary"] else ""
-        name_html = f'<span class="comp-name-primary">{q["display"]}</span>{chip}' if q["is_primary"] else q["display"]
+        base_name = q["display"]
+        wrapped = _tooltip_wrap(base_name, rationale_by_ticker.get(q["ticker"], ""))
+        if q["is_primary"]:
+            name_html = f'<span class="comp-name-primary">{wrapped}</span>{chip}'
+        else:
+            name_html = wrapped
         cells = [
             f'<td>{name_html}<span class="stock-ticker">{q["ticker"]}</span></td>',
             f'<td>{_fmt_price(q["price"])}</td>',
@@ -112,28 +128,6 @@ def render_comps(holding: Holding):
         </table>""",
         unsafe_allow_html=True,
     )
-
-    # Why-we-watch block — concise rationale per comp
-    rationale_rows = ""
-    for c in holding.comps:
-        if not c.rationale:
-            continue
-        chip = ' <span class="primary-chip">PRIMARY</span>' if c.is_primary else ""
-        rationale_rows += (
-            f'<div class="rationale-row">'
-            f'<span class="rationale-name">{c.name}{chip}'
-            f'<span class="rationale-ticker">{c.ticker}</span></span>'
-            f'<span class="rationale-text">{c.rationale}</span>'
-            f'</div>'
-        )
-    if rationale_rows:
-        st.markdown(
-            f'<div class="rationale-block">'
-            f'<div class="rationale-title">Why we watch each comp</div>'
-            f'{rationale_rows}'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
 
     # Rebased chart
     tickers = [c.ticker for c in holding.comps]
@@ -188,7 +182,8 @@ def render_sparkline_grid(title: str, sparklines: list[Sparkline], days: int = 2
     for col, sp in zip(cols, sparklines):
         with col:
             df = data_loader.fetch_history(sp.ticker, period="1y")
-            label = f'<div class="spark-label"><span class="spark-name">{sp.name}</span><span class="spark-ticker">{sp.ticker}</span></div>'
+            name_html = _tooltip_wrap(sp.name, sp.caption)
+            label = f'<div class="spark-label"><span class="spark-name">{name_html}</span><span class="spark-ticker">{sp.ticker}</span></div>'
             if df is None or df.empty:
                 st.markdown(label, unsafe_allow_html=True)
                 _empty_caption("Data unavailable")
@@ -207,8 +202,6 @@ def render_sparkline_grid(title: str, sparklines: list[Sparkline], days: int = 2
             st.markdown(label + metric_html, unsafe_allow_html=True)
             fig = make_sparkline(df, name=sp.name, days=days, height=80)
             st.plotly_chart(fig, use_container_width=True)
-            if sp.caption:
-                st.caption(sp.caption)
 
 
 # ---------------------------------------------------------------------------
@@ -223,7 +216,8 @@ def render_fred_indicators(title: str, series_list: list[FredSeries]):
     for col, s in zip(cols, series_list):
         with col:
             df = data_loader.fetch_fred(s.series_id)
-            label = f'<div class="spark-label"><span class="spark-name">{s.name}</span><span class="spark-ticker">FRED: {s.series_id}</span></div>'
+            name_html = _tooltip_wrap(s.name, s.caption)
+            label = f'<div class="spark-label"><span class="spark-name">{name_html}</span><span class="spark-ticker">FRED: {s.series_id}</span></div>'
             if df is None or df.empty:
                 st.markdown(label, unsafe_allow_html=True)
                 _empty_caption("Data unavailable — set FRED_API_KEY")
@@ -243,8 +237,6 @@ def render_fred_indicators(title: str, series_list: list[FredSeries]):
             st.markdown(label + metric_html, unsafe_allow_html=True)
             fig = make_sparkline(df, name=s.name, days=252, height=80, invert_color=s.invert_color)
             st.plotly_chart(fig, use_container_width=True)
-            if s.caption:
-                st.caption(s.caption)
 
 
 # ---------------------------------------------------------------------------
@@ -267,6 +259,14 @@ def render_trends(title: str, queries: list[TrendsQuery], note: str = ""):
         if col in df.columns:
             series_frames.append(df[col].rename(q.label))
             labels.append(q.label)
+
+    # Chip strip with per-query tooltips — shown regardless of whether data loaded
+    chips = ""
+    for q in queries:
+        chip_inner = _tooltip_wrap(q.label, q.caption)
+        chips += f'<span class="tooltip-chip">{chip_inner}</span>'
+    if chips:
+        st.markdown(f'<div class="tooltip-chip-row">{chips}</div>', unsafe_allow_html=True)
 
     if not series_frames:
         st.caption("Trends data unavailable — pytrends rate-limited or not installed.")
@@ -293,22 +293,6 @@ def render_trends(title: str, queries: list[TrendsQuery], note: str = ""):
         legend=dict(orientation="h", yanchor="bottom", y=-0.3, font=dict(size=10)),
     )
     st.plotly_chart(fig, use_container_width=True)
-
-    # Per-query rationale captions
-    rationale_rows = ""
-    for q in queries:
-        if q.caption:
-            rationale_rows += (
-                f'<div class="rationale-row">'
-                f'<span class="rationale-name">{q.label}</span>'
-                f'<span class="rationale-text">{q.caption}</span>'
-                f'</div>'
-            )
-    if rationale_rows:
-        st.markdown(
-            f'<div class="rationale-block">{rationale_rows}</div>',
-            unsafe_allow_html=True,
-        )
     if note:
         st.caption(note)
 
