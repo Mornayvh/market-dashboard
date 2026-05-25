@@ -89,8 +89,8 @@ NOVOLEX = Holding(
     comps=(
         Comp("Amcor",             "AMCR",      is_primary=True,
              rationale="Global packaging leader; closest read on Novolex's flexible + rigid product mix."),
-        Comp("Sealed Air",        "SEE",
-             rationale="Protective & food-packaging pure-play; same resin and freight cost exposure as Novolex."),
+        Comp("Silgan Holdings",   "SLGN",
+             rationale="Rigid & dispensing packaging; closest mix to Novolex's flexible+rigid slate and same resin/freight exposure. (Replaced Sealed Air after CD&R took it private in Apr 2026.)"),
         Comp("Huhtamaki",         "HUH1V.HE",
              rationale="European food-service & retail packaging; signal on EMEA demand and pricing power."),
         Comp("Graphic Packaging", "GPK",

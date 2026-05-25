@@ -175,4 +175,6 @@ def rebased_history(tickers: list[str], period: str = "1y") -> pd.DataFrame:
         series[tk] = (s / first) * 100.0
     if not series:
         return pd.DataFrame()
-    return pd.DataFrame(series).sort_index().ffill()
+    # No ffill — if a comp stops trading (e.g., taken private), the line should
+    # truncate at the last real close rather than plateau forward.
+    return pd.DataFrame(series).sort_index()
