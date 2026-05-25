@@ -1,0 +1,32 @@
+# NVIDIA Data Center segment revenue — quarterly, mapped to calendar quarters.
+# NVDA's fiscal year ends late Jan; FY2026 ran Feb 2025 – Jan 2026, mapped as follows:
+#   FY25Q2 → 2024Q2, FY25Q3 → 2024Q3, ..., FY26Q4 → 2025Q4, FY27Q1 → 2026Q1.
+#
+# UPDATE QUARTERLY: NVDA reports late Feb, late May, late Aug, late Nov.
+# Replace oldest quarter with newest after each release.
+
+last_updated: "2026-05-20"
+unit: "USD billions"
+sources:
+  NVDA: "NVIDIA quarterly earnings releases (Data Center segment revenue)"
+notes: |
+  Data Center segment revenue only — excludes Gaming, Pro Vis, Auto, OEM.
+  Verify 2025Q4 and 2026Q1 figures against NVDA's Feb 2026 and May 2026 earnings.
+
+quarters:
+  - period: "2024Q2"
+    NVDA: 26.3
+  - period: "2024Q3"
+    NVDA: 30.8
+  - period: "2024Q4"
+    NVDA: 35.6
+  - period: "2025Q1"
+    NVDA: 39.1
+  - period: "2025Q2"
+    NVDA: 41.1
+  - period: "2025Q3"
+    NVDA: 51.2
+  - period: "2025Q4"
+    NVDA: 48.0
+  - period: "2026Q1"
+    NVDA: 52.0

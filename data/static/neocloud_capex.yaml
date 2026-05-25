@@ -1,0 +1,41 @@
+# Neocloud quarterly capex — CoreWeave (CRWV) and Nebius (NBIS).
+# Both went public in 2025; pre-IPO capex disclosures are limited.
+#
+# UPDATE QUARTERLY: pull from 10-Q filings after each earnings release.
+# Live stock prices are tracked on the Industry & Sentiment section of the page.
+
+last_updated: "2026-05-20"
+unit: "USD billions"
+sources:
+  CRWV: "CoreWeave 10-Q filings post-IPO (Mar 2025)"
+  NBIS: "Nebius Group financial statements; capex from cash flow statement"
+notes: |
+  Pre-IPO quarters carry less granular disclosure — figures may be approximate or
+  derived from press releases. Verify each value against the latest filing.
+  Capex here is total property/equipment purchases; majority is GPU & DC infrastructure.
+
+quarters:
+  - period: "2024Q2"
+    CRWV: 0.8
+    NBIS: 0.2
+  - period: "2024Q3"
+    CRWV: 1.2
+    NBIS: 0.3
+  - period: "2024Q4"
+    CRWV: 1.6
+    NBIS: 0.4
+  - period: "2025Q1"
+    CRWV: 1.9
+    NBIS: 0.5
+  - period: "2025Q2"
+    CRWV: 2.3
+    NBIS: 0.7
+  - period: "2025Q3"
+    CRWV: 2.8
+    NBIS: 0.9
+  - period: "2025Q4"
+    CRWV: 3.2
+    NBIS: 1.1
+  - period: "2026Q1"
+    CRWV: 3.5
+    NBIS: 1.3

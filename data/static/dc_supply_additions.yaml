@@ -1,0 +1,31 @@
+# Global data centre supply additions — gross MW additions per year.
+# DC Byte / Synergy Research are paid sources; this file is hand-entered from
+# public summaries and press articles. Treat as directional, not authoritative.
+#
+# UPDATE ANNUALLY (or quarterly if quoting partial-year prints): replace the
+# oldest period and add the new year.
+
+last_updated: "2026-05-20"
+unit: "MW (gross supply added)"
+sources:
+  "Global": "Public summaries citing DC Byte / Cushman & Wakefield / JLL annual outlooks; press articles"
+notes: |
+  Subscription source (DC Byte / Synergy) — figures not included. Values below are
+  rough public-source estimates. Confirm against authoritative tracker before relying.
+  Figures cover global commissioned supply, not pipeline.
+
+periods:
+  - period: "2019"
+    value: 1800
+  - period: "2020"
+    value: 2200
+  - period: "2021"
+    value: 2900
+  - period: "2022"
+    value: 3800
+  - period: "2023"
+    value: 5500
+  - period: "2024"
+    value: 7800
+  - period: "2025"
+    value: 10500

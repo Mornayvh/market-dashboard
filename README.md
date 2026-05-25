@@ -179,6 +179,35 @@ docker run -p 8501:8501 -e FRED_API_KEY=your_key market-dashboard
 
 ---
 
+## Updating Static Data (Direct Investments page)
+
+The **Direct Investments** page mixes live market data (yfinance / FRED / Google Trends) with **hand-edited quarterly figures** that can't be pulled for free — hyperscaler capex, NVDA Data Center revenue, neocloud capex, global DC supply additions, and FDA novel drug approvals. These live as YAML files in `data/static/` and need to be refreshed each quarter.
+
+### Files & update cadence
+
+| File | Update when | Source |
+|------|-------------|--------|
+| `hyperscaler_capex.yaml` | After Alphabet/MSFT/META/AMZN earnings (Jan, Apr, Jul, Oct) | 10-Qs |
+| `nvda_dc_revenue.yaml` | After NVDA earnings (Feb, May, Aug, Nov) | NVDA earnings release |
+| `neocloud_capex.yaml` | After CoreWeave & Nebius earnings | 10-Qs |
+| `dc_supply_additions.yaml` | Annually (or after public DC tracker prints) | Cushman & Wakefield / JLL / press |
+| `fda_nme_approvals.yaml` | Annually, around Feb | FDA CDER Novel Drug Approvals page |
+
+### How to update
+
+1. Open the relevant YAML file in `data/static/`.
+2. **Quarterly schema** (`hyperscaler_capex`, `nvda_dc_revenue`, `neocloud_capex`):
+   - Remove the oldest entry under `quarters:` (keeps the chart at 8 quarters).
+   - Append a new entry with the latest reported quarter.
+3. **Annual schema** (`dc_supply_additions`, `fda_nme_approvals`):
+   - Append a new entry under `periods:`.
+4. Update the `last_updated:` date and add a one-line note under `sources:` citing the filing/page used.
+5. Commit the file. Streamlit Cloud auto-reloads on push.
+
+The page shows the `last_updated` date as a caption under each chart so it's easy to spot stale data at a glance.
+
+---
+
 ## Troubleshooting
 
 | Issue | Fix |

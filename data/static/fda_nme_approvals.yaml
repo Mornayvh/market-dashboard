@@ -1,0 +1,35 @@
+# FDA novel drug approvals — new molecular entities (NMEs) and new biologics
+# approved by CDER (Center for Drug Evaluation and Research) each calendar year.
+#
+# Source: FDA CDER "Novel Drug Approvals" annual summary page.
+#   https://www.fda.gov/drugs/new-drugs-fda-cders-new-molecular-entities-and-new-therapeutic-biological-products
+# UPDATE ANNUALLY (around Feb each year, once FDA publishes the prior-year summary).
+
+last_updated: "2026-02-15"
+unit: "approvals per year"
+sources:
+  "FDA CDER": "Annual Novel Drug Approvals summary (FDA.gov)"
+notes: |
+  Counts include both new molecular entities and new biologic license applications
+  approved by CDER. Does not include CBER biologics, generics, or supplements.
+  2025 figure preliminary — confirm against final FDA CDER report.
+
+periods:
+  - period: "2017"
+    value: 46
+  - period: "2018"
+    value: 59
+  - period: "2019"
+    value: 48
+  - period: "2020"
+    value: 53
+  - period: "2021"
+    value: 50
+  - period: "2022"
+    value: 37
+  - period: "2023"
+    value: 55
+  - period: "2024"
+    value: 50
+  - period: "2025"
+    value: 50

@@ -1,0 +1,62 @@
+# Hyperscaler quarterly capex — pre-populated from public earnings releases & 10-Qs.
+# Calendar quarters. Microsoft figures map their fiscal quarters to calendar quarters.
+#
+# UPDATE QUARTERLY: replace the oldest quarter with the newest reported, after
+# each round of hyperscaler earnings (typically late Jan, late Apr, late Jul, late Oct).
+# Cite the source filing in `sources` below.
+#
+# Verify all figures against the latest 10-Q before relying on them for decisions.
+
+last_updated: "2026-05-20"
+unit: "USD billions"
+sources:
+  GOOGL: "Alphabet 10-Q filings (capital expenditures, total company)"
+  MSFT:  "Microsoft 10-Q filings (capex incl. finance leases; fiscal quarters mapped to calendar)"
+  META:  "Meta Platforms 10-Q filings (purchases of property and equipment)"
+  AMZN:  "Amazon 10-Q filings (purchases of property and equipment)"
+notes: |
+  Figures are total company capex per public filings — not split out for data centre vs other.
+  Microsoft's FY runs Jul-Jun; figures mapped to calendar quarters.
+  Last quarter (2026Q1) per Apr/May 2026 earnings releases — verify against actual 10-Qs.
+
+quarters:
+  - period: "2024Q2"
+    GOOGL: 13.2
+    MSFT:  19.0
+    META:   8.5
+    AMZN:  17.6
+  - period: "2024Q3"
+    GOOGL: 13.1
+    MSFT:  20.0
+    META:   9.2
+    AMZN:  22.6
+  - period: "2024Q4"
+    GOOGL: 14.3
+    MSFT:  22.6
+    META:  14.8
+    AMZN:  26.3
+  - period: "2025Q1"
+    GOOGL: 17.2
+    MSFT:  21.4
+    META:  13.7
+    AMZN:  24.3
+  - period: "2025Q2"
+    GOOGL: 22.4
+    MSFT:  24.2
+    META:  17.0
+    AMZN:  31.4
+  - period: "2025Q3"
+    GOOGL: 24.0
+    MSFT:  27.0
+    META:  19.0
+    AMZN:  34.0
+  - period: "2025Q4"
+    GOOGL: 25.0
+    MSFT:  28.0
+    META:  22.0
+    AMZN:  32.0
+  - period: "2026Q1"
+    GOOGL: 27.0
+    MSFT:  30.0
+    META:  23.0
+    AMZN:  36.0
