@@ -61,6 +61,11 @@ def compute_metrics(asset: Asset, df: pd.DataFrame) -> dict:
     prev_day = _get_value_at(df, one_day_ago)
     prev_week = _get_value_at(df, one_week_ago)
     ltm_base = _get_value_at(df, ltm_start)
+    # Yahoo's "1y" window can start a few days after `ltm_start` when the
+    # boundary lands on a weekend or holiday. Use the earliest available
+    # close as the LTM anchor in that case.
+    if ltm_base is None and df is not None and not df.empty:
+        ltm_base = float(df["Close"].iloc[0])
 
     # For rates and spreads, show absolute change (in bps or %)
     if asset.is_rate or asset.is_spread:
