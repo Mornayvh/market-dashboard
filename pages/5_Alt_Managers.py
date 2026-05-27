@@ -1,7 +1,8 @@
 """
 Alternative Asset Managers — Secco Capital.
-Compares listed alt managers as STOCKS using Yahoo Finance data only.
-Not a business comparison: no AUM / FRE / carry / perpetual-capital data.
+Compares listed alt managers as STOCKS using Yahoo Finance data, plus a small
+hand-maintained Total-AUM reference table (see src/alt_managers/reference_data.py).
+Still not a full business comparison: no FRE / carry / perpetual-capital data.
 """
 
 from datetime import datetime
@@ -13,6 +14,7 @@ import streamlit as st
 from src.alt_managers.universe import TICKERS, CATEGORIES, GEOS, TILTS
 from src.alt_managers import data as dl
 from src.alt_managers import metrics
+from src.alt_managers import reference_data as ref
 
 st.set_page_config(
     page_title="Alt Managers | Secco Capital",
@@ -218,6 +220,11 @@ table_rows = []
 for d in shown:
     m = d["_meta"]
     mc_usd = dl.to_usd(d.get("marketCap"), m["ccy"], FX)
+    mc_usd_bn = mc_usd / 1e9 if mc_usd is not None else None
+    rd = ref.get(d["ticker"])
+    aum = rd.get("total_aum_usd_bn")
+    # Mkt cap per $ of AUM — how the market prices each dollar of assets managed.
+    mc_per_aum = mc_usd_bn / aum if (mc_usd_bn is not None and aum) else None
     table_rows.append({
         "Ticker": d["ticker"],
         "Name": m["name"],
@@ -226,7 +233,10 @@ for d in shown:
         "Tilt": m["tilt"],
         "Price": d.get("currentPrice"),
         "Ccy": m["ccy"],
-        "Mkt Cap (USD bn)": mc_usd / 1e9 if mc_usd is not None else None,
+        "Mkt Cap (USD bn)": mc_usd_bn,
+        "AUM (USD bn)": aum,
+        "Mkt Cap / AUM": mc_per_aum,
+        "AUM as of": rd.get("as_of"),
         "Fwd P/E": d.get("forwardPE"),
         "P/B": d.get("priceToBook"),
         "EV/EBITDA": d.get("enterpriseToEbitda"),
@@ -251,7 +261,8 @@ df = pd.DataFrame(table_rows)
 # make them disappear entirely.
 always_keep = {
     "Ticker", "Name", "Category", "Geo", "Tilt", "Ccy",
-    "Price", "Mkt Cap (USD bn)", "LTM %", "3Y % (ann)", "5Y % (ann)",
+    "Price", "Mkt Cap (USD bn)", "AUM (USD bn)", "Mkt Cap / AUM",
+    "LTM %", "3Y % (ann)", "5Y % (ann)",
 }
 for col in list(df.columns):
     if col not in always_keep and df[col].isna().all():
@@ -262,6 +273,13 @@ num_x = ["Fwd P/E", "P/B", "EV/EBITDA", "Beta"]
 colcfg = {
     "Price": st.column_config.NumberColumn(format="%.2f"),
     "Mkt Cap (USD bn)": st.column_config.NumberColumn(format="%.1f"),
+    "AUM (USD bn)": st.column_config.NumberColumn(
+        format="%.0f",
+        help="Total assets under management, USD bn. Hand-maintained reference data "
+             "(not from Yahoo) — see 'AUM as of' for the reporting date. Approximate; verify."),
+    "Mkt Cap / AUM": st.column_config.NumberColumn(
+        format="%.2fx",
+        help="Market cap per $1 of AUM. Higher = market pays more per dollar of assets managed."),
     "# Analysts": st.column_config.NumberColumn(format="%d"),
 }
 for c in num_pct:
@@ -275,6 +293,8 @@ with st.expander("Explain the columns / data-quality notes"):
     st.markdown("""
 - **Price** — latest close in the firm's **native currency** (see Ccy column). Not FX-converted.
 - **Mkt Cap (USD bn)** — native market cap converted to USD at the latest spot FX. The only cross-comparable size column.
+- **AUM (USD bn)** — Total assets under management. **Hand-maintained reference data — not from Yahoo** (Yahoo carries no AUM). Figures are approximate, refreshed manually each quarter; the **AUM as of** column shows the reporting date. *Verify against the firm's disclosure before relying on it.* Blank for advisory-led (PJT) or proprietary-capital (3i) firms with no comparable figure, and for BN (Brookfield AUM is reported at BAM — don't double-count).
+- **Mkt Cap / AUM** — market cap per $1 of AUM; a rough read on how richly the market prices each dollar of assets managed.
 - **Fwd P/E** — Yahoo's forward P/E off **GAAP EPS estimates**, not FRE/DE. Unreliable for alt managers and *often missing for European listings*.
 - **P/B / EV/EBITDA** — `EV/EBITDA` is frequently missing for non-US listings (Yahoo returns no `enterpriseValue`/`ebitda`).
 - **Div Yield %** — Yahoo reports this already in percent; shown as-is.
@@ -382,6 +402,8 @@ with left:
     st.markdown(f'<div class="dd-summary">{summ}</div>', unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
     mc_usd = dl.to_usd(dd.get("marketCap"), m["ccy"], FX)
+    dd_ref = ref.get(dd_tk)
+    dd_aum = dd_ref.get("total_aum_usd_bn")
     upside = dl.analyst_upside(dd.get("targetMeanPrice"), dd.get("currentPrice"))
     roe = dd.get("returnOnEquity")
     hi, lo = dd.get("fiftyTwoWeekHigh"), dd.get("fiftyTwoWeekLow")
@@ -389,6 +411,7 @@ with left:
     metric_pairs = [
         ("Price", None if dd.get("currentPrice") is None else f'{dd["currentPrice"]:.2f} {m["ccy"]}'),
         ("Market Cap (USD bn)", None if mc_usd is None else f'{mc_usd / 1e9:,.1f}'),
+        ("Total AUM (USD bn)", None if dd_aum is None else f'{dd_aum:,.0f}  (as of {dd_ref.get("as_of") or "n/a"})'),
         ("Forward P/E", None if dd.get("forwardPE") is None else f'{dd["forwardPE"]:.1f}'),
         ("Trailing P/E", None if dd.get("trailingPE") is None else f'{dd["trailingPE"]:.1f}'),
         ("Price / Book", None if dd.get("priceToBook") is None else f'{dd["priceToBook"]:.1f}'),
@@ -455,7 +478,7 @@ with st.expander("Caveats — read before drawing conclusions"):
     st.markdown("""
 - **Yahoo Finance data is unofficial.** Fields may be stale, delayed, or missing without warning. This dashboard never fabricates — missing values show as blank and are listed in the Data quality panel.
 - **"Forward P/E" is unreliable for alt managers.** It is based on GAAP EPS, not the Fee-Related Earnings (FRE) or Distributable Earnings (DE) the firms actually guide on. Treat valuation multiples here as rough, not decision-grade.
-- **This compares the firms as _stocks_, not as alt-manager businesses.** There is **no AUM, FRE, perpetual capital, fundraising, or accrued-carry data** here — those are the metrics that actually drive these businesses, and none are available free via Yahoo.
+- **This compares the firms mainly as _stocks_, not as full alt-manager businesses.** The only business fundamental here is **Total AUM**, which is **hand-maintained reference data** (not from Yahoo) — approximate, refreshed manually each quarter, and to be verified against each firm's disclosure (see the *AUM as of* dates). There is still **no FRE, perpetual capital, fundraising, or accrued-carry data** — the other metrics that drive these businesses, none of which are available free via Yahoo.
 - **BN and BAM are two tickers for one franchise** (Brookfield Corp holds a large stake in Brookfield Asset Management). **Do not sum their market caps** — it double-counts.
 - **Currency:** market caps are converted to USD at the latest spot FX for comparison; prices stay in native currency.
 - **Returns:** LTM is last-twelve-months total return; 3Y and 5Y are annualized (CAGR). Recently-listed names (CVC, Bridgepoint, Patria, EQT) will be blank for longer windows.
