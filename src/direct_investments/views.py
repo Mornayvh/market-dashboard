@@ -112,7 +112,7 @@ def render_comps(holding: Holding):
             f'<td>{name_html}<span class="stock-ticker">{q["ticker"]}</span></td>',
             f'<td>{_fmt_price(q["price"])}</td>',
         ]
-        for key in ("chg_1d", "chg_1w", "chg_1m", "chg_ytd"):
+        for key in ("chg_1d", "chg_1w", "chg_1m", "chg_ltm"):
             v = q[key]
             color = COLORS["green"] if (v is not None and v > 0) else COLORS["red"] if (v is not None and v < 0) else COLORS["text_secondary"]
             cells.append(f'<td style="color:{color}">{_fmt_pct(v)}</td>')
@@ -122,7 +122,7 @@ def render_comps(holding: Holding):
     st.markdown(
         f"""<table class="data-table">
             <thead><tr>
-                <th>Company</th><th>Price</th><th>1D</th><th>1W</th><th>1M</th><th>YTD</th><th>Mkt Cap</th>
+                <th>Company</th><th>Price</th><th>1D</th><th>1W</th><th>1M</th><th>LTM</th><th>Mkt Cap</th>
             </tr></thead>
             <tbody>{rows_html}</tbody>
         </table>""",

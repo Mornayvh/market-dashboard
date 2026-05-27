@@ -42,7 +42,7 @@ def fetch_quote(ticker: str) -> dict:
     Returns {} if all fetches fail.
     """
     out = {"ticker": ticker, "price": None, "chg_1d": None,
-           "chg_1w": None, "chg_1m": None, "chg_ytd": None, "market_cap": None}
+           "chg_1w": None, "chg_1m": None, "chg_ltm": None, "market_cap": None}
 
     hist = fetch_history(ticker, period="1y")
     if hist is not None and not hist.empty:
@@ -63,12 +63,10 @@ def fetch_quote(ticker: str) -> dict:
         out["chg_1w"] = _pct_since(7)
         out["chg_1m"] = _pct_since(30)
 
-        year_start = pd.Timestamp(f"{close.index[-1].year}-01-01")
-        ytd_mask = close.index >= year_start
-        if ytd_mask.any():
-            base = float(close[ytd_mask].iloc[0])
-            if base:
-                out["chg_ytd"] = (last / base - 1) * 100
+        # LTM: trailing ~12 months, anchored to the earliest close in the 1y window.
+        ltm_base = float(close.iloc[0])
+        if ltm_base:
+            out["chg_ltm"] = (last / ltm_base - 1) * 100
 
     try:
         info = yf.Ticker(ticker).info or {}

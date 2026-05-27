@@ -34,7 +34,7 @@ INFO_FIELDS = [
 # FX pairs — value is USD per 1 unit of the foreign currency.
 FX_PAIRS = {"EUR": "EURUSD=X", "GBP": "GBPUSD=X", "CHF": "CHFUSD=X", "SEK": "SEKUSD=X"}
 
-PERIOD_MAP = {"1M": "1mo", "6M": "6mo", "YTD": "ytd", "1Y": "1y", "3Y": "3y", "5Y": "5y"}
+PERIOD_MAP = {"1M": "1mo", "6M": "6mo", "LTM": "1y", "3Y": "3y", "5Y": "5y"}
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -90,10 +90,9 @@ def fetch_ticker_data(ticker: str) -> dict:
     close = fetch_history(ticker, "5y")
     if close is None:
         result["_failed_fields"].append("priceHistory")
-        result.update({"ret_ytd": None, "ret_1y": None, "ret_3y": None, "ret_5y": None})
+        result.update({"ret_ltm": None, "ret_3y": None, "ret_5y": None})
     else:
-        result["ret_ytd"] = metrics.ytd_return(close)
-        result["ret_1y"] = metrics.trailing_total_return(close, 1)
+        result["ret_ltm"] = metrics.trailing_total_return(close, 1)
         result["ret_3y"] = metrics.annualized_return(close, 3)
         result["ret_5y"] = metrics.annualized_return(close, 5)
         # Fall back to last close if currentPrice missing

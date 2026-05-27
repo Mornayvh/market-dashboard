@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # Yahoo Finance
 # ---------------------------------------------------------------------------
 
-def fetch_yf_history(ticker: str, period: str = "ytd") -> Optional[pd.DataFrame]:
+def fetch_yf_history(ticker: str, period: str = "1y") -> Optional[pd.DataFrame]:
     """
     Pull OHLCV history from Yahoo Finance.
     Returns DataFrame with DatetimeIndex and 'Close' column, or None on failure.

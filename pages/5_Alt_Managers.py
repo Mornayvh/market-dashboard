@@ -233,8 +233,7 @@ for d in shown:
         "Div Yield %": d.get("dividendYield"),
         "Payout %": _frac_to_pct(d.get("payoutRatio")),
         "Beta": d.get("beta"),
-        "YTD %": d.get("ret_ytd"),
-        "1Y %": d.get("ret_1y"),
+        "LTM %": d.get("ret_ltm"),
         "3Y % (ann)": d.get("ret_3y"),
         "5Y % (ann)": d.get("ret_5y"),
         "ROE %": _frac_to_pct(d.get("returnOnEquity")),
@@ -251,7 +250,7 @@ identity_cols = {"Ticker", "Name", "Category", "Geo", "Tilt", "Ccy"}
 for col in list(df.columns):
     if col not in identity_cols and df[col].isna().all():
         df = df.drop(columns=[col])
-num_pct = ["Div Yield %", "Payout %", "YTD %", "1Y %", "3Y % (ann)", "5Y % (ann)",
+num_pct = ["Div Yield %", "Payout %", "LTM %", "3Y % (ann)", "5Y % (ann)",
            "ROE %", "Op Margin %", "Insider %", "Target Upside %"]
 num_x = ["Fwd P/E", "P/B", "EV/EBITDA", "Beta"]
 colcfg = {
@@ -274,7 +273,7 @@ with st.expander("Explain the columns / data-quality notes"):
 - **P/B / EV/EBITDA** — `EV/EBITDA` is frequently missing for non-US listings (Yahoo returns no `enterpriseValue`/`ebitda`).
 - **Div Yield %** — Yahoo reports this already in percent; shown as-is.
 - **Payout %, ROE %, Op Margin %, Insider %** — Yahoo reports these as fractions; multiplied by 100 here.
-- **YTD / 1Y** — total return. **3Y / 5Y** — *annualized* (CAGR). Blank if the listing lacks that much history (e.g. CVC, Bridgepoint, Patria IPO'd recently).
+- **LTM** — last-twelve-months total return (trailing ~365 days). **3Y / 5Y** — *annualized* (CAGR). Blank if the listing lacks that much history (e.g. CVC, Bridgepoint, Patria IPO'd recently).
 - **Target Upside %** — analyst mean target / current price − 1.
 - **Rec** — Yahoo's `recommendationKey` (strong_buy / buy / hold / underperform / sell).
 - Missing values render as blank to keep columns sortable; the **Data quality** panel below lists exactly which fields failed per ticker.
@@ -298,7 +297,7 @@ with csel1:
     chart_tickers = st.multiselect("Tickers", list(TICKERS.keys()), default=default_chart,
                                    format_func=lambda t: f"{t} · {TICKERS[t]['name']}")
 with csel2:
-    period = st.radio("Period", list(dl.PERIOD_MAP.keys()), index=4, horizontal=True)
+    period = st.radio("Period", list(dl.PERIOD_MAP.keys()), index=2, horizontal=True)
 
 if chart_tickers:
     fig = go.Figure()
@@ -453,7 +452,7 @@ with st.expander("Caveats — read before drawing conclusions"):
 - **This compares the firms as _stocks_, not as alt-manager businesses.** There is **no AUM, FRE, perpetual capital, fundraising, or accrued-carry data** here — those are the metrics that actually drive these businesses, and none are available free via Yahoo.
 - **BN and BAM are two tickers for one franchise** (Brookfield Corp holds a large stake in Brookfield Asset Management). **Do not sum their market caps** — it double-counts.
 - **Currency:** market caps are converted to USD at the latest spot FX for comparison; prices stay in native currency.
-- **Returns:** YTD and 1Y are total returns; 3Y and 5Y are annualized (CAGR). Recently-listed names (CVC, Bridgepoint, Patria, EQT) will be blank for longer windows.
+- **Returns:** LTM is last-twelve-months total return; 3Y and 5Y are annualized (CAGR). Recently-listed names (CVC, Bridgepoint, Patria, EQT) will be blank for longer windows.
 """)
 
 st.markdown("---")

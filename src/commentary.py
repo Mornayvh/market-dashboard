@@ -104,8 +104,8 @@ def _generate_ai_commentary(metrics_df: pd.DataFrame, api_key: str) -> Optional[
             val = fmt_value(row["latest"], is_rate, is_spread)
             daily = fmt_change(row["daily_chg"], is_rate, is_spread)
             weekly = fmt_change(row["weekly_chg"], is_rate, is_spread)
-            ytd = fmt_change(row["ytd_chg"], is_rate, is_spread)
-            lines.append(f"{name}: {val} (1D: {daily}, 1W: {weekly}, YTD: {ytd})")
+            ltm = fmt_change(row.get("ltm_chg"), is_rate, is_spread)
+            lines.append(f"{name}: {val} (1D: {daily}, 1W: {weekly}, LTM: {ltm})")
 
         data_summary = "\n".join(lines)
         today_str = datetime.now().strftime("%A, %d %B %Y")

@@ -39,26 +39,6 @@ def _value_on_or_before(s: pd.Series, target: pd.Timestamp) -> float | None:
     return float(s[mask].iloc[-1])
 
 
-def ytd_return(close: pd.Series | None) -> float | None:
-    s = _clean(close)
-    if s is None or len(s) < 2:
-        return None
-    jan1 = pd.Timestamp(year=s.index[-1].year, month=1, day=1)
-    # Prefer the last close of the prior year; otherwise the first close this year.
-    prior = s.index < jan1
-    if prior.any():
-        base = float(s[prior].iloc[-1])
-    else:
-        this_year = s[s.index >= jan1]
-        if this_year.empty:
-            return None
-        base = float(this_year.iloc[0])
-    last = float(s.iloc[-1])
-    if base == 0:
-        return None
-    return (last / base - 1) * 100
-
-
 def trailing_total_return(close: pd.Series | None, years: float) -> float | None:
     """Total (cumulative) return over the trailing `years`, in percent."""
     s = _clean(close)
