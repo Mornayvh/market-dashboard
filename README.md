@@ -208,6 +208,49 @@ The page shows the `last_updated` date as a caption under each chart so it's eas
 
 ---
 
+## Alternative Asset Managers page
+
+The **Alternative Managers** page (`pages/5_Alt_Managers.py`, backed by `src/alt_managers/`) compares 19 listed alternative asset managers **as stocks**, using Yahoo Finance only (no paid APIs, no scraping, no hardcoded fundamentals).
+
+- `src/alt_managers/universe.py` — the 19-ticker universe (name, category, geo, tilt, currency).
+- `src/alt_managers/data.py` — cached yfinance fetchers (`@st.cache_data(ttl=3600)`), FX normalization to USD, per-ticker failed-field tracking.
+- `src/alt_managers/metrics.py` — pure return/risk calcs (YTD, 1Y, 3Y/5Y annualized, max drawdown, annualized vol).
+
+### Known limitations
+
+- **Yahoo data is unofficial** — fields may be stale or missing without warning. Missing values render blank and are listed in the in-app *Data quality* panel; nothing is fabricated or interpolated.
+- **"Forward P/E" is unreliable for alt managers** — it's based on GAAP EPS, not the FRE / Distributable Earnings these firms guide on. Often missing entirely for European listings.
+- **This compares them as _stocks_, not as businesses** — there is no AUM, FRE, perpetual-capital, fundraising, or accrued-carry data (none available free via Yahoo).
+- **BN and BAM are two tickers for one franchise** (Brookfield) — do not sum their market caps.
+- **Currency** — market caps are converted to USD at latest spot FX; prices stay native. Recently-listed names (CVC, Bridgepoint, Patria, EQT) show blank for longer return windows.
+
+### How to extend with reference data (AUM / FRE / asset mix)
+
+Yahoo can't supply the fundamentals that actually drive these businesses. To layer them in later, create an **optional** `src/alt_managers/reference_data.py` exposing something like:
+
+```python
+# src/alt_managers/reference_data.py  (optional — create when you have a source)
+def load_reference() -> dict:
+    """Return {ticker: {"aum_bn": float, "fre_margin": float, "asset_mix": {...}}}.
+    Source: a hand-maintained CSV under data/static/, updated from earnings decks.
+    """
+    ...
+```
+
+Then in `pages/5_Alt_Managers.py`, attempt the import and merge into the comparison table if present:
+
+```python
+try:
+    from src.alt_managers.reference_data import load_reference
+    ref = load_reference()
+except ImportError:
+    ref = {}
+```
+
+This keeps the page working with Yahoo-only data today, and picks up richer fundamentals automatically once the reference module exists — no other code changes needed.
+
+---
+
 ## Troubleshooting
 
 | Issue | Fix |
