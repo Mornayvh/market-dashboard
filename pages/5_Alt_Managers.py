@@ -245,10 +245,16 @@ for d in shown:
     })
 
 df = pd.DataFrame(table_rows)
-# Drop any data column that is empty for every shown ticker (keep identity columns).
-identity_cols = {"Ticker", "Name", "Category", "Geo", "Tilt", "Ccy"}
+# Drop an OPTIONAL column only when it's empty for every shown ticker. Core columns
+# (identity, price, size, returns) are always kept — otherwise a transient Yahoo
+# rate-limit on the history endpoint would blank the return columns for all firms and
+# make them disappear entirely.
+always_keep = {
+    "Ticker", "Name", "Category", "Geo", "Tilt", "Ccy",
+    "Price", "Mkt Cap (USD bn)", "LTM %", "3Y % (ann)", "5Y % (ann)",
+}
 for col in list(df.columns):
-    if col not in identity_cols and df[col].isna().all():
+    if col not in always_keep and df[col].isna().all():
         df = df.drop(columns=[col])
 num_pct = ["Div Yield %", "Payout %", "LTM %", "3Y % (ann)", "5Y % (ann)",
            "ROE %", "Op Margin %", "Insider %", "Target Upside %"]
