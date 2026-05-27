@@ -114,7 +114,7 @@ st.markdown("""
         font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
         border-radius: 4px; padding: 0.4rem 1.2rem;
     }
-    .stButton > button:hover { background: #F1F5F9; border-color: #2563EB; color: #1E293B; }
+    .stButton > button:hover { background: #F1F5F9; border-color: #4F7FD6; color: #1E293B; }
     /* ── Mobile responsive ── */
     @media (max-width: 768px) {
         .block-container { padding-left: 0.5rem; padding-right: 0.5rem; max-width: 100%; }
@@ -251,7 +251,7 @@ def count_items(df, col):
             c[item] += 1
     return c
 
-def render_bar_chart(counts, color="#2563EB"):
+def render_bar_chart(counts, color="#4F7FD6"):
     if not counts or len(counts) == 0:
         st.caption("No data available")
         return
@@ -405,7 +405,7 @@ left, right = st.columns([1, 1], gap="large")
 with left:
     section_header("Geography Allocation")
     geo_invested = count_items(invested, "geographies")
-    render_bar_chart(geo_invested, color="#2563EB")
+    render_bar_chart(geo_invested, color="#4F7FD6")
 
     st.markdown("<br>", unsafe_allow_html=True)
 

@@ -333,7 +333,7 @@ def render_static_block(block: StaticBlock):
         unit = meta.get("unit") or ""
         fig = go.Figure()
         companies = df["company"].unique().tolist()
-        palette = ["#2563EB", "#16A34A", "#F59E0B", "#DC2626", "#94A3B8", "#0EA5E9"]
+        palette = ["#4F7FD6", "#16A34A", "#F59E0B", "#DC2626", "#94A3B8", "#0EA5E9"]
         for i, comp in enumerate(companies):
             sub = df[df["company"] == comp]
             fig.add_trace(go.Bar(

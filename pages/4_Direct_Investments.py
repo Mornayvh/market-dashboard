@@ -114,7 +114,7 @@ st.markdown("""
     .primary-chip {
         display: inline-block; font-family: 'JetBrains Mono', monospace;
         font-size: 0.55rem; font-weight: 700; padding: 1px 6px;
-        background: #2563EB; color: white; border-radius: 3px; margin-left: 6px;
+        background: #4F7FD6; color: white; border-radius: 3px; margin-left: 6px;
         letter-spacing: 0.05em;
     }
 
@@ -169,7 +169,7 @@ st.markdown("""
         font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
         border-radius: 4px; padding: 0.4rem 1.2rem;
     }
-    .stButton > button:hover { background: #F1F5F9; border-color: #2563EB; color: #1E293B; }
+    .stButton > button:hover { background: #F1F5F9; border-color: #4F7FD6; color: #1E293B; }
 </style>
 """, unsafe_allow_html=True)
 

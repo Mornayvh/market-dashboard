@@ -4,7 +4,7 @@
 # data tables render dark even though every page paints a light background via CSS.
 [theme]
 base = "light"
-primaryColor = "#2563EB"          # accent blue used across the dashboard
+primaryColor = "#4F7FD6"          # accent blue used across the dashboard
 backgroundColor = "#FFFFFF"        # table cell background
 secondaryBackgroundColor = "#F1F5F9"  # table header / alternating shading (slate-100)
 textColor = "#1E293B"              # slate-800

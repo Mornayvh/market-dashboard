@@ -71,7 +71,7 @@ st.markdown("""
         font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
         border-radius: 4px; padding: 0.4rem 1.2rem;
     }
-    .stButton > button:hover { background: #F1F5F9; border-color: #2563EB; color: #1E293B; }
+    .stButton > button:hover { background: #F1F5F9; border-color: #4F7FD6; color: #1E293B; }
 
     /* ── Table styling — matches Market Dashboard / Stock Watchlist ── */
     .table-scroll { overflow-x: auto; }
@@ -102,7 +102,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-GREEN, RED, ACCENT, BORDER, TEXT2 = "#16A34A", "#DC2626", "#2563EB", "#E2E8F0", "#64748B"
+GREEN, RED, ACCENT, BORDER, TEXT2 = "#16A34A", "#DC2626", "#4F7FD6", "#E2E8F0", "#64748B"
 
 
 def section_header(text):
@@ -378,7 +378,7 @@ with csel2:
 
 if chart_tickers:
     fig = go.Figure()
-    palette = ["#2563EB", "#16A34A", "#F59E0B", "#EC4899", "#14B8A6", "#6366F1", "#DC2626", "#0EA5E9"]
+    palette = ["#4F7FD6", "#16A34A", "#F59E0B", "#EC4899", "#14B8A6", "#6366F1", "#DC2626", "#0EA5E9"]
     stat_rows = []
     for i, tk in enumerate(chart_tickers):
         close = dl.fetch_history(tk, dl.PERIOD_MAP[period])

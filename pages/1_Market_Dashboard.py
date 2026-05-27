@@ -196,7 +196,7 @@ st.markdown("""
     }
     .stButton > button:hover {
         background: #F1F5F9;
-        border-color: #2563EB;
+        border-color: #4F7FD6;
         color: #1E293B;
     }
 
