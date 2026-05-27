@@ -204,7 +204,7 @@ def load_all():
     return rows, fx, failures, datetime.now()
 
 
-with st.spinner("Fetching data for 19 alternative managers (first load can take ~30s)..."):
+with st.spinner(f"Fetching data for {len(TICKERS)} alternative managers (first load can take ~30s)..."):
     ROWS, FX, FAILURES, TS = load_all()
 
 # ---------------------------------------------------------------------------
@@ -344,13 +344,13 @@ with st.expander("Explain the columns / data-quality notes"):
     st.markdown("""
 - **Price** — latest close in the firm's **native currency** (see Ccy column). Not FX-converted.
 - **Mkt Cap (USD bn)** — native market cap converted to USD at the latest spot FX. The only cross-comparable size column.
-- **AUM (USD bn)** — Total assets under management. **Hand-maintained reference data — not from Yahoo** (Yahoo carries no AUM). Figures are approximate, refreshed manually each quarter; the **AUM as of** column shows the reporting date. *Verify against the firm's disclosure before relying on it.* Blank for advisory-led (PJT) or proprietary-capital (3i) firms with no comparable figure, and for BN (Brookfield AUM is reported at BAM — don't double-count).
+- **AUM (USD bn)** — Total assets under management. **Hand-maintained reference data — not from Yahoo** (Yahoo carries no AUM). Figures are approximate, refreshed manually each quarter; the **AUM as of** column shows the reporting date. *Verify against the firm's disclosure before relying on it.* Blank for BN (Brookfield AUM is reported at BAM — don't double-count) and any firm with no comparable Total-AUM figure.
 - **Mkt Cap / AUM** — market cap per $1 of AUM; a rough read on how richly the market prices each dollar of assets managed.
 - **Fwd P/E** — Yahoo's forward P/E off **GAAP EPS estimates**, not FRE/DE. Unreliable for alt managers and *often missing for European listings*.
 - **P/B / EV/EBITDA** — `EV/EBITDA` is frequently missing for non-US listings (Yahoo returns no `enterpriseValue`/`ebitda`).
 - **Div Yield %** — Yahoo reports this already in percent; shown as-is.
 - **Payout %, ROE %, Op Margin %, Insider %** — Yahoo reports these as fractions; multiplied by 100 here.
-- **LTM** — last-twelve-months total return (trailing ~365 days). **3Y / 5Y** — *annualized* (CAGR). Blank if the listing lacks that much history (e.g. CVC, Bridgepoint, Patria IPO'd recently).
+- **LTM** — last-twelve-months total return (trailing ~365 days). **3Y / 5Y** — *annualized* (CAGR). Blank if the listing lacks that much history (e.g. CVC, EQT listed relatively recently).
 - **Target Upside %** — analyst mean target / current price − 1.
 - **Rec** — Yahoo's `recommendationKey` (strong_buy / buy / hold / underperform / sell).
 - Missing values render as blank to keep columns sortable; the **Data quality** panel below lists exactly which fields failed per ticker.
@@ -521,7 +521,7 @@ with st.expander("Caveats — read before drawing conclusions"):
 - **This compares the firms mainly as _stocks_, not as full alt-manager businesses.** The only business fundamental here is **Total AUM**, which is **hand-maintained reference data** (not from Yahoo) — approximate, refreshed manually each quarter, and to be verified against each firm's disclosure (see the *AUM as of* dates). There is still **no FRE, perpetual capital, fundraising, or accrued-carry data** — the other metrics that drive these businesses, none of which are available free via Yahoo.
 - **BN and BAM are two tickers for one franchise** (Brookfield Corp holds a large stake in Brookfield Asset Management). **Do not sum their market caps** — it double-counts.
 - **Currency:** market caps are converted to USD at the latest spot FX for comparison; prices stay in native currency.
-- **Returns:** LTM is last-twelve-months total return; 3Y and 5Y are annualized (CAGR). Recently-listed names (CVC, Bridgepoint, Patria, EQT) will be blank for longer windows.
+- **Returns:** LTM is last-twelve-months total return; 3Y and 5Y are annualized (CAGR). Recently-listed names (CVC, EQT) will be blank for longer windows.
 """)
 
 st.markdown("---")
