@@ -8,3 +8,4 @@ openpyxl>=3.1.0
 reportlab>=4.0.0
 PyYAML>=6.0
 pytrends>=4.9.2
+watchdog>=4.0.0
