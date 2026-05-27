@@ -69,13 +69,13 @@ st.markdown("""
     }
 
     .nav-grid {
-        display: flex; gap: 1.5rem; justify-content: center;
-        margin-top: 2.5rem;
+        display: flex; flex-wrap: wrap; gap: 1.25rem; justify-content: center;
+        margin: 2.5rem auto 0 auto; max-width: 1040px;
     }
 
     .nav-card {
         background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px;
-        width: 400px; overflow: hidden;
+        width: 320px; overflow: hidden;
         box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         transition: all 0.2s ease;
         text-decoration: none !important; display: block;
@@ -86,7 +86,7 @@ st.markdown("""
     }
 
     .nav-card-preview {
-        width: 100%; height: 140px; overflow: hidden;
+        width: 100%; height: 120px; overflow: hidden;
         border-bottom: 1px solid #E2E8F0;
         display: flex; align-items: center; justify-content: center;
         background: #F8FAFC;
