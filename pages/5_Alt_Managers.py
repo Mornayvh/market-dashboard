@@ -206,6 +206,11 @@ for d in shown:
     })
 
 df = pd.DataFrame(table_rows)
+# Drop any data column that is empty for every shown ticker (keep identity columns).
+identity_cols = {"Ticker", "Name", "Category", "Geo", "Tilt", "Ccy"}
+for col in list(df.columns):
+    if col not in identity_cols and df[col].isna().all():
+        df = df.drop(columns=[col])
 num_pct = ["Div Yield %", "Payout %", "YTD %", "1Y %", "3Y % (ann)", "5Y % (ann)",
            "ROE %", "Op Margin %", "Insider %", "Target Upside %"]
 num_x = ["Fwd P/E", "P/B", "EV/EBITDA", "Beta"]
@@ -293,8 +298,22 @@ if chart_tickers:
     sdf = pd.DataFrame(stat_rows)
     st.dataframe(
         sdf, hide_index=True, use_container_width=True,
-        column_config={c: st.column_config.NumberColumn(format="%.1f%%")
-                       for c in ["Total Return %", "Annualized %", "Max Drawdown %", "Volatility %"]},
+        column_config={
+            "Total Return %": st.column_config.NumberColumn(
+                format="%.1f%%",
+                help="Cumulative price return over the selected period (end / start − 1)."),
+            "Annualized %": st.column_config.NumberColumn(
+                format="%.1f%%",
+                help="Total return expressed as a compound annual growth rate (CAGR) over the period."),
+            "Max Drawdown %": st.column_config.NumberColumn(
+                format="%.1f%%",
+                help="Largest peak-to-trough decline within the period (most negative drop from a prior high)."),
+            "Volatility %": st.column_config.NumberColumn(
+                format="%.1f%%",
+                help="Annualized volatility of daily returns: daily-return standard deviation × √252. "
+                     "Higher = more price variability/risk. Measured in native currency (excludes FX); "
+                     "short periods (e.g. 1M) are noisy."),
+        },
     )
 else:
     st.caption("Select at least one ticker to chart.")
@@ -317,21 +336,29 @@ with left:
     summ = dd.get("longBusinessSummary") or "Business summary unavailable from Yahoo Finance."
     st.markdown(f'<div class="dd-summary">{summ}</div>', unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
+    mc_usd = dl.to_usd(dd.get("marketCap"), m["ccy"], FX)
+    upside = dl.analyst_upside(dd.get("targetMeanPrice"), dd.get("currentPrice"))
+    roe = dd.get("returnOnEquity")
+    hi, lo = dd.get("fiftyTwoWeekHigh"), dd.get("fiftyTwoWeekLow")
+    # (label, value) — value is None when the underlying field is missing; those lines are skipped.
     metric_pairs = [
-        ("Price", fmt_dash(dd.get("currentPrice"), "{:.2f}") + f" {m['ccy']}"),
-        ("Market Cap (USD bn)", fmt_dash((dl.to_usd(dd.get("marketCap"), m["ccy"], FX) or 0) / 1e9 if dd.get("marketCap") else None, "{:,.1f}")),
-        ("Forward P/E", fmt_dash(dd.get("forwardPE"))),
-        ("Trailing P/E", fmt_dash(dd.get("trailingPE"))),
-        ("Price / Book", fmt_dash(dd.get("priceToBook"))),
-        ("EV / EBITDA", fmt_dash(dd.get("enterpriseToEbitda"))),
-        ("Dividend Yield", fmt_dash(dd.get("dividendYield")) + ("%" if dd.get("dividendYield") is not None else "")),
-        ("ROE", fmt_dash(_frac_to_pct(dd.get("returnOnEquity"))) + ("%" if dd.get("returnOnEquity") is not None else "")),
-        ("Beta", fmt_dash(dd.get("beta"), "{:.2f}")),
-        ("52W High / Low", f'{fmt_dash(dd.get("fiftyTwoWeekHigh"),"{:.2f}")} / {fmt_dash(dd.get("fiftyTwoWeekLow"),"{:.2f}")}'),
-        ("Analyst Target Upside", fmt_dash(dl.analyst_upside(dd.get("targetMeanPrice"), dd.get("currentPrice"))) + ("%" if dd.get("targetMeanPrice") and dd.get("currentPrice") else "")),
+        ("Price", None if dd.get("currentPrice") is None else f'{dd["currentPrice"]:.2f} {m["ccy"]}'),
+        ("Market Cap (USD bn)", None if mc_usd is None else f'{mc_usd / 1e9:,.1f}'),
+        ("Forward P/E", None if dd.get("forwardPE") is None else f'{dd["forwardPE"]:.1f}'),
+        ("Trailing P/E", None if dd.get("trailingPE") is None else f'{dd["trailingPE"]:.1f}'),
+        ("Price / Book", None if dd.get("priceToBook") is None else f'{dd["priceToBook"]:.1f}'),
+        ("EV / EBITDA", None if dd.get("enterpriseToEbitda") is None else f'{dd["enterpriseToEbitda"]:.1f}'),
+        ("Dividend Yield", None if dd.get("dividendYield") is None else f'{dd["dividendYield"]:.1f}%'),
+        ("ROE", None if roe is None else f'{roe * 100:.1f}%'),
+        ("Beta", None if dd.get("beta") is None else f'{dd["beta"]:.2f}'),
+        ("52W High / Low", None if (hi is None or lo is None) else f'{hi:.2f} / {lo:.2f}'),
+        ("Analyst Target Upside", None if upside is None else f'{upside:.1f}%'),
     ]
-    for lbl, val in metric_pairs:
+    shown_metrics = [(lbl, val) for lbl, val in metric_pairs if val is not None]
+    for lbl, val in shown_metrics:
         st.markdown(f'<div class="metric-line"><span class="lbl">{lbl}</span><span class="val">{val}</span></div>', unsafe_allow_html=True)
+    if not shown_metrics:
+        st.caption("No valuation metrics available from Yahoo for this ticker.")
 
 with right:
     close5 = dl.fetch_history(dd_tk, "5y")
