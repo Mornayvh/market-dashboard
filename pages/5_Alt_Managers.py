@@ -72,6 +72,33 @@ st.markdown("""
         border-radius: 4px; padding: 0.4rem 1.2rem;
     }
     .stButton > button:hover { background: #F1F5F9; border-color: #2563EB; color: #1E293B; }
+
+    /* ── Table styling — matches Market Dashboard / Stock Watchlist ── */
+    .table-scroll { overflow-x: auto; }
+    .data-table {
+        width: 100%; border-collapse: collapse;
+        font-family: 'JetBrains Mono', monospace; font-size: 0.76rem;
+    }
+    .data-table th {
+        font-family: 'DM Sans', sans-serif; font-size: 0.65rem; font-weight: 600;
+        color: #64748B; text-transform: uppercase; letter-spacing: 0.08em;
+        padding: 0.5rem 0.6rem; border-bottom: 1px solid #E2E8F0; text-align: right;
+        white-space: nowrap;
+    }
+    .data-table th:first-child, .data-table th.txt { text-align: left; }
+    .data-table td {
+        padding: 0.55rem 0.6rem; border-bottom: 1px solid #F1F5F9;
+        text-align: right; color: #1E293B; white-space: nowrap;
+    }
+    .data-table td:first-child {
+        text-align: left; color: #1E293B; font-weight: 500;
+        font-family: 'DM Sans', sans-serif; font-size: 0.78rem;
+    }
+    .data-table td.txt { text-align: left; color: #475569; font-family: 'DM Sans', sans-serif; }
+    .data-table tr:hover { background: #F1F5F9; }
+    .chg-up { color: #16A34A; }
+    .chg-down { color: #DC2626; }
+    .chg-flat { color: #64748B; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -92,6 +119,32 @@ def fmt_dash(v, fmt="{:.1f}"):
     if v is None or (isinstance(v, float) and pd.isna(v)):
         return "—"
     return fmt.format(v)
+
+
+def _is_num(v):
+    return isinstance(v, (int, float)) and not (isinstance(v, float) and pd.isna(v))
+
+
+def render_html_table(df, fmts, text_cols, color_cols=frozenset()):
+    """Render a DataFrame as a styled HTML table matching the .data-table look
+    used on the Market Dashboard and Stock Watchlist pages. `text_cols` are
+    left-aligned; `color_cols` are tinted green/red by sign. Missing values show
+    as "—". Note: unlike st.dataframe, this static table is not sortable."""
+    cols = list(df.columns)
+    head = "".join(f'<th class="{"txt" if c in text_cols else ""}">{c}</th>' for c in cols)
+    body = ""
+    for _, row in df.iterrows():
+        cells = ""
+        for c in cols:
+            v = row[c]
+            disp = fmts[c].format(v) if (c in fmts and _is_num(v)) else ("—" if not _is_num(v) and (v is None or (isinstance(v, float) and pd.isna(v)) or v == "") else str(v))
+            cls = "txt" if c in text_cols else ""
+            if c in color_cols and _is_num(v):
+                cls = (cls + " " + ("chg-up" if v > 0 else "chg-down" if v < 0 else "chg-flat")).strip()
+            cells += f'<td class="{cls}">{disp}</td>'
+        body += f"<tr>{cells}</tr>"
+    return (f'<div class="table-scroll"><table class="data-table"><thead><tr>{head}</tr>'
+            f'</thead><tbody>{body}</tbody></table></div>')
 
 
 def range_bar(low, high, current, mean=None, ccy="", low_lbl="Low", high_lbl="High"):
@@ -270,24 +323,22 @@ for col in list(df.columns):
 num_pct = ["Div Yield %", "Payout %", "LTM %", "3Y % (ann)", "5Y % (ann)",
            "ROE %", "Op Margin %", "Insider %", "Target Upside %"]
 num_x = ["Fwd P/E", "P/B", "EV/EBITDA", "Beta"]
-colcfg = {
-    "Price": st.column_config.NumberColumn(format="%.2f"),
-    "Mkt Cap (USD bn)": st.column_config.NumberColumn(format="%.1f"),
-    "AUM (USD bn)": st.column_config.NumberColumn(
-        format="%.0f",
-        help="Total assets under management, USD bn. Hand-maintained reference data "
-             "(not from Yahoo) — see 'AUM as of' for the reporting date. Approximate; verify."),
-    "Mkt Cap / AUM": st.column_config.NumberColumn(
-        format="%.2fx",
-        help="Market cap per $1 of AUM. Higher = market pays more per dollar of assets managed."),
-    "# Analysts": st.column_config.NumberColumn(format="%d"),
+fmts = {
+    "Price": "{:.2f}",
+    "Mkt Cap (USD bn)": "{:.1f}",
+    "AUM (USD bn)": "{:.0f}",
+    "Mkt Cap / AUM": "{:.2f}x",
+    "# Analysts": "{:.0f}",
 }
 for c in num_pct:
-    colcfg[c] = st.column_config.NumberColumn(format="%.1f%%")
+    fmts[c] = "{:.1f}%"
 for c in num_x:
-    colcfg[c] = st.column_config.NumberColumn(format="%.1f")
+    fmts[c] = "{:.1f}"
+text_cols = {"Ticker", "Name", "Category", "Geo", "Tilt", "Ccy", "AUM as of", "Rec"}
+# Signed performance columns get green/red tinting, like the other pages' change cols.
+color_cols = {"LTM %", "3Y % (ann)", "5Y % (ann)", "Target Upside %"}
 
-st.dataframe(df, column_config=colcfg, hide_index=True, use_container_width=True, height=460)
+st.markdown(render_html_table(df, fmts, text_cols, color_cols), unsafe_allow_html=True)
 
 with st.expander("Explain the columns / data-quality notes"):
     st.markdown("""
@@ -361,25 +412,14 @@ if chart_tickers:
     st.plotly_chart(fig, use_container_width=True)
 
     sdf = pd.DataFrame(stat_rows)
-    st.dataframe(
-        sdf, hide_index=True, use_container_width=True,
-        column_config={
-            "Total Return %": st.column_config.NumberColumn(
-                format="%.1f%%",
-                help="Cumulative price return over the selected period (end / start − 1)."),
-            "Annualized %": st.column_config.NumberColumn(
-                format="%.1f%%",
-                help="Total return expressed as a compound annual growth rate (CAGR) over the period."),
-            "Max Drawdown %": st.column_config.NumberColumn(
-                format="%.1f%%",
-                help="Largest peak-to-trough decline within the period (most negative drop from a prior high)."),
-            "Volatility %": st.column_config.NumberColumn(
-                format="%.1f%%",
-                help="Annualized volatility of daily returns: daily-return standard deviation × √252. "
-                     "Higher = more price variability/risk. Measured in native currency (excludes FX); "
-                     "short periods (e.g. 1M) are noisy."),
-        },
-    )
+    sfmts = {c: "{:.1f}%" for c in ["Total Return %", "Annualized %", "Max Drawdown %", "Volatility %"]}
+    st.markdown(
+        render_html_table(sdf, sfmts, text_cols={"Ticker", "Name"},
+                          color_cols={"Total Return %", "Annualized %", "Max Drawdown %"}),
+        unsafe_allow_html=True)
+    st.caption("Total Return = cumulative over the period · Annualized = CAGR · "
+               "Max Drawdown = largest peak-to-trough drop · Volatility = annualized daily-return "
+               "stdev × √252 (native currency; short periods are noisy).")
 else:
     st.caption("Select at least one ticker to chart.")
 

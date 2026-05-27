@@ -1,0 +1,10 @@
+# Force a light theme so widgets that follow Streamlit's theme (notably
+# st.dataframe) render light, matching the app's slate/white house style.
+# Without this, Streamlit inherits the OS theme (dark on this machine) and the
+# data tables render dark even though every page paints a light background via CSS.
+[theme]
+base = "light"
+primaryColor = "#2563EB"          # accent blue used across the dashboard
+backgroundColor = "#FFFFFF"        # table cell background
+secondaryBackgroundColor = "#F1F5F9"  # table header / alternating shading (slate-100)
+textColor = "#1E293B"              # slate-800
