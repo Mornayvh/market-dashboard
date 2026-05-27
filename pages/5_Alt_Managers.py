@@ -353,16 +353,8 @@ with st.expander("Explain the columns / data-quality notes"):
 - **LTM** — last-twelve-months total return (trailing ~365 days). **3Y / 5Y** — *annualized* (CAGR). Blank if the listing lacks that much history (e.g. CVC, EQT listed relatively recently).
 - **Target Upside %** — analyst mean target / current price − 1.
 - **Rec** — Yahoo's `recommendationKey` (strong_buy / buy / hold / underperform / sell).
-- Missing values render as blank to keep columns sortable; the **Data quality** panel below lists exactly which fields failed per ticker.
+- Missing values render as blank to keep columns sortable.
 """)
-
-# Data quality panel
-with st.expander(f"Data quality — {len(FAILURES)} ticker(s) with missing fields"):
-    if not FAILURES:
-        st.write("All fields present for all shown tickers.")
-    else:
-        for tk, fields in FAILURES.items():
-            st.markdown(f"**{tk}** ({TICKERS[tk]['name']}): {', '.join(fields)}")
 
 # ---------------------------------------------------------------------------
 # Section 3 — Price chart panel
@@ -510,19 +502,6 @@ with right:
             legend=dict(orientation="h", yanchor="top", y=-0.12, xanchor="center", x=0.5, font=dict(size=11)),
         )
         st.plotly_chart(fig2, use_container_width=True)
-
-# ---------------------------------------------------------------------------
-# Section 5 — Caveats
-# ---------------------------------------------------------------------------
-with st.expander("Caveats — read before drawing conclusions"):
-    st.markdown("""
-- **Yahoo Finance data is unofficial.** Fields may be stale, delayed, or missing without warning. This dashboard never fabricates — missing values show as blank and are listed in the Data quality panel.
-- **"Forward P/E" is unreliable for alt managers.** It is based on GAAP EPS, not the Fee-Related Earnings (FRE) or Distributable Earnings (DE) the firms actually guide on. Treat valuation multiples here as rough, not decision-grade.
-- **This compares the firms mainly as _stocks_, not as full alt-manager businesses.** The only business fundamental here is **Total AUM**, which is **hand-maintained reference data** (not from Yahoo) — approximate, refreshed manually each quarter, and to be verified against each firm's disclosure (see the *AUM as of* dates). There is still **no FRE, perpetual capital, fundraising, or accrued-carry data** — the other metrics that drive these businesses, none of which are available free via Yahoo.
-- **BN and BAM are two tickers for one franchise** (Brookfield Corp holds a large stake in Brookfield Asset Management). **Do not sum their market caps** — it double-counts.
-- **Currency:** market caps are converted to USD at the latest spot FX for comparison; prices stay in native currency.
-- **Returns:** LTM is last-twelve-months total return; 3Y and 5Y are annualized (CAGR). Recently-listed names (CVC, EQT) will be blank for longer windows.
-""")
 
 st.markdown("---")
 st.markdown('<div style="text-align:center; font-size:0.65rem; color:#94A3B8; font-family:\'DM Sans\',sans-serif;">Alternative Asset Managers · Secco Capital · Compared as stocks · Not investment advice</div>', unsafe_allow_html=True)
