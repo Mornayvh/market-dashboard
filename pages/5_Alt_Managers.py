@@ -262,17 +262,19 @@ if chart_tickers:
     for i, tk in enumerate(chart_tickers):
         close = dl.fetch_history(tk, dl.PERIOD_MAP[period])
         if close is None or close.empty:
-            stat_rows.append({"Ticker": tk, "Total Return %": None, "Annualized %": None,
-                              "Max Drawdown %": None, "Volatility %": None})
+            stat_rows.append({"Ticker": tk, "Name": TICKERS[tk]["name"], "Total Return %": None,
+                              "Annualized %": None, "Max Drawdown %": None, "Volatility %": None})
             continue
         rb = metrics.rebase_to_100(close)
         fig.add_trace(go.Scatter(x=rb.index, y=rb.values, mode="lines",
-                                 name=f"{tk}", line=dict(color=palette[i % len(palette)], width=1.8)))
+                                 name=f"{TICKERS[tk]['name']} ({tk})",
+                                 line=dict(color=palette[i % len(palette)], width=1.8)))
         tot = metrics.total_return(close)
         yrs = max((close.index[-1] - close.index[0]).days / 365.25, 1e-9)
         ann = ((1 + tot / 100) ** (1 / yrs) - 1) * 100 if (tot is not None and (1 + tot / 100) > 0) else None
         stat_rows.append({
             "Ticker": tk,
+            "Name": TICKERS[tk]["name"],
             "Total Return %": tot,
             "Annualized %": ann,
             "Max Drawdown %": metrics.max_drawdown(close),
