@@ -29,24 +29,14 @@ AUM: dict[str, dict] = {
     "BX":      {"total_aum_usd_bn": 1200, "as_of": "2025-12-31", "source": "Q4'25 results — VERIFY"},
     "KKR":     {"total_aum_usd_bn":  680, "as_of": "2025-12-31", "source": "Q4'25 results — VERIFY"},
     "APO":     {"total_aum_usd_bn":  840, "as_of": "2025-12-31", "source": "Q4'25 results — VERIFY"},
-    "ARES":    {"total_aum_usd_bn":  560, "as_of": "2025-12-31", "source": "Q4'25 results — VERIFY"},
     "CG":      {"total_aum_usd_bn":  470, "as_of": "2025-12-31", "source": "Q4'25 results — VERIFY"},
-    "OWL":     {"total_aum_usd_bn":  290, "as_of": "2025-12-31", "source": "Q4'25 results — VERIFY"},
     "BN":      {"total_aum_usd_bn": None, "as_of": None,         "source": "AUM reported at BAM level — do not double-count"},
     "BAM":     {"total_aum_usd_bn": 1050, "as_of": "2025-12-31", "source": "Q4'25 — Brookfield total AUM — VERIFY"},
     "TPG":     {"total_aum_usd_bn":  250, "as_of": "2025-12-31", "source": "Q4'25 results — VERIFY"},
     # European (reported currency noted; figures converted to USD — VERIFY)
     "EQT.ST":  {"total_aum_usd_bn":  280, "as_of": "2025-12-31", "source": "FY'25, reports in EUR — VERIFY"},
     "CVC.AS":  {"total_aum_usd_bn":  215, "as_of": "2025-12-31", "source": "FY'25, reports in EUR — VERIFY"},
-    "III.L":   {"total_aum_usd_bn": None, "as_of": None,         "source": "Proprietary-capital model; no comparable AUM"},
-    "BPT.L":   {"total_aum_usd_bn":   47, "as_of": "2025-12-31", "source": "FY'25, reports in EUR — VERIFY"},
     "PGHN.SW": {"total_aum_usd_bn":  150, "as_of": "2025-12-31", "source": "FY'25 results — VERIFY"},
-    # Specialists
-    "HLNE":    {"total_aum_usd_bn":  135, "as_of": "2025-12-31", "source": "Latest results (AUM, excl. AUA) — VERIFY"},
-    "STEP":    {"total_aum_usd_bn":  190, "as_of": "2025-12-31", "source": "Latest results — VERIFY"},
-    "PAX":     {"total_aum_usd_bn":   45, "as_of": "2025-12-31", "source": "Q4'25 results — VERIFY"},
-    "PJT":     {"total_aum_usd_bn": None, "as_of": None,         "source": "Advisory-led; minimal AUM"},
-    "EMG.L":   {"total_aum_usd_bn":  175, "as_of": "2025-12-31", "source": "FY'25 results — VERIFY"},
 }
 
 
