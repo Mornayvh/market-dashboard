@@ -25,7 +25,8 @@ INFO_FIELDS = [
     "dividendYield", "payoutRatio", "fiveYearAvgDividendYield",
     "beta", "fiftyTwoWeekHigh", "fiftyTwoWeekLow", "currentPrice", "previousClose",
     "totalRevenue", "ebitda", "profitMargins", "operatingMargins", "returnOnEquity", "debtToEquity",
-    "targetMeanPrice", "recommendationMean", "numberOfAnalystOpinions", "recommendationKey",
+    "targetMeanPrice", "targetLowPrice", "targetHighPrice",
+    "recommendationMean", "numberOfAnalystOpinions", "recommendationKey",
     "heldPercentInsiders", "heldPercentInstitutions",
     "longBusinessSummary",
 ]

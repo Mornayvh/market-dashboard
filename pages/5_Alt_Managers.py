@@ -92,6 +92,46 @@ def fmt_dash(v, fmt="{:.1f}"):
     return fmt.format(v)
 
 
+def range_bar(low, high, current, mean=None, ccy="", low_lbl="Low", high_lbl="High"):
+    """Horizontal range bar: a track from low->high with a current-price marker
+    (and optional mean marker). Returns None if inputs are insufficient."""
+    if low is None or high is None or current is None or high <= low:
+        return None
+    xs = [low, high, current] + ([mean] if mean is not None else [])
+    xmin, xmax = min(xs), max(xs)
+    pad = (xmax - xmin) * 0.10 or 1
+    fig = go.Figure()
+    # range track
+    fig.add_shape(type="rect", x0=low, x1=high, y0=0.40, y1=0.60,
+                  fillcolor="#E2E8F0", line=dict(width=0))
+    # optional analyst mean marker (dotted)
+    annotations = []
+    if mean is not None:
+        fig.add_shape(type="line", x0=mean, x1=mean, y0=0.30, y1=0.70,
+                      line=dict(color="#64748B", width=2, dash="dot"))
+        annotations.append(dict(x=mean, y=0.78, text=f"mean {mean:,.2f}", showarrow=False,
+                                xanchor="center", yanchor="bottom", font=dict(size=9, color="#64748B")))
+    # current price marker (solid accent)
+    fig.add_shape(type="line", x0=current, x1=current, y0=0.22, y1=0.78,
+                  line=dict(color=ACCENT, width=3))
+    annotations += [
+        dict(x=current, y=0.95, text=f"now {current:,.2f}", showarrow=False,
+             xanchor="center", yanchor="bottom", font=dict(size=11, color=ACCENT)),
+        dict(x=low, y=0.10, text=f"{low_lbl} {low:,.2f}", showarrow=False,
+             xanchor="left", yanchor="top", font=dict(size=10, color=TEXT2)),
+        dict(x=high, y=0.10, text=f"{high_lbl} {high:,.2f}", showarrow=False,
+             xanchor="right", yanchor="top", font=dict(size=10, color=TEXT2)),
+    ]
+    fig.update_layout(
+        height=95, margin=dict(l=8, r=8, t=20, b=22),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(visible=False, range=[xmin - pad, xmax + pad]),
+        yaxis=dict(visible=False, range=[0, 1]),
+        annotations=annotations, showlegend=False,
+    )
+    return fig
+
+
 # ---------------------------------------------------------------------------
 # Load all data
 # ---------------------------------------------------------------------------
@@ -361,6 +401,25 @@ with left:
         st.caption("No valuation metrics available from Yahoo for this ticker.")
 
 with right:
+    cur = dd.get("currentPrice")
+
+    # 52-week range bar
+    bar52 = range_bar(dd.get("fiftyTwoWeekLow"), dd.get("fiftyTwoWeekHigh"), cur,
+                      ccy=m["ccy"], low_lbl="52W Low", high_lbl="52W High")
+    if bar52 is not None:
+        st.markdown('<div class="dd-meta">52-week price range</div>', unsafe_allow_html=True)
+        st.plotly_chart(bar52, use_container_width=True, key="bar52")
+
+    # Analyst price-target gauge
+    gauge = range_bar(dd.get("targetLowPrice"), dd.get("targetHighPrice"), cur,
+                      mean=dd.get("targetMeanPrice"), ccy=m["ccy"],
+                      low_lbl="Target Low", high_lbl="Target High")
+    if gauge is not None:
+        st.markdown('<div class="dd-meta">Analyst price targets vs current</div>', unsafe_allow_html=True)
+        st.plotly_chart(gauge, use_container_width=True, key="target_gauge")
+    else:
+        st.caption("Analyst price-target range unavailable for this ticker.")
+
     close5 = dl.fetch_history(dd_tk, "5y")
     if close5 is None or close5.empty:
         st.caption("Price history unavailable.")
