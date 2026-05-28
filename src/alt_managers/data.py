@@ -184,29 +184,98 @@ def fetch_quarterly_eps(ticker: str) -> pd.DataFrame | None:
         return None
 
 
-def trailing_pe_series(ticker: str, period: str = "5y") -> pd.Series | None:
-    """Build a daily trailing P/E series for a ticker.
+@st.cache_data(ttl=86400, show_spinner=False)
+def _eps_from_yf_quarterly(ticker: str) -> pd.DataFrame | None:
+    """Quarterly diluted (or basic) EPS from yfinance's quarterly_income_stmt.
+    ~5-7 quarters of history for most US tickers, often empty for European."""
+    try:
+        q = yf.Ticker(ticker).quarterly_income_stmt
+    except Exception as e:
+        logger.warning(f"yfinance quarterly EPS fetch failed for {ticker}: {e}")
+        return None
+    if q is None or q.empty:
+        return None
+    for row_name in ("Diluted EPS", "Basic EPS"):
+        if row_name in q.index:
+            s = q.loc[row_name].dropna()
+            rows = [(pd.to_datetime(d), float(v)) for d, v in s.items()
+                    if v is not None and not (isinstance(v, float) and pd.isna(v))]
+            if rows:
+                return pd.DataFrame(rows, columns=["date", "eps"]).set_index("date").sort_index()
+    return None
 
-    `daily price ÷ rolling-4Q TTM EPS`, with TTM EPS held constant between
-    quarterly report dates (step function). The series only starts once
-    four quarters of EPS history are available, and any date where the
-    rolling TTM EPS is ≤ 0 (loss years) is dropped — negative P/E values
-    aren't meaningful to plot. Returns None if FMP data is missing.
-    """
-    eps_df = fetch_quarterly_eps(ticker)
-    if eps_df is None or len(eps_df) < 4:
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def _eps_from_yf_annual(ticker: str) -> pd.DataFrame | None:
+    """Annual diluted (or basic) EPS from yfinance's income_stmt. 3-5 yearly
+    rows; annual EPS is already a TTM figure so no rolling sum needed.
+    Last-resort fallback that works for European tickers too."""
+    try:
+        a = yf.Ticker(ticker).income_stmt
+    except Exception as e:
+        logger.warning(f"yfinance annual EPS fetch failed for {ticker}: {e}")
         return None
-    ttm = eps_df["eps"].rolling(4).sum().dropna()
-    if ttm.empty:
+    if a is None or a.empty:
         return None
-    price = fetch_history(ticker, period)
-    if price is None or price.empty:
-        return None
-    # For each price date, use the most recent reported TTM EPS at-or-before
-    # that date (step function across earnings-release dates).
-    ttm_aligned = ttm.reindex(price.index.union(ttm.index)).sort_index().ffill().reindex(price.index)
+    for row_name in ("Diluted EPS", "Basic EPS"):
+        if row_name in a.index:
+            s = a.loc[row_name].dropna()
+            rows = [(pd.to_datetime(d), float(v)) for d, v in s.items()
+                    if v is not None and not (isinstance(v, float) and pd.isna(v))]
+            if rows:
+                return pd.DataFrame(rows, columns=["date", "eps"]).set_index("date").sort_index()
+    return None
+
+
+def _pe_from_ttm(price: pd.Series, ttm: pd.Series) -> pd.Series | None:
+    """Align a TTM EPS series to daily prices as a step function, drop dates
+    where TTM ≤ 0 (loss periods produce negative P/E which isn't meaningful to
+    plot), and return the resulting P/E series. None if nothing survives."""
+    ttm_aligned = (ttm.reindex(price.index.union(ttm.index))
+                      .sort_index().ffill().reindex(price.index))
     valid = ttm_aligned.notna() & (ttm_aligned > 0)
     if not valid.any():
         return None
     pe = price[valid] / ttm_aligned[valid]
     return pe if not pe.empty else None
+
+
+def trailing_pe_series(ticker: str, period: str = "5y") -> tuple[pd.Series | None, str | None]:
+    """Build a daily trailing-P/E series with a three-tier fallback chain:
+
+      1. FMP quarterly EPS  → rolling 4Q TTM, ~5y history (best, needs key)
+      2. yfinance quarterly → rolling 4Q TTM, ~1-1.5y history (US tickers)
+      3. yfinance annual    → annual EPS as step function, ~3-5y sparse line
+
+    Returns (series, source_label) so callers can show provenance. Returns
+    (None, None) when every source fails (rare — usually only when even the
+    daily price history is missing).
+    """
+    price = fetch_history(ticker, period)
+    if price is None or price.empty:
+        return None, None
+
+    # Tier 1: FMP (best quarterly history when available)
+    eps_df = fetch_quarterly_eps(ticker)
+    if eps_df is not None and len(eps_df) >= 4:
+        ttm = eps_df["eps"].rolling(4).sum().dropna()
+        pe = _pe_from_ttm(price, ttm) if not ttm.empty else None
+        if pe is not None and not pe.empty:
+            return pe, "FMP quarterly (rolling-4Q TTM)"
+
+    # Tier 2: yfinance quarterly (short but real TTM)
+    eps_df = _eps_from_yf_quarterly(ticker)
+    if eps_df is not None and len(eps_df) >= 4:
+        ttm = eps_df["eps"].rolling(4).sum().dropna()
+        pe = _pe_from_ttm(price, ttm) if not ttm.empty else None
+        if pe is not None and not pe.empty:
+            return pe, "Yahoo quarterly (rolling-4Q TTM, ~1.5y)"
+
+    # Tier 3: yfinance annual (sparse step function — covers European tickers)
+    eps_df = _eps_from_yf_annual(ticker)
+    if eps_df is not None and not eps_df.empty:
+        pe = _pe_from_ttm(price, eps_df["eps"])
+        if pe is not None and not pe.empty:
+            return pe, "Yahoo annual EPS (sparse step function)"
+
+    return None, None
