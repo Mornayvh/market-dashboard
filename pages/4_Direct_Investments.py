@@ -229,8 +229,9 @@ if holding.extra_tickers:
     render_sparkline_grid("Industry & Sentiment", list(holding.extra_tickers))
 
 # 3b. Supply-side names (e.g. DC power producers for Kelvion)
-if holding.supplier_tickers:
-    render_sparkline_grid("Data Center Power", list(holding.supplier_tickers))
+supplier_tickers = getattr(holding, "supplier_tickers", ()) or ()
+if supplier_tickers:
+    render_sparkline_grid("Data Center Power", list(supplier_tickers))
 
 # 4. Commodities / macro (yfinance)
 if holding.commodities:
