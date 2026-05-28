@@ -272,12 +272,8 @@ section_header("Comparison Table")
 table_rows = []
 for d in shown:
     m = d["_meta"]
-    mc_usd = dl.to_usd(d.get("marketCap"), m["ccy"], FX)
-    mc_usd_bn = mc_usd / 1e9 if mc_usd is not None else None
     rd = ref.get(d["ticker"])
     aum = rd.get("total_aum_usd_bn")
-    # Mkt cap per $ of AUM — how the market prices each dollar of assets managed.
-    mc_per_aum = mc_usd_bn / aum if (mc_usd_bn is not None and aum) else None
     table_rows.append({
         "Ticker": d["ticker"],
         "Name": m["name"],
@@ -286,9 +282,7 @@ for d in shown:
         "Tilt": m["tilt"],
         "Price": d.get("currentPrice"),
         "Ccy": m["ccy"],
-        "Mkt Cap (USD bn)": mc_usd_bn,
         "AUM (USD bn)": aum,
-        "Mkt Cap / AUM": mc_per_aum,
         "AUM as of": rd.get("as_of"),
         "Fwd P/E": d.get("forwardPE"),
         "Trail P/E": d.get("trailingPE"),
@@ -316,7 +310,7 @@ df = pd.DataFrame(table_rows)
 # make them disappear entirely.
 always_keep = {
     "Ticker", "Name", "Category", "Geo", "Tilt", "Ccy",
-    "Price", "Mkt Cap (USD bn)", "AUM (USD bn)", "Mkt Cap / AUM",
+    "Price", "AUM (USD bn)",
     "LTM %", "3Y % (ann)", "5Y % (ann)",
 }
 for col in list(df.columns):
@@ -327,9 +321,7 @@ num_pct = ["Div Yield %", "Payout %", "LTM %", "3Y % (ann)", "5Y % (ann)",
 num_x = ["Fwd P/E", "Trail P/E", "P/B", "EV/EBITDA", "EV/Sales", "Beta"]
 fmts = {
     "Price": "{:.2f}",
-    "Mkt Cap (USD bn)": "{:.1f}",
     "AUM (USD bn)": "{:.0f}",
-    "Mkt Cap / AUM": "{:.2f}x",
     "# Analysts": "{:.0f}",
 }
 for c in num_pct:
@@ -345,9 +337,7 @@ st.markdown(render_html_table(df, fmts, text_cols, color_cols), unsafe_allow_htm
 with st.expander("Explain the columns / data-quality notes"):
     st.markdown("""
 - **Price** — latest close in the firm's **native currency** (see Ccy column). Not FX-converted.
-- **Mkt Cap (USD bn)** — native market cap converted to USD at the latest spot FX. The only cross-comparable size column.
 - **AUM (USD bn)** — Total assets under management. **Hand-maintained reference data — not from Yahoo** (Yahoo carries no AUM). Figures are approximate, refreshed manually each quarter; the **AUM as of** column shows the reporting date. *Verify against the firm's disclosure before relying on it.* Blank for BN (Brookfield AUM is reported at BAM — don't double-count) and any firm with no comparable Total-AUM figure.
-- **Mkt Cap / AUM** — market cap per $1 of AUM; a rough read on how richly the market prices each dollar of assets managed.
 - **Valuation multiples (Fwd P/E, Trail P/E, P/B, EV/EBITDA, EV/Sales)** — all GAAP-based, off Yahoo's `info` payload. Alt managers themselves guide on **Fee-Related Earnings (FRE)** and **Distributable Earnings (DE)** — these GAAP multiples are *not* what sell-side analysts use to value the firms and will look richer/cheaper than the FRE/DE-based multiples in research notes. Treat them as a rough cross-sectional read, not a price target. *Fwd P/E and EV/EBITDA are frequently missing for European listings; EV/Sales fills in some of those gaps.*
 - **Div Yield %** — Yahoo reports this already in percent; shown as-is.
 - **Payout %, ROE %, Op Margin %, Insider %** — Yahoo reports these as fractions; multiplied by 100 here.
