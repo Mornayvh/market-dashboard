@@ -294,7 +294,6 @@ for d in shown:
         "Ccy": m["ccy"],
         "AUM (USD bn)": aum,
         "AUM as of": rd.get("as_of"),
-        "Fwd P/E": d.get("forwardPE"),
         "Trail P/E": d.get("trailingPE"),
         "P/B": d.get("priceToBook"),
         "EV/EBITDA": d.get("enterpriseToEbitda"),
@@ -306,11 +305,6 @@ for d in shown:
         "3Y % (ann)": d.get("ret_3y"),
         "5Y % (ann)": d.get("ret_5y"),
         "ROE %": _frac_to_pct(d.get("returnOnEquity")),
-        "Op Margin %": _frac_to_pct(d.get("operatingMargins")),
-        "Insider %": _frac_to_pct(d.get("heldPercentInsiders")),
-        "Target Upside %": dl.analyst_upside(d.get("targetMeanPrice"), d.get("currentPrice")),
-        "# Analysts": d.get("numberOfAnalystOpinions"),
-        "Rec": d.get("recommendationKey"),
     })
 
 df = pd.DataFrame(table_rows)
@@ -326,21 +320,19 @@ always_keep = {
 for col in list(df.columns):
     if col not in always_keep and df[col].isna().all():
         df = df.drop(columns=[col])
-num_pct = ["Div Yield %", "Payout %", "LTM %", "3Y % (ann)", "5Y % (ann)",
-           "ROE %", "Op Margin %", "Insider %", "Target Upside %"]
-num_x = ["Fwd P/E", "Trail P/E", "P/B", "EV/EBITDA", "EV/Sales", "Beta"]
+num_pct = ["Div Yield %", "Payout %", "LTM %", "3Y % (ann)", "5Y % (ann)", "ROE %"]
+num_x = ["Trail P/E", "P/B", "EV/EBITDA", "EV/Sales", "Beta"]
 fmts = {
     "Price": "{:.2f}",
     "AUM (USD bn)": "{:.0f}",
-    "# Analysts": "{:.0f}",
 }
 for c in num_pct:
     fmts[c] = "{:.1f}%"
 for c in num_x:
     fmts[c] = "{:.1f}"
-text_cols = {"Ticker", "Name", "Category", "Geo", "Tilt", "Ccy", "AUM as of", "Rec"}
+text_cols = {"Ticker", "Name", "Category", "Geo", "Tilt", "Ccy", "AUM as of"}
 # Signed performance columns get green/red tinting, like the other pages' change cols.
-color_cols = {"LTM %", "3Y % (ann)", "5Y % (ann)", "Target Upside %"}
+color_cols = {"LTM %", "3Y % (ann)", "5Y % (ann)"}
 
 st.markdown(render_html_table(df, fmts, text_cols, color_cols), unsafe_allow_html=True)
 
@@ -348,12 +340,10 @@ with st.expander("Explain the columns / data-quality notes"):
     st.markdown("""
 - **Price** — latest close in the firm's **native currency** (see Ccy column). Not FX-converted.
 - **AUM (USD bn)** — Total assets under management. **Hand-maintained reference data — not from Yahoo** (Yahoo carries no AUM). Figures are approximate, refreshed manually each quarter; the **AUM as of** column shows the reporting date. *Verify against the firm's disclosure before relying on it.* Blank for BN (Brookfield AUM is reported at BAM — don't double-count) and any firm with no comparable Total-AUM figure.
-- **Valuation multiples (Fwd P/E, Trail P/E, P/B, EV/EBITDA, EV/Sales)** — all GAAP-based, off Yahoo's `info` payload. Alt managers themselves guide on **Fee-Related Earnings (FRE)** and **Distributable Earnings (DE)** — these GAAP multiples are *not* what sell-side analysts use to value the firms and will look richer/cheaper than the FRE/DE-based multiples in research notes. Treat them as a rough cross-sectional read, not a price target. *Fwd P/E and EV/EBITDA are frequently missing for European listings; EV/Sales fills in some of those gaps.*
+- **Valuation multiples (Trail P/E, P/B, EV/EBITDA, EV/Sales)** — all GAAP-based, off Yahoo's `info` payload. Alt managers themselves guide on **Fee-Related Earnings (FRE)** and **Distributable Earnings (DE)** — these GAAP multiples are *not* what sell-side analysts use to value the firms and will look richer/cheaper than the FRE/DE-based multiples in research notes. Treat them as a rough cross-sectional read, not a price target. *EV/EBITDA is frequently missing for the US listings (Yahoo doesn't compute `enterpriseValue` for them); EV/Sales fills that gap.*
 - **Div Yield %** — Yahoo reports this already in percent; shown as-is.
-- **Payout %, ROE %, Op Margin %, Insider %** — Yahoo reports these as fractions; multiplied by 100 here.
+- **Payout %, ROE %** — Yahoo reports these as fractions; multiplied by 100 here.
 - **LTM** — last-twelve-months total return (trailing ~365 days). **3Y / 5Y** — *annualized* (CAGR). Blank if the listing lacks that much history (e.g. CVC, EQT listed relatively recently).
-- **Target Upside %** — analyst mean target / current price − 1.
-- **Rec** — Yahoo's `recommendationKey` (strong_buy / buy / hold / underperform / sell).
 - Missing values render as blank to keep columns sortable.
 """)
 
