@@ -48,6 +48,7 @@ class StaticBlock:
     yaml_file: str
     chart_kind: str                 # "grouped_bar" | "line" | "bar"
     caption: str = ""
+    show_trend: bool = False        # overlay a linear-fit trend line (bar charts only)
 
 
 @dataclass(frozen=True)
@@ -65,15 +66,6 @@ class Holding:
     trends_queries: tuple = ()       # tuple[TrendsQuery]
     static_blocks: tuple = ()        # tuple[StaticBlock]
     static_caption: Optional[str] = None
-
-
-# ---------------------------------------------------------------------------
-# ETF liquidity helper — used at runtime to pick the most liquid pharma ETF
-# from a candidate list. Kept here so the choice is reviewable.
-# ---------------------------------------------------------------------------
-
-PHARMA_ETF_CANDIDATES = ("XLV", "IHE", "XPH")  # broad health, US pharma, S&P pharma
-HEALTH_INSURER_ETF = "IHF"                       # standard liquid name, no choice needed
 
 
 # ---------------------------------------------------------------------------
@@ -226,26 +218,17 @@ REAL_CHEMISTRY = Holding(
         Comp("Publicis Groupe",   "PUB.PA",
              rationale="Owner of Publicis Health, the largest healthcare marketing agency; direct comp on agency spend."),
     ),
-    # Sparklines (sector ETFs) — pharma ETF selected at runtime; placeholder here is overridden.
     sparklines=(
-        Sparkline("Pharma ETF (auto)", "XLV",
-                  "Pharma sector return is the demand baseline for marketing-services spend. Most-liquid of XLV / IHE / XPH picked at runtime."),
-        Sparkline("Health Insurers",   "IHF",
+        Sparkline("Pharmaceuticals", "IHE",
+                  "iShares U.S. Pharmaceuticals ETF — pharma-specific demand baseline for marketing-services spend."),
+        Sparkline("Health Insurers", "IHF",
                   "US healthcare providers & payors; reads on payor-side budget environment."),
-    ),
-    fred_series=(
-        FredSeries("US 10Y Real Yield", "DFII10", "%",
-                   caption="Cost-of-capital input for pharma R&D and biotech funding cycles."),
-        FredSeries("US 30Y Treasury",   "DGS30",  "%",
-                   caption="Long-duration discount rate for pharma valuations & deal activity."),
+        Sparkline("Biotech",         "XBI",
+                  "Cleanest read on early-stage biotech funding; drives launch and marketing budgets."),
     ),
     commodities=(
         Sparkline("EUR/USD", "EURUSD=X",
                   "FX cross used to translate Publicis performance; also captures EMEA pharma demand exposure."),
-    ),
-    extra_tickers=(
-        Sparkline("Biotech (XBI)", "XBI",
-                  "Cleanest read on early-stage biotech funding; drives launch and marketing budgets."),
     ),
     trends_queries=(
         TrendsQuery("GLP-1 interest",   ("GLP-1",),
@@ -259,6 +242,7 @@ REAL_CHEMISTRY = Holding(
             yaml_file="fda_nme_approvals.yaml",
             chart_kind="bar",
             caption="CDER annual novel approvals (FDA).",
+            show_trend=True,
         ),
     ),
 )

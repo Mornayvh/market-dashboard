@@ -11,7 +11,6 @@ from src.direct_investments.config import HOLDINGS, HOLDING_ORDER, get_holding
 from src.direct_investments.views import (
     render_holding_header, render_comps, render_sparkline_grid,
     render_fred_indicators, render_trends, render_static_block,
-    resolve_real_chemistry_sparklines,
 )
 
 st.set_page_config(
@@ -220,13 +219,8 @@ render_holding_header(holding)
 # 1. Public comparables
 render_comps(holding)
 
-# 2. Sector ETF sparklines (with runtime ETF selection for Real Chemistry)
-sparks = (
-    resolve_real_chemistry_sparklines(holding)
-    if holding.key == "real_chemistry"
-    else list(holding.sparklines)
-)
-render_sparkline_grid("Sector ETFs", sparks)
+# 2. Sector ETF sparklines
+render_sparkline_grid("Sector ETFs", list(holding.sparklines))
 
 # 3. Extra YF tickers (industry/sentiment — e.g. NVDA, CRWV, NBIS, XBI)
 if holding.extra_tickers:

@@ -8,6 +8,7 @@ from __future__ import annotations
 import html
 from typing import Optional
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -16,7 +17,6 @@ from src.viz_helpers import COLORS, make_sparkline
 from src.direct_investments import data_loader, static_loader
 from src.direct_investments.config import (
     Holding, Sparkline, FredSeries, TrendsQuery, StaticBlock,
-    PHARMA_ETF_CANDIDATES,
 )
 
 
@@ -370,7 +370,20 @@ def render_static_block(block: StaticBlock):
                 return
             df, meta = df_s, meta_s
             x_vals, y_vals = df["period"], df["value"]
-        fig = go.Figure(go.Bar(x=x_vals, y=y_vals, marker_color=COLORS["accent"]))
+        fig = go.Figure(go.Bar(x=x_vals, y=y_vals, marker_color=COLORS["accent"], name=block.title))
+        if block.show_trend and len(x_vals) >= 2:
+            try:
+                x_num = np.arange(len(x_vals), dtype=float)
+                y_num = np.asarray(y_vals, dtype=float)
+                slope, intercept = np.polyfit(x_num, y_num, 1)
+                trend_y = slope * x_num + intercept
+                fig.add_trace(go.Scatter(
+                    x=x_vals, y=trend_y, mode="lines",
+                    line=dict(color=COLORS["text_secondary"], width=1.6, dash="dash"),
+                    name="Trend", hovertemplate="%{y:.1f}<extra>Trend</extra>",
+                ))
+            except (TypeError, ValueError):
+                pass
         fig.update_layout(
             height=280, margin=dict(l=10, r=20, t=10, b=10),
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
@@ -387,19 +400,3 @@ def render_static_block(block: StaticBlock):
         _render_static_meta(meta)
 
 
-# ---------------------------------------------------------------------------
-# Real Chemistry-specific: pick the most-liquid pharma ETF at runtime
-# ---------------------------------------------------------------------------
-
-def resolve_real_chemistry_sparklines(holding: Holding) -> list[Sparkline]:
-    """Replace the placeholder pharma sparkline with the most-liquid ETF choice."""
-    chosen, volumes = data_loader.pick_most_liquid(list(PHARMA_ETF_CANDIDATES))
-    label_map = {"XLV": "Health Care (XLV)", "IHE": "US Pharma (IHE)", "XPH": "S&P Pharma (XPH)"}
-    pharma_caption = "Picked at runtime by 30-day avg dollar volume across XLV / IHE / XPH"
-    resolved = []
-    for s in holding.sparklines:
-        if s.name.startswith("Pharma ETF"):
-            resolved.append(Sparkline(label_map.get(chosen, chosen), chosen, pharma_caption))
-        else:
-            resolved.append(s)
-    return resolved
