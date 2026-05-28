@@ -22,6 +22,7 @@ class Sparkline:
     name: str
     ticker: str
     caption: str = ""                # one-line "why this ETF/commodity matters"
+    website: str = ""                # corporate site when the name is an operating company
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,7 @@ class TrendsQuery:
     geo: str = "US"
     timeframe: str = "today 12-m"
     caption: str = ""                # one-line "why this search trend matters"
+    website: str = ""                # corporate site when the label is a company brand
 
 
 @dataclass(frozen=True)
@@ -70,6 +72,7 @@ class Holding:
     trends_queries: tuple = ()       # tuple[TrendsQuery]
     static_blocks: tuple = ()        # tuple[StaticBlock]
     static_caption: Optional[str] = None
+    website: str = ""                # corporate site for the holding itself
 
 
 # ---------------------------------------------------------------------------
@@ -115,13 +118,17 @@ NOVOLEX = Holding(
     ),
     extra_tickers=(
         Sparkline("McDonald's",                  "MCD",
-                  "Global QSR bellwether; broadest read on QSR traffic and packaging volume."),
+                  "Global QSR bellwether; broadest read on QSR traffic and packaging volume.",
+                  website="https://www.mcdonalds.com/"),
         Sparkline("Restaurant Brands Intl",      "QSR",
-                  "Burger King, Tim Hortons, Popeyes, Firehouse Subs — pure QSR play."),
+                  "Burger King, Tim Hortons, Popeyes, Firehouse Subs — pure QSR play.",
+                  website="https://www.rbi.com/"),
         Sparkline("Yum Brands",                  "YUM",
-                  "KFC, Taco Bell, Pizza Hut — international QSR mix."),
+                  "KFC, Taco Bell, Pizza Hut — international QSR mix.",
+                  website="https://www.yum.com/"),
         Sparkline("Chipotle",                    "CMG",
-                  "Fast-casual leader; bowl/bag packaging signal."),
+                  "Fast-casual leader; bowl/bag packaging signal.",
+                  website="https://www.chipotle.com/"),
     ),
     extra_tickers_title="QSR Bellwethers",
     fred_series=(
@@ -153,9 +160,11 @@ NOVOLEX = Holding(
         TrendsQuery("Drive thru",           ("drive thru",),
                     caption="Drive-thru search interest — narrow proxy for QSR-specific traffic vs broader restaurant demand."),
         TrendsQuery("DoorDash",             ("DoorDash",),
-                    caption="Delivery-app brand sentiment; correlates with takeout-packaging consumption."),
+                    caption="Delivery-app brand sentiment; correlates with takeout-packaging consumption.",
+                    website="https://www.doordash.com/"),
     ),
     static_caption="ICIS/Platts spot resin tickers remain subscription-only — FRED PPI series above are the free monthly proxy.",
+    website="https://www.novolex.com/",
 )
 
 
@@ -196,23 +205,31 @@ KELVION = Holding(
     ),
     extra_tickers=(
         Sparkline("Nvidia",    "NVDA",
-                  "AI compute leader; DC buildout demand starts with GPU shipments."),
+                  "AI compute leader; DC buildout demand starts with GPU shipments.",
+                  website="https://www.nvidia.com/"),
         Sparkline("CoreWeave", "CRWV",
-                  "Pure-play GPU-cloud capex flowing directly into DC cooling demand."),
+                  "Pure-play GPU-cloud capex flowing directly into DC cooling demand.",
+                  website="https://www.coreweave.com/"),
         Sparkline("Nebius",    "NBIS",
-                  "European GPU cloud; useful for EMEA DC-buildout signal."),
+                  "European GPU cloud; useful for EMEA DC-buildout signal.",
+                  website="https://www.nebius.com/"),
         Sparkline("Cerebras",  "CBRS",
-                  "Wafer-scale AI chip designer; IPO'd May 2026. Alternative AI-compute build read alongside Nvidia."),
+                  "Wafer-scale AI chip designer; IPO'd May 2026. Alternative AI-compute build read alongside Nvidia.",
+                  website="https://www.cerebras.ai/"),
     ),
     supplier_tickers=(
         Sparkline("Vistra",        "VST",
-                  "Independent power producer; major DC PPA counterparty (Microsoft, Amazon)."),
+                  "Independent power producer; major DC PPA counterparty (Microsoft, Amazon).",
+                  website="https://www.vistracorp.com/"),
         Sparkline("Constellation", "CEG",
-                  "Nuclear-heavy utility; Three Mile Island restart deal with Microsoft anchors DC supply."),
+                  "Nuclear-heavy utility; Three Mile Island restart deal with Microsoft anchors DC supply.",
+                  website="https://www.constellationenergy.com/"),
         Sparkline("Talen Energy",  "TLN",
-                  "Nuclear/coal producer; Susquehanna PPA powering AWS's Cumulus DC complex."),
+                  "Nuclear/coal producer; Susquehanna PPA powering AWS's Cumulus DC complex.",
+                  website="https://www.talenenergy.com/"),
         Sparkline("GE Vernova",    "GEV",
-                  "Gas turbines & grid equipment; supplies the generation capacity behind new DC sites."),
+                  "Gas turbines & grid equipment; supplies the generation capacity behind new DC sites.",
+                  website="https://www.gevernova.com/"),
     ),
     fred_series=(
         FredSeries("Real GDP", "GDPC1", "",
@@ -256,6 +273,7 @@ KELVION = Holding(
             caption="DC Byte / Synergy equivalents are subscription-only — figures here are hand-entered from public summaries.",
         ),
     ),
+    website="https://www.kelvion.com/",
 )
 
 
@@ -309,6 +327,7 @@ REAL_CHEMISTRY = Holding(
             show_trend=True,
         ),
     ),
+    website="https://www.realchemistry.com/",
 )
 
 

@@ -65,14 +65,23 @@ def _tooltip_wrap(text: str, tooltip: str) -> str:
     return f'<span class="has-tooltip" data-tooltip="{esc}" title="{esc}">{text}</span>'
 
 
+def _link_wrap(inner_html: str, url: str) -> str:
+    """Wrap inner HTML in an anchor opening in a new tab; returns inner unchanged if no url."""
+    if not url:
+        return inner_html
+    href = html.escape(url, quote=True)
+    return f'<a href="{href}" target="_blank" rel="noopener noreferrer" class="comp-link">{inner_html}</a>'
+
+
 # ---------------------------------------------------------------------------
 # Header block
 # ---------------------------------------------------------------------------
 
 def render_holding_header(holding: Holding):
+    name_html = _link_wrap(holding.name, getattr(holding, "website", ""))
     st.markdown(
         f"""<div class="holding-header">
-            <div class="holding-name">{holding.name}</div>
+            <div class="holding-name">{name_html}</div>
             <div class="holding-desc">{holding.description}</div>
             <div class="holding-callouts">
                 <span class="callout-thesis"><span class="callout-label">Thesis</span>{holding.thesis}</span>
@@ -199,6 +208,7 @@ def render_sparkline_grid(title: str, sparklines: list[Sparkline], days: int = 2
         with col:
             df = data_loader.fetch_history(sp.ticker, period="1y")
             name_html = _tooltip_wrap(sp.name, sp.caption)
+            name_html = _link_wrap(name_html, getattr(sp, "website", ""))
             label = f'<div class="spark-label"><span class="spark-name">{name_html}</span><span class="spark-ticker">{sp.ticker}</span></div>'
             if df is None or df.empty:
                 st.markdown(label, unsafe_allow_html=True)
@@ -280,6 +290,7 @@ def render_trends(title: str, queries: list[TrendsQuery], note: str = ""):
     chips = ""
     for q in queries:
         chip_inner = _tooltip_wrap(q.label, q.caption)
+        chip_inner = _link_wrap(chip_inner, getattr(q, "website", ""))
         chips += f'<span class="tooltip-chip">{chip_inner}</span>'
     if chips:
         st.markdown(f'<div class="tooltip-chip-row">{chips}</div>', unsafe_allow_html=True)
