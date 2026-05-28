@@ -480,13 +480,13 @@ with right:
         st.caption("Price history unavailable.")
     else:
         ma50 = close5.rolling(50).mean()
-        ma200 = close5.rolling(200).mean()
+        ma180 = close5.rolling(180).mean()
         fig2 = go.Figure()
         fig2.add_trace(go.Scatter(x=close5.index, y=close5.values, mode="lines", name="Price",
                                   line=dict(color=ACCENT, width=1.6)))
         fig2.add_trace(go.Scatter(x=ma50.index, y=ma50.values, mode="lines", name="50d MA",
                                   line=dict(color="#F59E0B", width=1.1)))
-        fig2.add_trace(go.Scatter(x=ma200.index, y=ma200.values, mode="lines", name="200d MA",
+        fig2.add_trace(go.Scatter(x=ma180.index, y=ma180.values, mode="lines", name="180d MA",
                                   line=dict(color="#94A3B8", width=1.1)))
         fig2.update_layout(
             height=420, margin=dict(l=10, r=20, t=20, b=40),
