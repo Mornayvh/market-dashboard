@@ -62,8 +62,10 @@ class Holding:
     comps: tuple                     # tuple[Comp]
     sparklines: tuple                # tuple[Sparkline] — sector ETFs / indices
     commodities: tuple = ()          # tuple[Sparkline]
-    fred_series: tuple = ()          # tuple[FredSeries]
+    fred_series: tuple = ()          # tuple[FredSeries] — macro / demand indicators
+    fred_inputs: tuple = ()          # tuple[FredSeries] — input-cost (PPI) series, rendered separately
     extra_tickers: tuple = ()        # tuple[Sparkline] for industry/sentiment YF series (XBI etc.)
+    extra_tickers_title: str = "Industry & Sentiment"
     supplier_tickers: tuple = ()     # tuple[Sparkline] for supply-side names (DC power, etc.)
     trends_queries: tuple = ()       # tuple[TrendsQuery]
     static_blocks: tuple = ()        # tuple[StaticBlock]
@@ -111,6 +113,17 @@ NOVOLEX = Holding(
         Sparkline("Henry Hub NG", "NG=F",
                   "Natural gas; key petrochemical input and a major US-specific cost variable."),
     ),
+    extra_tickers=(
+        Sparkline("McDonald's",                  "MCD",
+                  "Global QSR bellwether; broadest read on QSR traffic and packaging volume."),
+        Sparkline("Restaurant Brands Intl",      "QSR",
+                  "Burger King, Tim Hortons, Popeyes, Firehouse Subs — pure QSR play."),
+        Sparkline("Yum Brands",                  "YUM",
+                  "KFC, Taco Bell, Pizza Hut — international QSR mix."),
+        Sparkline("Chipotle",                    "CMG",
+                  "Fast-casual leader; bowl/bag packaging signal."),
+    ),
+    extra_tickers_title="QSR Bellwethers",
     fred_series=(
         # NAPM was discontinued; ISM Manufacturing is no longer redistributed on FRED.
         # MANEMP (Manufacturing employees) and IPMAN (Industrial Production: Manufacturing)
@@ -119,14 +132,30 @@ NOVOLEX = Holding(
                    caption="Industrial production for manufacturing — demand-side gauge for industrial-packaging customers."),
         FredSeries("Consumer Sentiment",  "UMCSENT", "",
                    caption="University of Michigan sentiment — leading indicator for eating-out and CPG spending."),
+        FredSeries("Restaurant Employment", "CES7072200001", "",
+                   caption="Food services & drinking places employment — leading demand indicator for QSR packaging volume."),
+    ),
+    fred_inputs=(
+        FredSeries("Plastic Resins (PPI)", "WPU066", "",
+                   caption="PPI for plastic resins and materials — virgin-resin headline input cost."),
+        FredSeries("Recyclable Plastics (PPI)", "PCU42993042993042", "",
+                   caption="PPI for recycled plastics (rPET/rHDPE feedstock); drives sustainability-line economics."),
+        FredSeries("Recyclable Paper (PPI)", "WPU0912", "",
+                   caption="PPI for recyclable paper — fibre input cost; cross-check on paper-vs-plastic substitution."),
     ),
     trends_queries=(
         TrendsQuery("Eating out interest",  ("eating out",),
                     caption="Search interest as a proxy for restaurant demand; correlates with food-service packaging volume."),
         TrendsQuery("Restaurant inflation", ("restaurant prices",),
                     caption="Consumer awareness of menu prices; rising trend may signal restaurant-traffic risk."),
+        TrendsQuery("Food delivery",        ("food delivery",),
+                    caption="Off-premise demand proxy; drives single-use takeout packaging volume."),
+        TrendsQuery("Drive thru",           ("drive thru",),
+                    caption="Drive-thru search interest — narrow proxy for QSR-specific traffic vs broader restaurant demand."),
+        TrendsQuery("DoorDash",             ("DoorDash",),
+                    caption="Delivery-app brand sentiment; correlates with takeout-packaging consumption."),
     ),
-    static_caption="Resin prices (ICIS/Platts) are subscription-only — not included.",
+    static_caption="ICIS/Platts spot resin tickers remain subscription-only — FRED PPI series above are the free monthly proxy.",
 )
 
 

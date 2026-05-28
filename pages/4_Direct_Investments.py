@@ -224,9 +224,10 @@ render_comps(holding)
 # 2. Sector ETF sparklines
 render_sparkline_grid("Sector ETFs", list(holding.sparklines))
 
-# 3. Extra YF tickers (industry/sentiment — e.g. NVDA, CRWV, NBIS, XBI)
+# 3. Extra YF tickers (industry/sentiment — e.g. NVDA, CRWV, NBIS, XBI, or QSR bellwethers)
 if holding.extra_tickers:
-    render_sparkline_grid("Industry & Sentiment", list(holding.extra_tickers))
+    extra_title = getattr(holding, "extra_tickers_title", "Industry & Sentiment")
+    render_sparkline_grid(extra_title, list(holding.extra_tickers))
 
 # 3b. Supply-side names (e.g. DC power producers for Kelvion)
 supplier_tickers = getattr(holding, "supplier_tickers", ()) or ()
@@ -236,6 +237,11 @@ if supplier_tickers:
 # 4. Commodities / macro (yfinance)
 if holding.commodities:
     render_sparkline_grid("Commodities & Macro", list(holding.commodities))
+
+# 4b. Input-cost FRED PPI series (e.g. resin / recycled materials for Novolex)
+fred_inputs = getattr(holding, "fred_inputs", ()) or ()
+if fred_inputs:
+    render_fred_indicators("Input Costs", list(fred_inputs))
 
 # 5. FRED indicators
 if holding.fred_series:
