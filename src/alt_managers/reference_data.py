@@ -30,7 +30,6 @@ AUM: dict[str, dict] = {
     "KKR":     {"total_aum_usd_bn":  680, "as_of": "2025-12-31", "source": "Q4'25 results — VERIFY"},
     "APO":     {"total_aum_usd_bn":  840, "as_of": "2025-12-31", "source": "Q4'25 results — VERIFY"},
     "CG":      {"total_aum_usd_bn":  470, "as_of": "2025-12-31", "source": "Q4'25 results — VERIFY"},
-    "BN":      {"total_aum_usd_bn": None, "as_of": None,         "source": "AUM reported at BAM level — do not double-count"},
     "BAM":     {"total_aum_usd_bn": 1050, "as_of": "2025-12-31", "source": "Q4'25 — Brookfield total AUM — VERIFY"},
     "TPG":     {"total_aum_usd_bn":  250, "as_of": "2025-12-31", "source": "Q4'25 results — VERIFY"},
     # European (reported currency noted; figures converted to USD — VERIFY)

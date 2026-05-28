@@ -6,7 +6,6 @@ TICKERS = {
     "KKR":     {"name": "KKR",                   "category": "Big Seven",  "geo": "US",     "tilt": "Diversified",              "ccy": "USD"},
     "APO":     {"name": "Apollo",                "category": "Big Seven",  "geo": "US",     "tilt": "Credit/Insurance",         "ccy": "USD"},
     "CG":      {"name": "Carlyle",               "category": "Big Seven",  "geo": "US",     "tilt": "PE-led",                   "ccy": "USD"},
-    "BN":      {"name": "Brookfield Corp",       "category": "Big Seven",  "geo": "Canada", "tilt": "Real assets + bal sheet",  "ccy": "USD"},
     "BAM":     {"name": "Brookfield Asset Mgmt", "category": "Big Seven",  "geo": "Canada", "tilt": "Real assets (pure-play)",  "ccy": "USD"},
     "TPG":     {"name": "TPG",                   "category": "Big Seven+", "geo": "US",     "tilt": "PE/Growth/Impact",         "ccy": "USD"},
     # European

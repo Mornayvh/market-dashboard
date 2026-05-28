@@ -339,7 +339,7 @@ st.markdown(render_html_table(df, fmts, text_cols, color_cols), unsafe_allow_htm
 with st.expander("Explain the columns / data-quality notes"):
     st.markdown("""
 - **Price** — latest close in the firm's **native currency** (see Ccy column). Not FX-converted.
-- **AUM (USD bn)** — Total assets under management. **Hand-maintained reference data — not from Yahoo** (Yahoo carries no AUM). Figures are approximate, refreshed manually each quarter; the **AUM as of** column shows the reporting date. *Verify against the firm's disclosure before relying on it.* Blank for BN (Brookfield AUM is reported at BAM — don't double-count) and any firm with no comparable Total-AUM figure.
+- **AUM (USD bn)** — Total assets under management. **Hand-maintained reference data — not from Yahoo** (Yahoo carries no AUM). Figures are approximate, refreshed manually each quarter; the **AUM as of** column shows the reporting date. *Verify against the firm's disclosure before relying on it.* Blank for any firm with no comparable Total-AUM figure.
 - **Valuation multiples (Trail P/E, P/B, EV/EBITDA, EV/Sales)** — all GAAP-based, off Yahoo's `info` payload. Alt managers themselves guide on **Fee-Related Earnings (FRE)** and **Distributable Earnings (DE)** — these GAAP multiples are *not* what sell-side analysts use to value the firms and will look richer/cheaper than the FRE/DE-based multiples in research notes. Treat them as a rough cross-sectional read, not a price target. *EV/EBITDA is frequently missing for the US listings (Yahoo doesn't compute `enterpriseValue` for them); EV/Sales fills that gap.*
 - **Div Yield %** — Yahoo reports this already in percent; shown as-is.
 - **Payout %, ROE %** — Yahoo reports these as fractions; multiplied by 100 here.
