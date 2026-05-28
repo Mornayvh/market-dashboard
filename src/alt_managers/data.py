@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 INFO_FIELDS = [
     "longName", "sector", "industry", "country", "currency",
     "marketCap", "enterpriseValue", "sharesOutstanding",
-    "trailingPE", "forwardPE", "priceToBook", "priceToSalesTrailing12Months", "enterpriseToEbitda",
+    "trailingPE", "forwardPE", "priceToBook", "priceToSalesTrailing12Months",
+    "enterpriseToEbitda", "enterpriseToRevenue",
     "dividendYield", "payoutRatio", "fiveYearAvgDividendYield",
     "beta", "fiftyTwoWeekHigh", "fiftyTwoWeekLow", "currentPrice", "previousClose",
     "totalRevenue", "ebitda", "profitMargins", "operatingMargins", "returnOnEquity", "debtToEquity",

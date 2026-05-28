@@ -291,8 +291,10 @@ for d in shown:
         "Mkt Cap / AUM": mc_per_aum,
         "AUM as of": rd.get("as_of"),
         "Fwd P/E": d.get("forwardPE"),
+        "Trail P/E": d.get("trailingPE"),
         "P/B": d.get("priceToBook"),
         "EV/EBITDA": d.get("enterpriseToEbitda"),
+        "EV/Sales": d.get("enterpriseToRevenue"),
         "Div Yield %": d.get("dividendYield"),
         "Payout %": _frac_to_pct(d.get("payoutRatio")),
         "Beta": d.get("beta"),
@@ -322,7 +324,7 @@ for col in list(df.columns):
         df = df.drop(columns=[col])
 num_pct = ["Div Yield %", "Payout %", "LTM %", "3Y % (ann)", "5Y % (ann)",
            "ROE %", "Op Margin %", "Insider %", "Target Upside %"]
-num_x = ["Fwd P/E", "P/B", "EV/EBITDA", "Beta"]
+num_x = ["Fwd P/E", "Trail P/E", "P/B", "EV/EBITDA", "EV/Sales", "Beta"]
 fmts = {
     "Price": "{:.2f}",
     "Mkt Cap (USD bn)": "{:.1f}",
@@ -346,8 +348,7 @@ with st.expander("Explain the columns / data-quality notes"):
 - **Mkt Cap (USD bn)** — native market cap converted to USD at the latest spot FX. The only cross-comparable size column.
 - **AUM (USD bn)** — Total assets under management. **Hand-maintained reference data — not from Yahoo** (Yahoo carries no AUM). Figures are approximate, refreshed manually each quarter; the **AUM as of** column shows the reporting date. *Verify against the firm's disclosure before relying on it.* Blank for BN (Brookfield AUM is reported at BAM — don't double-count) and any firm with no comparable Total-AUM figure.
 - **Mkt Cap / AUM** — market cap per $1 of AUM; a rough read on how richly the market prices each dollar of assets managed.
-- **Fwd P/E** — Yahoo's forward P/E off **GAAP EPS estimates**, not FRE/DE. Unreliable for alt managers and *often missing for European listings*.
-- **P/B / EV/EBITDA** — `EV/EBITDA` is frequently missing for non-US listings (Yahoo returns no `enterpriseValue`/`ebitda`).
+- **Valuation multiples (Fwd P/E, Trail P/E, P/B, EV/EBITDA, EV/Sales)** — all GAAP-based, off Yahoo's `info` payload. Alt managers themselves guide on **Fee-Related Earnings (FRE)** and **Distributable Earnings (DE)** — these GAAP multiples are *not* what sell-side analysts use to value the firms and will look richer/cheaper than the FRE/DE-based multiples in research notes. Treat them as a rough cross-sectional read, not a price target. *Fwd P/E and EV/EBITDA are frequently missing for European listings; EV/Sales fills in some of those gaps.*
 - **Div Yield %** — Yahoo reports this already in percent; shown as-is.
 - **Payout %, ROE %, Op Margin %, Insider %** — Yahoo reports these as fractions; multiplied by 100 here.
 - **LTM** — last-twelve-months total return (trailing ~365 days). **3Y / 5Y** — *annualized* (CAGR). Blank if the listing lacks that much history (e.g. CVC, EQT listed relatively recently).
