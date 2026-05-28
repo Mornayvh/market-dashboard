@@ -226,10 +226,6 @@ REAL_CHEMISTRY = Holding(
         Sparkline("Biotech",         "XBI",
                   "Cleanest read on early-stage biotech funding; drives launch and marketing budgets."),
     ),
-    commodities=(
-        Sparkline("EUR/USD", "EURUSD=X",
-                  "FX cross used to translate Publicis performance; also captures EMEA pharma demand exposure."),
-    ),
     trends_queries=(
         TrendsQuery("GLP-1 interest",   ("GLP-1",),
                     caption="Search demand for the obesity-drug class; proxy for branded pharma launch marketing."),
