@@ -247,19 +247,16 @@ shown = [d for d in ROWS if _shown(d)]
 # ---------------------------------------------------------------------------
 section_header("Overview")
 n_firms = len(shown)
-mktcaps_usd = [dl.to_usd(d.get("marketCap"), d["_meta"]["ccy"], FX) for d in shown]
-total_mc = sum(v for v in mktcaps_usd if v is not None)
 fwd_pes = [d.get("forwardPE") for d in shown if d.get("forwardPE") is not None]
 div_ylds = [d.get("dividendYield") for d in shown if d.get("dividendYield") is not None]
 med_pe = pd.Series(fwd_pes).median() if fwd_pes else None
 med_dy = pd.Series(div_ylds).median() if div_ylds else None
 
-k1, k2, k3, k4 = st.columns(4)
+k1, k2, k3 = st.columns(3)
 for col, label, val in [
     (k1, "Firms shown", str(n_firms)),
-    (k2, "Total Mkt Cap (USD bn)", fmt_dash(total_mc / 1e9 if total_mc else None, "{:,.0f}")),
-    (k3, "Median Fwd P/E", fmt_dash(med_pe)),
-    (k4, "Median Div Yield", fmt_dash(med_dy) + ("%" if med_dy is not None else "")),
+    (k2, "Median Fwd P/E", fmt_dash(med_pe)),
+    (k3, "Median Div Yield", fmt_dash(med_dy) + ("%" if med_dy is not None else "")),
 ]:
     with col:
         st.markdown(f'<div class="kpi-card"><div class="kpi-label">{label}</div><div class="kpi-value">{val}</div></div>', unsafe_allow_html=True)
@@ -424,7 +421,6 @@ with left:
     summ = dd.get("longBusinessSummary") or "Business summary unavailable from Yahoo Finance."
     st.markdown(f'<div class="dd-summary">{summ}</div>', unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
-    mc_usd = dl.to_usd(dd.get("marketCap"), m["ccy"], FX)
     dd_ref = ref.get(dd_tk)
     dd_aum = dd_ref.get("total_aum_usd_bn")
     upside = dl.analyst_upside(dd.get("targetMeanPrice"), dd.get("currentPrice"))
@@ -433,7 +429,6 @@ with left:
     # (label, value) — value is None when the underlying field is missing; those lines are skipped.
     metric_pairs = [
         ("Price", None if dd.get("currentPrice") is None else f'{dd["currentPrice"]:.2f} {m["ccy"]}'),
-        ("Market Cap (USD bn)", None if mc_usd is None else f'{mc_usd / 1e9:,.1f}'),
         ("Total AUM (USD bn)", None if dd_aum is None else f'{dd_aum:,.0f}  (as of {dd_ref.get("as_of") or "n/a"})'),
         ("Forward P/E", None if dd.get("forwardPE") is None else f'{dd["forwardPE"]:.1f}'),
         ("Trailing P/E", None if dd.get("trailingPE") is None else f'{dd["trailingPE"]:.1f}'),
