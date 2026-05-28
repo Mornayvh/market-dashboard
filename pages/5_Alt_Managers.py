@@ -427,9 +427,6 @@ with left:
     st.markdown(
         f'<div class="dd-meta">{dd.get("sector") or "—"} · {dd.get("industry") or "—"} · {dd.get("country") or "—"}</div>',
         unsafe_allow_html=True)
-    summ = dd.get("longBusinessSummary") or "Business summary unavailable from Yahoo Finance."
-    st.markdown(f'<div class="dd-summary">{summ}</div>', unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
     dd_ref = ref.get(dd_tk)
     dd_aum = dd_ref.get("total_aum_usd_bn")
     upside = dl.analyst_upside(dd.get("targetMeanPrice"), dd.get("currentPrice"))
@@ -454,6 +451,9 @@ with left:
         st.markdown(f'<div class="metric-line"><span class="lbl">{lbl}</span><span class="val">{val}</span></div>', unsafe_allow_html=True)
     if not shown_metrics:
         st.caption("No valuation metrics available from Yahoo for this ticker.")
+    st.markdown("<br>", unsafe_allow_html=True)
+    summ = dd.get("longBusinessSummary") or "Business summary unavailable from Yahoo Finance."
+    st.markdown(f'<div class="dd-summary">{summ}</div>', unsafe_allow_html=True)
 
 with right:
     cur = dd.get("currentPrice")
