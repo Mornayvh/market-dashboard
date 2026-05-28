@@ -228,6 +228,10 @@ render_sparkline_grid("Sector ETFs", list(holding.sparklines))
 if holding.extra_tickers:
     render_sparkline_grid("Industry & Sentiment", list(holding.extra_tickers))
 
+# 3b. Supply-side names (e.g. DC power producers for Kelvion)
+if holding.supplier_tickers:
+    render_sparkline_grid("Data Center Power", list(holding.supplier_tickers))
+
 # 4. Commodities / macro (yfinance)
 if holding.commodities:
     render_sparkline_grid("Commodities & Macro", list(holding.commodities))

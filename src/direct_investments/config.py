@@ -60,10 +60,11 @@ class Holding:
     thesis: str                      # what's working
     risk: str                        # what to watch
     comps: tuple                     # tuple[Comp]
-    sparklines: tuple                # tuple[Sparkline] — sector ETFs
+    sparklines: tuple                # tuple[Sparkline] — sector ETFs / indices
     commodities: tuple = ()          # tuple[Sparkline]
     fred_series: tuple = ()          # tuple[FredSeries]
     extra_tickers: tuple = ()        # tuple[Sparkline] for industry/sentiment YF series (XBI etc.)
+    supplier_tickers: tuple = ()     # tuple[Sparkline] for supply-side names (DC power, etc.)
     trends_queries: tuple = ()       # tuple[TrendsQuery]
     static_blocks: tuple = ()        # tuple[StaticBlock]
     static_caption: Optional[str] = None
@@ -157,10 +158,12 @@ KELVION = Holding(
              website="https://www.modine.com/"),
     ),
     sparklines=(
-        Sparkline("Industrials",    "XLI",
-                  "Broad industrial demand baseline that drives heat-exchanger order intake."),
-        Sparkline("Infrastructure", "IGF",
-                  "Global infra capex cycle proxy for large project pipeline."),
+        Sparkline("S&P 500 Industrials", "^SP500-20",
+                  "S&P 500 Industrials sector index — pure market signal, no ETF tracking error."),
+        Sparkline("PHLX Semiconductor",  "^SOX",
+                  "Established US chip-stocks index (Philadelphia Semiconductor); AI capex cycle driver for DC cooling demand."),
+        Sparkline("Global Infrastructure", "IGF",
+                  "Global infra capex cycle proxy for large project pipeline. ETF — no clean Yahoo index alternative."),
     ),
     extra_tickers=(
         Sparkline("Nvidia",    "NVDA",
@@ -169,6 +172,26 @@ KELVION = Holding(
                   "Pure-play GPU-cloud capex flowing directly into DC cooling demand."),
         Sparkline("Nebius",    "NBIS",
                   "European GPU cloud; useful for EMEA DC-buildout signal."),
+        Sparkline("Cerebras",  "CBRS",
+                  "Wafer-scale AI chip designer; IPO'd May 2026. Alternative AI-compute build read alongside Nvidia."),
+    ),
+    supplier_tickers=(
+        Sparkline("Vistra",        "VST",
+                  "Independent power producer; major DC PPA counterparty (Microsoft, Amazon)."),
+        Sparkline("Constellation", "CEG",
+                  "Nuclear-heavy utility; Three Mile Island restart deal with Microsoft anchors DC supply."),
+        Sparkline("Talen Energy",  "TLN",
+                  "Nuclear/coal producer; Susquehanna PPA powering AWS's Cumulus DC complex."),
+        Sparkline("GE Vernova",    "GEV",
+                  "Gas turbines & grid equipment; supplies the generation capacity behind new DC sites."),
+    ),
+    fred_series=(
+        FredSeries("Real GDP", "GDPC1", "",
+                   caption="Headline US real GDP — broad demand baseline. Quarterly series."),
+        FredSeries("Industrial Production", "INDPRO", "",
+                   caption="Monthly US industrial output — cleaner read on Kelvion's industrial-customer demand than GDP."),
+        FredSeries("Capacity Utilization", "TCU", "%",
+                   caption="How hard US plants are running — leading indicator of replacement / expansion capex for cooling kit."),
     ),
     trends_queries=(
         TrendsQuery("DC protest",    ("data center protest",),
