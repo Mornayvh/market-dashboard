@@ -348,35 +348,7 @@ with st.expander("Explain the columns / data-quality notes"):
 """)
 
 # ---------------------------------------------------------------------------
-# Section 2b — PE Multiples (focused panel)
-# Same data as the corresponding columns in the wide Comparison Table above,
-# pulled into a narrow standalone table so the valuation multiples are easy to
-# scan without horizontal scrolling.
-# ---------------------------------------------------------------------------
-section_header("PE Multiples")
-
-pe_rows = [{
-    "Ticker": d["ticker"],
-    "Name": d["_meta"]["name"],
-    "Fwd P/E": d.get("forwardPE"),
-    "Trail P/E": d.get("trailingPE"),
-    "P/B": d.get("priceToBook"),
-    "EV/EBITDA": d.get("enterpriseToEbitda"),
-    "EV/Sales": d.get("enterpriseToRevenue"),
-} for d in shown]
-pe_df = pd.DataFrame(pe_rows)
-pe_fmts = {c: "{:.1f}" for c in ["Fwd P/E", "Trail P/E", "P/B", "EV/EBITDA", "EV/Sales"]}
-st.markdown(render_html_table(pe_df, pe_fmts, text_cols={"Ticker", "Name"}),
-            unsafe_allow_html=True)
-st.caption("All multiples are **GAAP-based** (from Yahoo). Alt managers themselves "
-           "guide on Fee-Related Earnings (FRE) and Distributable Earnings (DE) — "
-           "the multiples sell-side analysts publish on FRE/DE will look different. "
-           "Use this as a rough cross-sectional read, not a price target. "
-           "EV/EBITDA is frequently missing for US listings (Yahoo returns no "
-           "`enterpriseValue`); EV/Sales fills the gap.")
-
-# ---------------------------------------------------------------------------
-# Section 3 — Price chart panel
+# Section 2 — Price chart panel
 # ---------------------------------------------------------------------------
 section_header("Price Comparison")
 default_chart = [t for t in ["BX", "APO", "KKR", "BAM"] if t in TICKERS]
