@@ -243,26 +243,7 @@ def _shown(d):
 shown = [d for d in ROWS if _shown(d)]
 
 # ---------------------------------------------------------------------------
-# Section 1 — KPI strip
-# ---------------------------------------------------------------------------
-section_header("Overview")
-n_firms = len(shown)
-fwd_pes = [d.get("forwardPE") for d in shown if d.get("forwardPE") is not None]
-div_ylds = [d.get("dividendYield") for d in shown if d.get("dividendYield") is not None]
-med_pe = pd.Series(fwd_pes).median() if fwd_pes else None
-med_dy = pd.Series(div_ylds).median() if div_ylds else None
-
-k1, k2, k3 = st.columns(3)
-for col, label, val in [
-    (k1, "Firms shown", str(n_firms)),
-    (k2, "Median Fwd P/E", fmt_dash(med_pe)),
-    (k3, "Median Div Yield", fmt_dash(med_dy) + ("%" if med_dy is not None else "")),
-]:
-    with col:
-        st.markdown(f'<div class="kpi-card"><div class="kpi-label">{label}</div><div class="kpi-value">{val}</div></div>', unsafe_allow_html=True)
-
-# ---------------------------------------------------------------------------
-# Section 2 — Comparison table
+# Section 1 — Comparison table
 # ---------------------------------------------------------------------------
 section_header("Comparison Table")
 
