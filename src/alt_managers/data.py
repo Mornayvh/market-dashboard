@@ -8,14 +8,22 @@ yfinance is unofficial; fields disappear without warning.
 from __future__ import annotations
 
 import logging
+import os
 
 import pandas as pd
+import requests
 import streamlit as st
 import yfinance as yf
 
 from src.alt_managers import metrics
 
 logger = logging.getLogger(__name__)
+
+# Financial Modeling Prep — used only for historical quarterly EPS (Yahoo
+# doesn't publish a usable quarterly EPS series for these tickers, especially
+# the European listings). Free tier: 250 requests/day, US tickers covered
+# reliably; European tickers may return empty or 401 on the free tier.
+FMP_BASE = "https://financialmodelingprep.com/api/v3"
 
 # Scalar fields pulled from yf.Ticker(...).info
 INFO_FIELDS = [
@@ -118,3 +126,87 @@ def analyst_upside(target: float | None, current: float | None) -> float | None:
     if target is None or current is None or current == 0:
         return None
     return (target / current - 1) * 100
+
+
+# ---------------------------------------------------------------------------
+# Historical trailing P/E — Financial Modeling Prep + yfinance daily price
+# ---------------------------------------------------------------------------
+
+def fmp_api_key() -> str | None:
+    """Return the FMP API key from env or Streamlit secrets, or None.
+    Mirrors the FRED / Anthropic key lookup used elsewhere in the repo."""
+    key = os.environ.get("FMP_API_KEY")
+    if key:
+        return key
+    try:
+        return st.secrets.get("general", {}).get("FMP_API_KEY")
+    except Exception:
+        return None
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def fetch_quarterly_eps(ticker: str) -> pd.DataFrame | None:
+    """Fetch up to ~6 years of quarterly diluted EPS from FMP for a ticker.
+
+    Returns a DataFrame indexed by fiscal-quarter-end date with a single
+    `eps` column (float), sorted ascending. Returns None when no API key
+    is configured, when FMP returns an error (e.g. 401 on the free tier
+    for some non-US listings), or when no rows are usable.
+    """
+    key = fmp_api_key()
+    if not key:
+        return None
+    try:
+        r = requests.get(f"{FMP_BASE}/income-statement/{ticker}",
+                         params={"period": "quarter", "limit": 24, "apikey": key},
+                         timeout=10)
+        if r.status_code != 200:
+            logger.warning(f"FMP {ticker} returned HTTP {r.status_code}")
+            return None
+        payload = r.json()
+        if not isinstance(payload, list) or not payload:
+            return None
+        rows = []
+        for d in payload:
+            eps = d.get("eps")
+            dt = d.get("date")
+            if eps is None or dt is None:
+                continue
+            try:
+                rows.append({"date": pd.to_datetime(dt), "eps": float(eps)})
+            except (TypeError, ValueError):
+                continue
+        if not rows:
+            return None
+        return pd.DataFrame(rows).set_index("date").sort_index()
+    except Exception as e:
+        logger.warning(f"FMP fetch failed for {ticker}: {e}")
+        return None
+
+
+def trailing_pe_series(ticker: str, period: str = "5y") -> pd.Series | None:
+    """Build a daily trailing P/E series for a ticker.
+
+    `daily price ÷ rolling-4Q TTM EPS`, with TTM EPS held constant between
+    quarterly report dates (step function). The series only starts once
+    four quarters of EPS history are available, and any date where the
+    rolling TTM EPS is ≤ 0 (loss years) is dropped — negative P/E values
+    aren't meaningful to plot. Returns None if FMP data is missing.
+    """
+    eps_df = fetch_quarterly_eps(ticker)
+    if eps_df is None or len(eps_df) < 4:
+        return None
+    ttm = eps_df["eps"].rolling(4).sum().dropna()
+    if ttm.empty:
+        return None
+    price = fetch_history(ticker, period)
+    if price is None or price.empty:
+        return None
+    # For each price date, use the most recent reported TTM EPS at-or-before
+    # that date (step function across earnings-release dates).
+    ttm_aligned = ttm.reindex(price.index.union(ttm.index)).sort_index().ffill().reindex(price.index)
+    valid = ttm_aligned.notna() & (ttm_aligned > 0)
+    if not valid.any():
+        return None
+    pe = price[valid] / ttm_aligned[valid]
+    return pe if not pe.empty else None

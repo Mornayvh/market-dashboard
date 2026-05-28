@@ -502,5 +502,34 @@ with right:
         )
         st.plotly_chart(fig2, use_container_width=True)
 
+    # Trailing P/E history — daily price ÷ rolling-4Q TTM EPS, sourced from
+    # Financial Modeling Prep (Yahoo doesn't publish a quarterly EPS series).
+    # GAAP-based and noisy for alt managers — see caveat below the chart.
+    pe_series = dl.trailing_pe_series(dd_tk, period="5y")
+    if pe_series is not None and not pe_series.empty:
+        st.markdown('<div class="dd-meta">Trailing P/E history (price ÷ rolling-4Q TTM EPS)</div>',
+                    unsafe_allow_html=True)
+        fig_pe = go.Figure()
+        fig_pe.add_trace(go.Scatter(x=pe_series.index, y=pe_series.values, mode="lines",
+                                    line=dict(color=ACCENT, width=1.6)))
+        fig_pe.update_layout(
+            height=260, margin=dict(l=10, r=20, t=10, b=30),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            xaxis=dict(showgrid=False, tickfont=dict(color=TEXT2, size=10)),
+            yaxis=dict(showgrid=True, gridcolor=BORDER, tickfont=dict(color=TEXT2, size=10),
+                       title=dict(text="Trailing P/E", font=dict(size=10, color=TEXT2))),
+            showlegend=False,
+        )
+        st.plotly_chart(fig_pe, use_container_width=True, key="pe_history")
+        st.caption("GAAP TTM EPS, stepped at each quarterly release. Alt managers' GAAP "
+                   "earnings swing materially with carried-interest realizations — treat the "
+                   "line as indicative, not decision-grade.")
+    elif dl.fmp_api_key() is None:
+        st.caption("Trailing P/E history requires `FMP_API_KEY` (Financial Modeling Prep "
+                   "free tier — sign up at financialmodelingprep.com/developer).")
+    else:
+        st.caption("Trailing P/E history unavailable — FMP doesn't carry quarterly EPS "
+                   "for this listing (common for non-US tickers on the free tier).")
+
 st.markdown("---")
 st.markdown('<div style="text-align:center; font-size:0.65rem; color:#94A3B8; font-family:\'DM Sans\',sans-serif;">Alternative Asset Managers · Secco Capital · Compared as stocks · Not investment advice</div>', unsafe_allow_html=True)
