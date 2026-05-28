@@ -116,6 +116,8 @@ st.markdown("""
         background: #4F7FD6; color: white; border-radius: 3px; margin-left: 6px;
         letter-spacing: 0.05em;
     }
+    .comp-link { color: inherit; text-decoration: none; }
+    .comp-link:hover { color: #4F7FD6; text-decoration: underline; }
 
     /* Hoverable tooltip on indicator/comp names */
     .has-tooltip {

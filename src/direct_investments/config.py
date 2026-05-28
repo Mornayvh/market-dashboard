@@ -14,6 +14,7 @@ class Comp:
     ticker: str
     is_primary: bool = False
     rationale: str = ""              # one-line "why we watch this comp"
+    website: str = ""                # corporate website (https://…)
 
 
 @dataclass(frozen=True)
@@ -80,15 +81,20 @@ NOVOLEX = Holding(
     risk="Resin/oil input cost volatility; restaurant traffic softness; freight inflation.",
     comps=(
         Comp("Amcor",             "AMCR",      is_primary=True,
-             rationale="Global packaging leader; closest read on Novolex's flexible + rigid product mix."),
+             rationale="Global packaging leader; closest read on Novolex's flexible + rigid product mix.",
+             website="https://www.amcor.com/"),
         Comp("Silgan Holdings",   "SLGN",
-             rationale="Rigid & dispensing packaging; closest mix to Novolex's flexible+rigid slate and same resin/freight exposure. (Replaced Sealed Air after CD&R took it private in Apr 2026.)"),
+             rationale="Rigid & dispensing packaging; closest mix to Novolex's flexible+rigid slate and same resin/freight exposure. (Replaced Sealed Air after CD&R took it private in Apr 2026.)",
+             website="https://www.silganholdings.com/"),
         Comp("Huhtamaki",         "HUH1V.HE",
-             rationale="European food-service & retail packaging; signal on EMEA demand and pricing power."),
+             rationale="European food-service & retail packaging; signal on EMEA demand and pricing power.",
+             website="https://www.huhtamaki.com/"),
         Comp("Graphic Packaging", "GPK",
-             rationale="Paperboard / folding cartons; cross-check on fibre-vs-plastics substitution dynamic."),
+             rationale="Paperboard / folding cartons; cross-check on fibre-vs-plastics substitution dynamic.",
+             website="https://www.graphicpkg.com/"),
         Comp("Sonoco",            "SON",
-             rationale="Diversified industrial packaging; reads on broader CPG buyer capex appetite."),
+             rationale="Diversified industrial packaging; reads on broader CPG buyer capex appetite.",
+             website="https://www.sonoco.com/"),
     ),
     sparklines=(
         Sparkline("Consumer Discretionary", "XLY",
@@ -135,15 +141,20 @@ KELVION = Holding(
     risk="Capex cycle reversal; community opposition to DC siting; competing cooling tech.",
     comps=(
         Comp("Alfa Laval", "ALFA.ST", is_primary=True,
-             rationale="Closest global heat-exchanger pure-play; primary read on Kelvion's core market."),
+             rationale="Closest global heat-exchanger pure-play; primary read on Kelvion's core market.",
+             website="https://www.alfalaval.com/"),
         Comp("GEA Group",  "G1A.DE",
-             rationale="Direct industrial-cooling competitor; tracks the same European industrial cycle."),
+             rationale="Direct industrial-cooling competitor; tracks the same European industrial cycle.",
+             website="https://www.gea.com/"),
         Comp("Vertiv",     "VRT",
-             rationale="DC infrastructure leader; cleanest signal on data-centre capex flowing into cooling."),
+             rationale="DC infrastructure leader; cleanest signal on data-centre capex flowing into cooling.",
+             website="https://www.vertiv.com/"),
         Comp("Munters",    "MTRS.ST",
-             rationale="Climate solutions & DC air handling; complementary read on DC cooling demand."),
+             rationale="Climate solutions & DC air handling; complementary read on DC cooling demand.",
+             website="https://www.munters.com/"),
         Comp("Modine",     "MOD",
-             rationale="Thermal management spanning HVAC and DC; reads on US liquid-cooling adoption."),
+             rationale="Thermal management spanning HVAC and DC; reads on US liquid-cooling adoption.",
+             website="https://www.modine.com/"),
     ),
     sparklines=(
         Sparkline("Industrials",    "XLI",
@@ -208,15 +219,20 @@ REAL_CHEMISTRY = Holding(
     risk="Drug-approval slowdown; biotech funding winter; pharma cost cuts; IRA pricing pressure.",
     comps=(
         Comp("IQVIA",             "IQV",    is_primary=True,
-             rationale="Largest healthcare services & real-world data peer; primary read on pharma marketing and analytics spend."),
+             rationale="Largest healthcare services & real-world data peer; primary read on pharma marketing and analytics spend.",
+             website="https://www.iqvia.com/"),
         Comp("Definitive Health", "DH",
-             rationale="Healthcare commercial intelligence; tracks pharma R&D and commercial budget cycles."),
+             rationale="Healthcare commercial intelligence; tracks pharma R&D and commercial budget cycles.",
+             website="https://www.definitivehc.com/"),
         Comp("Doximity",          "DOCS",
-             rationale="Physician-engagement platform; direct read on HCP-marketing demand."),
+             rationale="Physician-engagement platform; direct read on HCP-marketing demand.",
+             website="https://www.doximity.com/"),
         Comp("Veeva",             "VEEV",
-             rationale="Life-sciences SaaS leader; signal on pharma's digital-marketing infrastructure spend."),
+             rationale="Life-sciences SaaS leader; signal on pharma's digital-marketing infrastructure spend.",
+             website="https://www.veeva.com/"),
         Comp("Publicis Groupe",   "PUB.PA",
-             rationale="Owner of Publicis Health, the largest healthcare marketing agency; direct comp on agency spend."),
+             rationale="Owner of Publicis Health, the largest healthcare marketing agency; direct comp on agency spend.",
+             website="https://www.publicisgroupe.com/"),
     ),
     sparklines=(
         Sparkline("Pharmaceuticals", "IHE",

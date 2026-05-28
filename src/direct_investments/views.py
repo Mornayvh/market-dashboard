@@ -98,12 +98,17 @@ def render_comps(holding: Holding):
         quotes.append(q)
 
     rationale_by_ticker = {c.ticker: c.rationale for c in holding.comps}
+    website_by_ticker = {c.ticker: c.website for c in holding.comps}
 
     rows_html = ""
     for q in quotes:
         chip = ' <span class="primary-chip">PRIMARY</span>' if q["is_primary"] else ""
         base_name = q["display"]
         wrapped = _tooltip_wrap(base_name, rationale_by_ticker.get(q["ticker"], ""))
+        website = website_by_ticker.get(q["ticker"], "")
+        if website:
+            href = html.escape(website, quote=True)
+            wrapped = f'<a href="{href}" target="_blank" rel="noopener noreferrer" class="comp-link">{wrapped}</a>'
         if q["is_primary"]:
             name_html = f'<span class="comp-name-primary">{wrapped}</span>{chip}'
         else:
