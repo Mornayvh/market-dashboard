@@ -60,7 +60,18 @@ st.markdown("""
     }
     .kpi-value { font-family: 'DM Sans', sans-serif; font-size: 1.5rem; font-weight: 700; color: #1E293B; margin-top: 0.2rem; }
 
-    .dd-summary { font-family: 'DM Sans', sans-serif; font-size: 0.85rem; color: #475569; line-height: 1.55; }
+    .dd-summary {
+        font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: #475569;
+        line-height: 1.65;
+        background: #FFFFFF; border: 1px solid #E2E8F0; border-left: 3px solid #4F7FD6;
+        border-radius: 6px; padding: 0.85rem 1rem;
+        margin-top: 0.3rem;
+    }
+    .dd-summary-label {
+        font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 600;
+        color: #64748B; text-transform: uppercase; letter-spacing: 0.1em;
+        margin-bottom: 0.5rem;
+    }
     .dd-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #64748B; margin: 0.4rem 0; }
     .metric-line { display: flex; justify-content: space-between; padding: 0.35rem 0; border-bottom: 1px solid #F1F5F9; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; }
     .metric-line .lbl { color: #64748B; }
@@ -123,6 +134,27 @@ def fmt_dash(v, fmt="{:.1f}"):
 
 def _is_num(v):
     return isinstance(v, (int, float)) and not (isinstance(v, float) and pd.isna(v))
+
+
+def _short_summary(text: str | None, max_sentences: int = 3, max_chars: int = 380):
+    """Trim Yahoo's longBusinessSummary to its opening sentences. Returns
+    (short, full_or_none): `full_or_none` is the original text when the short
+    version is genuinely shorter, so the caller can offer a 'read more' toggle.
+    """
+    if not text:
+        return None, None
+    import re
+    body = text.strip()
+    sentences = re.split(r'(?<=[.!?])\s+', body)
+    short = ""
+    for s in sentences[:max_sentences]:
+        if short and len(short) + 1 + len(s) > max_chars:
+            break
+        short = (short + " " + s).strip() if short else s
+    truncated = len(short) < len(body)
+    if truncated and not short.endswith(("…", "...")):
+        short = short.rstrip(". ") + " …"
+    return short, (body if truncated else None)
 
 
 def render_html_table(df, fmts, text_cols, color_cols=frozenset()):
@@ -452,8 +484,18 @@ with left:
     if not shown_metrics:
         st.caption("No valuation metrics available from Yahoo for this ticker.")
     st.markdown("<br>", unsafe_allow_html=True)
-    summ = dd.get("longBusinessSummary") or "Business summary unavailable from Yahoo Finance."
-    st.markdown(f'<div class="dd-summary">{summ}</div>', unsafe_allow_html=True)
+    short, full = _short_summary(dd.get("longBusinessSummary"))
+    if short:
+        st.markdown(
+            f'<div class="dd-summary">'
+            f'<div class="dd-summary-label">About {m["name"]}</div>'
+            f'{short}</div>',
+            unsafe_allow_html=True)
+        if full:
+            with st.expander("Read full description"):
+                st.markdown(full)
+    else:
+        st.caption("Business summary unavailable from Yahoo Finance.")
 
 with right:
     cur = dd.get("currentPrice")
