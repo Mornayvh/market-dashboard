@@ -68,14 +68,54 @@ st.markdown("""
         font-size: 0.95rem; color: #64748B;
     }
 
-    .nav-grid {
-        display: flex; flex-wrap: wrap; gap: 1.25rem; justify-content: center;
-        margin: 2.5rem auto 0 auto; max-width: 1040px;
+    /* ---- Carousel ---- */
+    .carousel {
+        position: relative;
+        max-width: 460px;
+        height: 360px;
+        margin: 2.5rem auto 0 auto;
     }
+    .slide {
+        position: absolute; inset: 0;
+        display: flex; align-items: stretch; justify-content: center;
+        opacity: 0; visibility: hidden; pointer-events: none;
+        transform: translateY(6px);
+        transition: opacity 0.35s ease, transform 0.35s ease;
+        scroll-margin-top: 120px;
+    }
+    .slide:first-child { opacity: 1; visibility: visible; pointer-events: auto; transform: none; }
+    .slide:target { opacity: 1; visibility: visible; pointer-events: auto; transform: none; z-index: 2; }
+    .carousel:has(.slide:target) .slide:first-child:not(:target) {
+        opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(6px);
+    }
+
+    .arrow {
+        position: absolute; top: 130px; transform: translateY(-50%);
+        width: 40px; height: 40px; border-radius: 50%;
+        background: #FFFFFF; border: 1px solid #E2E8F0;
+        display: flex; align-items: center; justify-content: center;
+        color: #475569; font-family: 'DM Sans', sans-serif; font-size: 1.4rem; line-height: 1;
+        text-decoration: none !important; z-index: 6;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.10); transition: all 0.2s ease;
+    }
+    .arrow:hover { border-color: #4F7FD6; color: #4F7FD6; box-shadow: 0 4px 12px rgba(79,127,214,0.18); }
+    .arrow.left { left: -22px; }
+    .arrow.right { right: -22px; }
+
+    .dots {
+        position: absolute; bottom: 4px; left: 0; right: 0;
+        display: flex; gap: 0.5rem; justify-content: center; z-index: 6;
+    }
+    .dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: #CBD5E1; transition: all 0.2s ease;
+    }
+    .dot:hover { background: #94A3B8; }
+    .dot.active { background: #4F7FD6; width: 22px; border-radius: 4px; }
 
     .nav-card {
         background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px;
-        width: 320px; overflow: hidden;
+        width: 100%; max-width: 420px; height: 300px; overflow: hidden;
         box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         transition: all 0.2s ease;
         text-decoration: none !important; display: block;
@@ -126,8 +166,11 @@ st.markdown("""
         .home-header { padding: 1rem 0 0.5rem 0; }
         .home-logo-wrap img { height: 28px; }
         .home-subtitle { font-size: 0.82rem; }
-        .nav-grid { flex-direction: column; align-items: center; gap: 1rem; margin-top: 1.5rem; }
-        .nav-card { width: 100%; max-width: 400px; }
+        .carousel { max-width: 92%; height: 340px; margin-top: 1.5rem; }
+        .nav-card { max-width: 100%; height: 280px; }
+        .arrow.left { left: -6px; }
+        .arrow.right { right: -6px; }
+        .arrow { top: 120px; width: 34px; height: 34px; font-size: 1.2rem; }
         .nav-card-preview { height: 100px; }
         .nav-card-body { padding: 1rem 1.2rem; }
         .nav-card-title { font-size: 1rem; }
@@ -156,6 +199,41 @@ altmgr_b64 = base64.b64encode(altmgr_svg.encode()).decode()
 
 st.markdown(f"""<div class="home-header">{logo_img}<div class="home-subtitle">Investment Intelligence Platform</div></div>""", unsafe_allow_html=True)
 
-st.markdown(f"""<div class="nav-grid"><a class="nav-card" href="/Market_Dashboard" target="_self"><div class="nav-card-preview"><img src="data:image/svg+xml;base64,{market_b64}" /></div><div class="nav-card-body"><div class="nav-card-title">Market Dashboard</div><div class="nav-card-desc">Daily macro and market snapshot. Rates, equities, commodities, credit spreads, currencies, and volatility.</div></div></a><a class="nav-card" href="/Portfolio_Dashboard" target="_self"><div class="nav-card-preview"><img src="data:image/svg+xml;base64,{portfolio_b64}" /></div><div class="nav-card-body"><div class="nav-card-title">Portfolio Dashboard</div><div class="nav-card-desc">Current investment allocations by geography, asset class, sector, and stage. Identify gaps and inform strategy.</div></div></a><a class="nav-card" href="/Stock_Watchlist" target="_self"><div class="nav-card-preview"><img src="data:image/svg+xml;base64,{watchlist_b64}" /></div><div class="nav-card-body"><div class="nav-card-title">Stock Watchlist</div><div class="nav-card-desc">Live prices for core, connected, and global holdings. Track performance across exchanges and currencies.</div></div></a><a class="nav-card" href="/Direct_Investments" target="_self"><div class="nav-card-preview"><img src="data:image/svg+xml;base64,{direct_b64}" /></div><div class="nav-card-body"><div class="nav-card-title">Direct Investments</div><div class="nav-card-desc">Public-market proxy tracker for private holdings. Comps, sector ETFs, capex, sentiment for Novolex, Kelvion, Real Chemistry.</div></div></a><a class="nav-card" href="/Alt_Managers" target="_self"><div class="nav-card-preview"><img src="data:image/svg+xml;base64,{altmgr_b64}" /></div><div class="nav-card-body"><div class="nav-card-title">Alternative Managers</div><div class="nav-card-desc">Compare 19 listed alternative asset managers as stocks. Valuation, returns, and risk across Blackstone, KKR, Apollo, Brookfield and peers.</div></div></a></div>""", unsafe_allow_html=True)
+# Card registry — each slide links to a page
+CARDS = [
+    ("/Market_Dashboard", market_b64, "Market Dashboard",
+     "Daily macro and market snapshot. Rates, equities, commodities, credit spreads, currencies, and volatility."),
+    ("/Portfolio_Dashboard", portfolio_b64, "Portfolio Dashboard",
+     "Current investment allocations by geography, asset class, sector, and stage. Identify gaps and inform strategy."),
+    ("/Stock_Watchlist", watchlist_b64, "Stock Watchlist",
+     "Live prices for core, connected, and global holdings. Track performance across exchanges and currencies."),
+    ("/Direct_Investments", direct_b64, "Direct Investments",
+     "Public-market proxy tracker for private holdings. Comps, sector ETFs, capex, sentiment for Novolex, Kelvion, Real Chemistry."),
+    ("/Alt_Managers", altmgr_b64, "Alternative Managers",
+     "Compare 19 listed alternative asset managers as stocks. Valuation, returns, and risk across Blackstone, KKR, Apollo, Brookfield and peers."),
+]
+
+n = len(CARDS)
+slides = ""
+for i, (href, img_b64, title, desc) in enumerate(CARDS):
+    prev_i = (i - 1) % n + 1   # 1-based, wrap around
+    next_i = (i + 1) % n + 1
+    dots = "".join(
+        f'<a class="dot{" active" if j == i else ""}" href="#slide-{j + 1}"></a>'
+        for j in range(n)
+    )
+    slides += (
+        f'<div class="slide" id="slide-{i + 1}">'
+        f'<a class="nav-card" href="{href}" target="_self">'
+        f'<div class="nav-card-preview"><img src="data:image/svg+xml;base64,{img_b64}" /></div>'
+        f'<div class="nav-card-body"><div class="nav-card-title">{title}</div>'
+        f'<div class="nav-card-desc">{desc}</div></div></a>'
+        f'<a class="arrow left" href="#slide-{prev_i}">‹</a>'
+        f'<a class="arrow right" href="#slide-{next_i}">›</a>'
+        f'<div class="dots">{dots}</div>'
+        f'</div>'
+    )
+
+st.markdown(f'<div class="carousel">{slides}</div>', unsafe_allow_html=True)
 
 st.markdown("""<div class="home-footer">Secco Capital \u00b7 Investment Intelligence Platform \u00b7 Confidential</div>""", unsafe_allow_html=True)
