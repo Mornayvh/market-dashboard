@@ -114,27 +114,37 @@ WATCHLIST = {
     "Tiger Global IPO's": [
         ("Cerebras", "CBRS", "USD"),
     ],
-    "Global": [
-        ("Berkshire Hathaway", "BRK-B", "USD"),
-        ("Apple", "AAPL", "USD"),
+    "USA Tech": [
         ("Alphabet", "GOOGL", "USD"),
         ("Amazon", "AMZN", "USD"),
+        ("Apple", "AAPL", "USD"),
+        ("Dell", "DELL", "USD"),
         ("Meta", "META", "USD"),
         ("Microsoft", "MSFT", "USD"),
         ("Nvidia", "NVDA", "USD"),
         ("Tesla", "TSLA", "USD"),
+        ("Palo Alto", "PANW", "USD"),
+        ("Uber", "UBER", "USD"),
+    ],
+    "China Tech": [
         ("Alibaba", "BABA", "USD"),
         ("BYD", "002594.SZ", "CNY"),
         ("Tencent", "TCEHY", "USD"),
+    ],
+    "Financials": [
+        ("JP Morgan", "JPM", "USD"),
+        ("Goldman Sachs", "GS", "USD"),
+        ("BofA", "BAC", "USD"),
+        ("Morgan Stanley", "MS", "USD"),
+        ("Berkshire Hathaway", "BRK-B", "USD"),
+        ("Markel", "MKL", "USD"),
         ("Apollo", "APO", "USD"),
         ("KKR", "KKR", "USD"),
-        ("Dell", "DELL", "USD"),
-        ("Palo Alto", "PANW", "USD"),
+    ],
+    "Real World": [
         ("Deere & Co", "DE", "USD"),
         ("Teledyne", "TDY", "USD"),
         ("Waste Management", "WM", "USD"),
-        ("Uber", "UBER", "USD"),
-        ("Markel", "MKL", "USD"),
     ],
 }
 
@@ -325,7 +335,7 @@ def render_stock_table(df):
 # Layout
 # ---------------------------------------------------------------------------
 
-st.markdown("""<div class="watch-header"><div><div class="watch-title">\u25FC Stock Watchlist</div><div class="watch-subtitle">Core, Connected & Global Holdings</div></div></div>""", unsafe_allow_html=True)
+st.markdown("""<div class="watch-header"><div><div class="watch-title">\u25FC Stock Watchlist</div><div class="watch-subtitle">Core, Connected & Global Holdings by Sector</div></div></div>""", unsafe_allow_html=True)
 
 if st.button("\u2190 Home", key="home_btn"):
     st.switch_page("app.py")
