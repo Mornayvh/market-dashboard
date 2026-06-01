@@ -68,62 +68,72 @@ st.markdown("""
         font-size: 0.95rem; color: #64748B;
     }
 
-    /* ---- Carousel ---- */
+    /* ---- Coverflow carousel ---- */
     .carousel {
         position: relative;
-        max-width: 460px;
+        width: 100%; max-width: 760px;
         height: 360px;
         margin: 2.5rem auto 0 auto;
+        overflow: hidden;
+    }
+    .track {
+        position: absolute; top: 30px; left: 50%;
+        display: flex; align-items: flex-start; gap: 28px;
+        transition: transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
     }
     .slide {
-        position: absolute; inset: 0;
-        display: flex; align-items: stretch; justify-content: center;
-        opacity: 0; visibility: hidden; pointer-events: none;
-        transform: translateY(6px);
-        transition: opacity 0.35s ease, transform 0.35s ease;
+        flex: 0 0 300px; width: 300px;
+        display: flex; justify-content: center;
         scroll-margin-top: 120px;
     }
-    .slide:first-child { opacity: 1; visibility: visible; pointer-events: auto; transform: none; }
-    .slide:target { opacity: 1; visibility: visible; pointer-events: auto; transform: none; z-index: 2; }
-    .carousel:has(.slide:target) .slide:first-child:not(:target) {
-        opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(6px);
-    }
 
+    /* Cards are blurred / dimmed / shrunk by default; the centered one is sharp */
+    .nav-card {
+        background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px;
+        width: 300px; height: 300px; overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        text-decoration: none !important; display: block;
+        filter: blur(3px) saturate(0.85);
+        opacity: 0.45; transform: scale(0.8);
+        transition: transform 0.45s ease, filter 0.45s ease, opacity 0.45s ease, box-shadow 0.2s ease;
+    }
+    .carousel:not(:has(.slide:target)) #slide-1 .nav-card,
+    .slide:target .nav-card {
+        filter: none; opacity: 1; transform: scale(1);
+        box-shadow: 0 12px 32px rgba(15,23,42,0.14);
+        position: relative; z-index: 3;
+    }
+    .carousel:not(:has(.slide:target)) #slide-1 .nav-card:hover,
+    .slide:target .nav-card:hover { border-color: #4F7FD6; }
+
+    /* Arrow sets — only the active set is shown; arrows stay fixed over the centre card */
+    .arrowset {
+        position: absolute; inset: 0; z-index: 7;
+        opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+    }
     .arrow {
-        position: absolute; top: 130px; transform: translateY(-50%);
-        width: 40px; height: 40px; border-radius: 50%;
+        position: absolute; top: 180px; transform: translateY(-50%);
+        width: 42px; height: 42px; border-radius: 50%;
         background: #FFFFFF; border: 1px solid #E2E8F0;
         display: flex; align-items: center; justify-content: center;
-        color: #475569; font-family: 'DM Sans', sans-serif; font-size: 1.4rem; line-height: 1;
-        text-decoration: none !important; z-index: 6;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.10); transition: all 0.2s ease;
+        color: #475569; font-family: 'DM Sans', sans-serif; font-size: 1.5rem; line-height: 1;
+        text-decoration: none !important; pointer-events: auto;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.12); transition: all 0.2s ease;
     }
-    .arrow:hover { border-color: #4F7FD6; color: #4F7FD6; box-shadow: 0 4px 12px rgba(79,127,214,0.18); }
-    .arrow.left { left: -22px; }
-    .arrow.right { right: -22px; }
+    .arrow:hover { border-color: #4F7FD6; color: #4F7FD6; box-shadow: 0 4px 14px rgba(79,127,214,0.22); }
+    .arrow.left { left: calc(50% - 200px); }
+    .arrow.right { left: calc(50% + 158px); }
 
     .dots {
-        position: absolute; bottom: 4px; left: 0; right: 0;
-        display: flex; gap: 0.5rem; justify-content: center; z-index: 6;
+        position: absolute; bottom: 6px; left: 0; right: 0;
+        display: flex; gap: 0.5rem; justify-content: center; z-index: 7;
     }
     .dot {
         width: 8px; height: 8px; border-radius: 50%;
         background: #CBD5E1; transition: all 0.2s ease;
     }
     .dot:hover { background: #94A3B8; }
-    .dot.active { background: #4F7FD6; width: 22px; border-radius: 4px; }
-
-    .nav-card {
-        background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px;
-        width: 100%; max-width: 420px; height: 300px; overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        transition: all 0.2s ease;
-        text-decoration: none !important; display: block;
-    }
-    .nav-card:hover {
-        border-color: #4F7FD6; box-shadow: 0 4px 12px rgba(79,127,214,0.12);
-        transform: translateY(-2px);
-    }
+    .dot.active-dot { background: #4F7FD6; width: 22px; border-radius: 4px; }
 
     .nav-card-preview {
         width: 100%; height: 120px; overflow: hidden;
@@ -166,11 +176,11 @@ st.markdown("""
         .home-header { padding: 1rem 0 0.5rem 0; }
         .home-logo-wrap img { height: 28px; }
         .home-subtitle { font-size: 0.82rem; }
-        .carousel { max-width: 92%; height: 340px; margin-top: 1.5rem; }
-        .nav-card { max-width: 100%; height: 280px; }
-        .arrow.left { left: -6px; }
-        .arrow.right { right: -6px; }
-        .arrow { top: 120px; width: 34px; height: 34px; font-size: 1.2rem; }
+        .carousel { height: 350px; margin-top: 1.5rem; }
+        .nav-card { width: 280px; height: 290px; }
+        .arrow { top: 175px; width: 36px; height: 36px; font-size: 1.3rem; }
+        .arrow.left { left: calc(50% - 174px); }
+        .arrow.right { left: calc(50% + 138px); }
         .nav-card-preview { height: 100px; }
         .nav-card-body { padding: 1rem 1.2rem; }
         .nav-card-title { font-size: 1rem; }
@@ -214,26 +224,59 @@ CARDS = [
 ]
 
 n = len(CARDS)
+STEP = 328          # slide width (300) + gap (28); keep in sync with CSS
+CARD_CENTER = 150   # half of slide width
+
+# Slides — the scrolling track (cards only; arrows/dots are stationary overlays)
 slides = ""
 for i, (href, img_b64, title, desc) in enumerate(CARDS):
-    prev_i = (i - 1) % n + 1   # 1-based, wrap around
-    next_i = (i + 1) % n + 1
-    dots = "".join(
-        f'<a class="dot{" active" if j == i else ""}" href="#slide-{j + 1}"></a>'
-        for j in range(n)
-    )
     slides += (
         f'<div class="slide" id="slide-{i + 1}">'
         f'<a class="nav-card" href="{href}" target="_self">'
         f'<div class="nav-card-preview"><img src="data:image/svg+xml;base64,{img_b64}" /></div>'
         f'<div class="nav-card-body"><div class="nav-card-title">{title}</div>'
         f'<div class="nav-card-desc">{desc}</div></div></a>'
-        f'<a class="arrow left" href="#slide-{prev_i}">‹</a>'
-        f'<a class="arrow right" href="#slide-{next_i}">›</a>'
-        f'<div class="dots">{dots}</div>'
         f'</div>'
     )
 
-st.markdown(f'<div class="carousel">{slides}</div>', unsafe_allow_html=True)
+# One arrow set per card state — only the active set is shown (CSS below)
+arrowsets = ""
+for i in range(n):
+    prev_i = (i - 1) % n + 1
+    next_i = (i + 1) % n + 1
+    arrowsets += (
+        f'<div class="arrowset arrowset-{i + 1}">'
+        f'<a class="arrow left" href="#slide-{prev_i}">‹</a>'
+        f'<a class="arrow right" href="#slide-{next_i}">›</a>'
+        f'</div>'
+    )
+
+# Single dots row; active dot highlighted via the dynamic CSS below
+dots = "".join(f'<a class="dot dot-{j + 1}" href="#slide-{j + 1}"></a>' for j in range(n))
+
+# Dynamic CSS: translate the track to centre the active card, reveal its arrow
+# set, and light up its dot. Default (no :target) falls back to card 1.
+rules = []
+for i in range(n):
+    shift = -(CARD_CENTER + i * STEP)
+    sel = f"#slide-{i + 1}:target"
+    base = f".carousel:not(:has(.slide:target))" if i == 0 else None
+    track_sel = f".carousel:has({sel}) .track"
+    arrow_sel = f".carousel:has({sel}) .arrowset-{i + 1}"
+    dot_sel = f".carousel:has({sel}) .dot-{i + 1}"
+    if base:
+        track_sel = f"{base} .track, {track_sel}"
+        arrow_sel = f"{base} .arrowset-{i + 1}, {arrow_sel}"
+        dot_sel = f"{base} .dot-{i + 1}, {dot_sel}"
+    rules.append(f"{track_sel} {{ transform: translateX({shift}px); }}")
+    rules.append(f"{arrow_sel} {{ opacity: 1; pointer-events: auto; }}")
+    rules.append(f"{dot_sel} {{ background: #4F7FD6; width: 22px; border-radius: 4px; }}")
+
+st.markdown(f"<style>{' '.join(rules)}</style>", unsafe_allow_html=True)
+st.markdown(
+    f'<div class="carousel"><div class="track">{slides}</div>{arrowsets}'
+    f'<div class="dots">{dots}</div></div>',
+    unsafe_allow_html=True,
+)
 
 st.markdown("""<div class="home-footer">Secco Capital \u00b7 Investment Intelligence Platform \u00b7 Confidential</div>""", unsafe_allow_html=True)
