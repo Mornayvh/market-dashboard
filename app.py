@@ -282,7 +282,12 @@ carousel_html = f"""
     dots.forEach((d, i) => d.addEventListener('click', () => {{ cur = i; render(); }}));
     cards.forEach((c, i) => c.addEventListener('click', () => {{
         if (i !== cur) {{ cur = i; render(); return; }}        // clicking a side card centres it first
-        window.top.location.pathname = c.dataset.href;          // clicking the centred card opens the page
+        // Streamlit sandboxes this iframe without allow-top-navigation, so we
+        // open the page in a new tab (allowed via allow-popups). Resolve to an
+        // absolute URL against the parent origin (readable: same-origin).
+        var href = c.dataset.href;
+        try {{ href = window.top.location.origin + href; }} catch (e) {{}}
+        window.open(href, '_blank');
     }}));
     render();
 </script>
@@ -297,7 +302,7 @@ st.markdown(
 components.html(carousel_html, height=400)
 
 st.markdown(
-    '<div class="carousel-hint">Use the arrows or dots to browse \u00b7 click the centre card to open it</div>',
+    '<div class="carousel-hint">Use the arrows or dots to browse \u00b7 click the centre card to open it in a new tab</div>',
     unsafe_allow_html=True,
 )
 
