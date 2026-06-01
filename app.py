@@ -6,6 +6,7 @@ import base64
 from pathlib import Path
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 st.set_page_config(
     page_title="Secco Capital",
@@ -68,102 +69,7 @@ st.markdown("""
         font-size: 0.95rem; color: #64748B;
     }
 
-    /* ---- Coverflow carousel ---- */
-    .carousel {
-        position: relative;
-        width: 100%; max-width: 760px;
-        height: 360px;
-        margin: 2.5rem auto 0 auto;
-        overflow: hidden;
-    }
-    .track {
-        position: absolute; top: 30px; left: 50%;
-        display: flex; align-items: flex-start; gap: 28px;
-        transition: transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
-    }
-    .slide {
-        flex: 0 0 300px; width: 300px;
-        display: flex; justify-content: center;
-        scroll-margin-top: 120px;
-    }
-
-    /* Cards are blurred / dimmed / shrunk by default; the centered one is sharp */
-    .nav-card {
-        background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px;
-        width: 300px; height: 300px; overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        text-decoration: none !important; display: block;
-        filter: blur(3px) saturate(0.85);
-        opacity: 0.45; transform: scale(0.8);
-        transition: transform 0.45s ease, filter 0.45s ease, opacity 0.45s ease, box-shadow 0.2s ease;
-    }
-    .carousel:not(:has(.slide:target)) #slide-1 .nav-card,
-    .slide:target .nav-card {
-        filter: none; opacity: 1; transform: scale(1);
-        box-shadow: 0 12px 32px rgba(15,23,42,0.14);
-        position: relative; z-index: 3;
-    }
-    .carousel:not(:has(.slide:target)) #slide-1 .nav-card:hover,
-    .slide:target .nav-card:hover { border-color: #4F7FD6; }
-
-    /* Arrow sets — only the active set is shown; arrows stay fixed over the centre card */
-    .arrowset {
-        position: absolute; inset: 0; z-index: 7;
-        opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
-    }
-    .arrow {
-        position: absolute; top: 180px; transform: translateY(-50%);
-        width: 42px; height: 42px; border-radius: 50%;
-        background: #FFFFFF; border: 1px solid #E2E8F0;
-        display: flex; align-items: center; justify-content: center;
-        color: #475569; font-family: 'DM Sans', sans-serif; font-size: 1.5rem; line-height: 1;
-        text-decoration: none !important; pointer-events: auto;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.12); transition: all 0.2s ease;
-    }
-    .arrow:hover { border-color: #4F7FD6; color: #4F7FD6; box-shadow: 0 4px 14px rgba(79,127,214,0.22); }
-    .arrow.left { left: calc(50% - 200px); }
-    .arrow.right { left: calc(50% + 158px); }
-
-    .dots {
-        position: absolute; bottom: 6px; left: 0; right: 0;
-        display: flex; gap: 0.5rem; justify-content: center; z-index: 7;
-    }
-    .dot {
-        width: 8px; height: 8px; border-radius: 50%;
-        background: #CBD5E1; transition: all 0.2s ease;
-    }
-    .dot:hover { background: #94A3B8; }
-    .dot.active-dot { background: #4F7FD6; width: 22px; border-radius: 4px; }
-
-    .nav-card-preview {
-        width: 100%; height: 120px; overflow: hidden;
-        border-bottom: 1px solid #E2E8F0;
-        display: flex; align-items: center; justify-content: center;
-        background: #F8FAFC;
-    }
-    .nav-card-preview img {
-        width: 100%; height: 100%; object-fit: cover;
-        opacity: 0.7;
-    }
-
-    .nav-card-body {
-        padding: 1.2rem 1.5rem;
-        text-align: center;
-    }
-
-    .nav-card-title {
-        font-family: 'DM Sans', sans-serif;
-        font-size: 1.1rem; font-weight: 700; color: #1E293B;
-        margin-bottom: 0.4rem; text-decoration: none !important;
-    }
-    .nav-card-desc {
-        font-family: 'DM Sans', sans-serif;
-        font-size: 0.78rem; color: #64748B; line-height: 1.5;
-        text-decoration: none !important;
-    }
-
-    a.nav-card, a.nav-card:hover, a.nav-card:visited, a.nav-card:active,
-    a.nav-card *, a.nav-card:hover * { text-decoration: none !important; }
+    /* Carousel itself is rendered inside a components.html iframe (see below) */
 
     .home-footer {
         text-align: center; font-family: 'DM Sans', sans-serif;
@@ -176,15 +82,6 @@ st.markdown("""
         .home-header { padding: 1rem 0 0.5rem 0; }
         .home-logo-wrap img { height: 28px; }
         .home-subtitle { font-size: 0.82rem; }
-        .carousel { height: 350px; margin-top: 1.5rem; }
-        .nav-card { width: 280px; height: 290px; }
-        .arrow { top: 175px; width: 36px; height: 36px; font-size: 1.3rem; }
-        .arrow.left { left: calc(50% - 174px); }
-        .arrow.right { left: calc(50% + 138px); }
-        .nav-card-preview { height: 100px; }
-        .nav-card-body { padding: 1rem 1.2rem; }
-        .nav-card-title { font-size: 1rem; }
-        .nav-card-desc { font-size: 0.72rem; }
         .home-footer { margin-top: 2rem; font-size: 0.65rem; }
     }
 </style>
@@ -223,60 +120,126 @@ CARDS = [
      "Compare 19 listed alternative asset managers as stocks. Valuation, returns, and risk across Blackstone, KKR, Apollo, Brookfield and peers."),
 ]
 
-n = len(CARDS)
-STEP = 328          # slide width (300) + gap (28); keep in sync with CSS
-CARD_CENTER = 150   # half of slide width
-
-# Slides — the scrolling track (cards only; arrows/dots are stationary overlays)
+# Build the slides + dots; the carousel is rendered inside a sandboxed
+# components.html iframe so its JavaScript controls actually fire (Streamlit's
+# markdown sanitiser strips ids/anchors, which broke the pure-CSS version).
 slides = ""
-for i, (href, img_b64, title, desc) in enumerate(CARDS):
+for href, img_b64, title, desc in CARDS:
     slides += (
-        f'<div class="slide" id="slide-{i + 1}">'
-        f'<a class="nav-card" href="{href}" target="_self">'
+        f'<div class="slide">'
+        f'<div class="nav-card" data-href="{href}">'
         f'<div class="nav-card-preview"><img src="data:image/svg+xml;base64,{img_b64}" /></div>'
         f'<div class="nav-card-body"><div class="nav-card-title">{title}</div>'
-        f'<div class="nav-card-desc">{desc}</div></div></a>'
+        f'<div class="nav-card-desc">{desc}</div></div></div>'
         f'</div>'
     )
 
-# One arrow set per card state — only the active set is shown (CSS below)
-arrowsets = ""
-for i in range(n):
-    prev_i = (i - 1) % n + 1
-    next_i = (i + 1) % n + 1
-    arrowsets += (
-        f'<div class="arrowset arrowset-{i + 1}">'
-        f'<a class="arrow left" href="#slide-{prev_i}">‹</a>'
-        f'<a class="arrow right" href="#slide-{next_i}">›</a>'
-        f'</div>'
-    )
+dots = "".join('<button class="dot"></button>' for _ in CARDS)
 
-# Single dots row; active dot highlighted via the dynamic CSS below
-dots = "".join(f'<a class="dot dot-{j + 1}" href="#slide-{j + 1}"></a>' for j in range(n))
+carousel_html = f"""
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+    * {{ box-sizing: border-box; }}
+    html, body {{ margin: 0; padding: 0; background: #F8FAFC; overflow: hidden; }}
 
-# Dynamic CSS: translate the track to centre the active card, reveal its arrow
-# set, and light up its dot. Default (no :target) falls back to card 1.
-rules = []
-for i in range(n):
-    shift = -(CARD_CENTER + i * STEP)
-    sel = f"#slide-{i + 1}:target"
-    base = f".carousel:not(:has(.slide:target))" if i == 0 else None
-    track_sel = f".carousel:has({sel}) .track"
-    arrow_sel = f".carousel:has({sel}) .arrowset-{i + 1}"
-    dot_sel = f".carousel:has({sel}) .dot-{i + 1}"
-    if base:
-        track_sel = f"{base} .track, {track_sel}"
-        arrow_sel = f"{base} .arrowset-{i + 1}, {arrow_sel}"
-        dot_sel = f"{base} .dot-{i + 1}, {dot_sel}"
-    rules.append(f"{track_sel} {{ transform: translateX({shift}px); }}")
-    rules.append(f"{arrow_sel} {{ opacity: 1; pointer-events: auto; }}")
-    rules.append(f"{dot_sel} {{ background: #4F7FD6; width: 22px; border-radius: 4px; }}")
+    .carousel {{ position: relative; width: 100%; height: 380px; overflow: hidden; }}
+    .track {{
+        position: absolute; top: 30px; left: 50%;
+        display: flex; align-items: flex-start; gap: 28px;
+        transition: transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
+    }}
+    .slide {{ flex: 0 0 300px; width: 300px; display: flex; justify-content: center; }}
 
-st.markdown(f"<style>{' '.join(rules)}</style>", unsafe_allow_html=True)
-st.markdown(
-    f'<div class="carousel"><div class="track">{slides}</div>{arrowsets}'
-    f'<div class="dots">{dots}</div></div>',
-    unsafe_allow_html=True,
-)
+    .nav-card {{
+        background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px;
+        width: 300px; height: 300px; overflow: hidden; cursor: pointer;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        filter: blur(3px) saturate(0.85); opacity: 0.45; transform: scale(0.8);
+        transition: transform 0.45s ease, filter 0.45s ease, opacity 0.45s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }}
+    .nav-card.active {{
+        filter: none; opacity: 1; transform: scale(1);
+        box-shadow: 0 12px 32px rgba(15,23,42,0.14); position: relative; z-index: 3;
+    }}
+    .nav-card.active:hover {{ border-color: #4F7FD6; box-shadow: 0 14px 36px rgba(79,127,214,0.2); }}
+
+    .nav-card-preview {{
+        width: 100%; height: 120px; overflow: hidden;
+        border-bottom: 1px solid #E2E8F0;
+        display: flex; align-items: center; justify-content: center; background: #F8FAFC;
+    }}
+    .nav-card-preview img {{ width: 100%; height: 100%; object-fit: cover; opacity: 0.7; }}
+    .nav-card-body {{ padding: 1.2rem 1.5rem; text-align: center; }}
+    .nav-card-title {{
+        font-family: 'DM Sans', sans-serif; font-size: 1.1rem; font-weight: 700;
+        color: #1E293B; margin-bottom: 0.4rem;
+    }}
+    .nav-card-desc {{
+        font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: #64748B; line-height: 1.5;
+    }}
+
+    .arrow {{
+        position: absolute; top: 180px; transform: translateY(-50%);
+        width: 42px; height: 42px; border-radius: 50%;
+        background: #FFFFFF; border: 1px solid #E2E8F0; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        color: #475569; font-family: 'DM Sans', sans-serif; font-size: 1.5rem; line-height: 1;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.12); transition: all 0.2s ease; z-index: 7;
+    }}
+    .arrow:hover {{ border-color: #4F7FD6; color: #4F7FD6; box-shadow: 0 4px 14px rgba(79,127,214,0.22); }}
+    .arrow.left {{ left: calc(50% - 200px); }}
+    .arrow.right {{ left: calc(50% + 158px); }}
+
+    .dots {{
+        position: absolute; bottom: 14px; left: 0; right: 0;
+        display: flex; gap: 0.5rem; justify-content: center; z-index: 7;
+    }}
+    .dot {{
+        width: 8px; height: 8px; border-radius: 50%; border: none; padding: 0;
+        background: #CBD5E1; cursor: pointer; transition: all 0.2s ease;
+    }}
+    .dot:hover {{ background: #94A3B8; }}
+    .dot.active {{ background: #4F7FD6; width: 22px; border-radius: 4px; }}
+
+    @media (max-width: 768px) {{
+        .arrow {{ top: 175px; width: 36px; height: 36px; font-size: 1.3rem; }}
+        .arrow.left {{ left: calc(50% - 174px); }}
+        .arrow.right {{ left: calc(50% + 138px); }}
+    }}
+</style></head>
+<body>
+<div class="carousel">
+    <div class="track">{slides}</div>
+    <button class="arrow left" aria-label="Previous">&lsaquo;</button>
+    <button class="arrow right" aria-label="Next">&rsaquo;</button>
+    <div class="dots">{dots}</div>
+</div>
+<script>
+    const STEP = 328, CARD_CENTER = 150;
+    const cards = Array.from(document.querySelectorAll('.nav-card'));
+    const dots  = Array.from(document.querySelectorAll('.dot'));
+    const track = document.querySelector('.track');
+    const n = cards.length;
+    let cur = 0;
+
+    function render() {{
+        track.style.transform = 'translateX(' + (-(CARD_CENTER + cur * STEP)) + 'px)';
+        cards.forEach((c, i) => c.classList.toggle('active', i === cur));
+        dots.forEach((d, i) => d.classList.toggle('active', i === cur));
+    }}
+    document.querySelector('.arrow.left').addEventListener('click', () => {{ cur = (cur - 1 + n) % n; render(); }});
+    document.querySelector('.arrow.right').addEventListener('click', () => {{ cur = (cur + 1) % n; render(); }});
+    dots.forEach((d, i) => d.addEventListener('click', () => {{ cur = i; render(); }}));
+    cards.forEach((c, i) => c.addEventListener('click', () => {{
+        if (i !== cur) {{ cur = i; render(); return; }}        // clicking a side card centres it first
+        window.top.location.pathname = c.dataset.href;          // clicking the centred card opens the page
+    }}));
+    render();
+</script>
+</body></html>
+"""
+
+components.html(carousel_html, height=400)
 
 st.markdown("""<div class="home-footer">Secco Capital \u00b7 Investment Intelligence Platform \u00b7 Confidential</div>""", unsafe_allow_html=True)
