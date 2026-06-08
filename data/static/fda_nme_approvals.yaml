@@ -12,9 +12,46 @@ sources:
 notes: |
   Counts include both new molecular entities and new biologic license applications
   approved by CDER. Does not include CBER biologics, generics, or supplements.
+  CDER began publishing the consolidated annual "Novel Drug Approvals" report in 2015;
+  figures for 2000–2014 are NME/new-BLA counts compiled from FDA historical summaries
+  and may differ slightly from later-revised tallies — verify before citing externally.
   2025 figure preliminary — confirm against final FDA CDER report.
 
 periods:
+  - period: "2000"
+    value: 27
+  - period: "2001"
+    value: 24
+  - period: "2002"
+    value: 17
+  - period: "2003"
+    value: 21
+  - period: "2004"
+    value: 36
+  - period: "2005"
+    value: 20
+  - period: "2006"
+    value: 22
+  - period: "2007"
+    value: 18
+  - period: "2008"
+    value: 24
+  - period: "2009"
+    value: 26
+  - period: "2010"
+    value: 21
+  - period: "2011"
+    value: 30
+  - period: "2012"
+    value: 39
+  - period: "2013"
+    value: 27
+  - period: "2014"
+    value: 41
+  - period: "2015"
+    value: 45
+  - period: "2016"
+    value: 22
   - period: "2017"
     value: 46
   - period: "2018"

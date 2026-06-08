@@ -159,7 +159,7 @@ st.markdown(
 CARDS = [
     ("/Market_Dashboard", market_b64, "Market Dashboard",
      "Daily macro and market snapshot. Rates, equities, commodities, credit spreads, currencies, and volatility."),
-    ("/Portfolio_Dashboard", portfolio_b64, "Portfolio Dashboard",
+    ("/Partner_Dashboard", portfolio_b64, "Partner Dashboard",
      "Current investment allocations by geography, asset class, sector, and stage. Identify gaps and inform strategy."),
     ("/Stock_Watchlist", watchlist_b64, "Stock Watchlist",
      "Live prices for core, connected, and global holdings. Track performance across exchanges and currencies."),

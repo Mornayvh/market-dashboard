@@ -55,6 +55,14 @@ class StaticBlock:
 
 
 @dataclass(frozen=True)
+class SgaGroup:
+    """A peer group whose annual SG&A is pulled live from yfinance and normalised to USD."""
+    title: str
+    members: tuple                  # tuple[Comp] — name + ticker
+    caption: str = ""
+
+
+@dataclass(frozen=True)
 class Holding:
     key: str                         # url-safe slug
     name: str                        # display name
@@ -71,6 +79,7 @@ class Holding:
     supplier_tickers: tuple = ()     # tuple[Sparkline] for supply-side names (DC power, etc.)
     trends_queries: tuple = ()       # tuple[TrendsQuery]
     static_blocks: tuple = ()        # tuple[StaticBlock]
+    sga_groups: tuple = ()           # tuple[SgaGroup] — live SG&A peer charts
     static_caption: Optional[str] = None
     website: str = ""                # corporate site for the holding itself
 
@@ -103,16 +112,14 @@ NOVOLEX = Holding(
              website="https://www.sonoco.com/"),
     ),
     sparklines=(
-        Sparkline("Consumer Discretionary", "XLY",
-                  "Restaurant traffic and dining demand — Novolex's largest end-market."),
-        Sparkline("Consumer Staples",       "XLP",
-                  "CPG buyers (food, household products) that drive Novolex packaging volumes."),
+        Sparkline("Consumer Discretionary", "^SP500-25",
+                  "Restaurant traffic and dining demand — Novolex's largest end-market. S&P 500 Consumer Discretionary index (no ETF tracking error)."),
+        Sparkline("Consumer Staples",       "^SP500-30",
+                  "CPG buyers (food, household products) that drive Novolex packaging volumes. S&P 500 Consumer Staples index."),
     ),
     commodities=(
         Sparkline("Brent",        "BZ=F",
                   "Crude benchmark; sets the cost floor for resin and polymer feedstocks."),
-        Sparkline("WTI",          "CL=F",
-                  "US crude; closer proxy for Novolex's domestic feedstock costs."),
         Sparkline("Henry Hub NG", "NG=F",
                   "Natural gas; key petrochemical input and a major US-specific cost variable."),
     ),
@@ -130,7 +137,10 @@ NOVOLEX = Holding(
                   "Fast-casual leader; bowl/bag packaging signal.",
                   website="https://www.chipotle.com/"),
     ),
-    extra_tickers_title="QSR Bellwethers",
+    # No clean QSR/restaurant index trades a usable series on Yahoo (Dow Jones US
+    # Restaurants & Bars ^DJUSRU returns only a single stale point), so these
+    # large-cap QSR names remain the read on quick-service restaurant volume.
+    extra_tickers_title="QSR",
     fred_series=(
         # NAPM was discontinued; ISM Manufacturing is no longer redistributed on FRED.
         # MANEMP (Manufacturing employees) and IPMAN (Industrial Production: Manufacturing)
@@ -200,6 +210,8 @@ KELVION = Holding(
                   "S&P 500 Industrials sector index — pure market signal, no ETF tracking error."),
         Sparkline("PHLX Semiconductor",  "^SOX",
                   "Established US chip-stocks index (Philadelphia Semiconductor); AI capex cycle driver for DC cooling demand."),
+        Sparkline("S&P 500 Utilities", "^SP500-55",
+                  "Power-utility sector index — the generation/grid names that supply data-centre load; clean index, no ETF tracking error."),
         Sparkline("Global Infrastructure", "IGF",
                   "Global infra capex cycle proxy for large project pipeline. ETF — no clean Yahoo index alternative."),
     ),
@@ -216,6 +228,11 @@ KELVION = Holding(
         Sparkline("Cerebras",  "CBRS",
                   "Wafer-scale AI chip designer; IPO'd May 2026. Alternative AI-compute build read alongside Nvidia.",
                   website="https://www.cerebras.ai/"),
+        # No data-centre index trades a usable series on Yahoo (the Dow Jones US
+        # sub-indices return a single stale point), so this data-centre REIT fund
+        # is the closest pure data-centre read available.
+        Sparkline("Data Center REITs", "DTCR",
+                  "Global X Data Center & Digital Infrastructure ETF — closest pure data-centre read; no clean Yahoo DC index exists."),
     ),
     supplier_tickers=(
         Sparkline("Vistra",        "VST",
@@ -305,12 +322,15 @@ REAL_CHEMISTRY = Holding(
              website="https://www.publicisgroupe.com/"),
     ),
     sparklines=(
+        # No usable Yahoo index exists for these pharma/biotech sub-sectors (the
+        # Dow Jones US Pharmaceuticals / Biotechnology indices return only a single
+        # stale point), so the sector ETFs are retained as the cleanest proxy.
         Sparkline("Pharmaceuticals", "IHE",
-                  "iShares U.S. Pharmaceuticals ETF — pharma-specific demand baseline for marketing-services spend."),
+                  "iShares U.S. Pharmaceuticals ETF — pharma-specific demand baseline; no clean Yahoo pharma index exists."),
         Sparkline("Health Insurers", "IHF",
-                  "US healthcare providers & payors; reads on payor-side budget environment."),
+                  "US healthcare providers & payors ETF; reads on payor-side budget environment. No clean Yahoo sub-sector index."),
         Sparkline("Biotech",         "XBI",
-                  "Cleanest read on early-stage biotech funding; drives launch and marketing budgets."),
+                  "SPDR biotech ETF — cleanest read on early-stage biotech funding; no clean Yahoo biotech index exists."),
     ),
     trends_queries=(
         TrendsQuery("GLP-1 interest",   ("GLP-1",),
@@ -322,9 +342,35 @@ REAL_CHEMISTRY = Holding(
         StaticBlock(
             title="FDA novel drug approvals (NMEs)",
             yaml_file="fda_nme_approvals.yaml",
-            chart_kind="bar",
-            caption="CDER annual novel approvals (FDA).",
+            chart_kind="line",
+            caption="CDER annual novel approvals, 2000–2025 (FDA).",
             show_trend=True,
+        ),
+    ),
+    sga_groups=(
+        SgaGroup(
+            title="Large-cap pharma SG&A",
+            caption="Annual selling, general & administrative expense from company filings (proxy for marketing spend; SG&A is not broken out as marketing). Converted to USD at current FX.",
+            members=(
+                Comp("Novartis",    "NVS"),
+                Comp("Pfizer",      "PFE"),
+                Comp("Merck",       "MRK"),
+                Comp("Eli Lilly",   "LLY"),
+                Comp("GSK",         "GSK"),
+                Comp("AstraZeneca", "AZN"),
+            ),
+        ),
+        SgaGroup(
+            title="Specialty biotech SG&A",
+            caption="Annual selling, general & administrative expense from company filings (proxy for marketing spend). Converted to USD at current FX.",
+            members=(
+                Comp("Galderma",  "GALD.SW"),
+                Comp("Incyte",    "INCY"),
+                Comp("Ionis",     "IONS"),
+                Comp("Jazz Pharma", "JAZZ"),
+                Comp("Sobi",      "SOBI.ST"),
+                Comp("Otsuka",    "4578.T"),
+            ),
         ),
     ),
     website="https://www.realchemistry.com/",

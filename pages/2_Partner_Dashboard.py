@@ -1,5 +1,5 @@
 """
-Portfolio Dashboard — Secco Capital Investment Map
+Partner Dashboard — Secco Capital Investment Map
 Password-protected view of current and pipeline investments.
 """
 
@@ -10,7 +10,7 @@ from pathlib import Path
 from collections import Counter
 
 st.set_page_config(
-    page_title="Portfolio Dashboard | Secco Capital",
+    page_title="Partner Dashboard | Secco Capital",
     page_icon="◼",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -155,7 +155,7 @@ def check_password():
     st.markdown("")
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
-        st.markdown('<div class="port-title" style="text-align:center; margin-bottom:0.5rem;">Portfolio Dashboard</div>', unsafe_allow_html=True)
+        st.markdown('<div class="port-title" style="text-align:center; margin-bottom:0.5rem;">Partner Dashboard</div>', unsafe_allow_html=True)
         st.markdown('<div class="port-subtitle" style="text-align:center; margin-bottom:1.5rem;">Enter password to continue</div>', unsafe_allow_html=True)
         pw = st.text_input("Password", type="password", label_visibility="collapsed", placeholder="Enter password")
         if st.button("Access Dashboard", use_container_width=True):
@@ -388,7 +388,7 @@ def build_world_map(df):
 # ---------------------------------------------------------------------------
 
 # Header
-st.markdown("""<div class="port-header"><div><div class="port-title">\u25FC Portfolio Dashboard</div><div class="port-subtitle">Investment Allocation & Strategy Map</div></div></div>""", unsafe_allow_html=True)
+st.markdown("""<div class="port-header"><div><div class="port-title">\u25FC Partner Dashboard</div><div class="port-subtitle">Investment Allocation & Strategy Map</div></div></div>""", unsafe_allow_html=True)
 if st.button("\u2190 Home", key="home_btn"):
     st.switch_page("app.py")
 
@@ -466,4 +466,4 @@ st.markdown(f"""<table class="data-table"><thead><tr><th>Partner</th><th>Status<
 
 # Footer
 st.markdown("---")
-st.markdown('<div style="text-align:center; font-size:0.65rem; color:#94A3B8; font-family:\'DM Sans\',sans-serif;">Portfolio Dashboard · Secco Capital · Confidential · Not investment advice</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; font-size:0.65rem; color:#94A3B8; font-family:\'DM Sans\',sans-serif;">Partner Dashboard · Secco Capital · Confidential · Not investment advice</div>', unsafe_allow_html=True)

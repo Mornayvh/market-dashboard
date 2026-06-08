@@ -11,6 +11,7 @@ from src.direct_investments.config import HOLDINGS, HOLDING_ORDER, get_holding
 from src.direct_investments.views import (
     render_holding_header, render_comps, render_sparkline_grid,
     render_fred_indicators, render_trends, render_static_block,
+    render_sga_groups, section_header,
 )
 
 st.set_page_config(
@@ -221,8 +222,8 @@ render_holding_header(holding)
 # 1. Public comparables
 render_comps(holding)
 
-# 2. Sector ETF sparklines
-render_sparkline_grid("Sector ETFs", list(holding.sparklines))
+# 2. Sector benchmark sparklines (indices where available, ETFs otherwise)
+render_sparkline_grid("Sector Benchmarks", list(holding.sparklines))
 
 # 3. Extra YF tickers (industry/sentiment — e.g. NVDA, CRWV, NBIS, XBI, or QSR bellwethers)
 if holding.extra_tickers:
@@ -234,29 +235,34 @@ supplier_tickers = getattr(holding, "supplier_tickers", ()) or ()
 if supplier_tickers:
     render_sparkline_grid("Data Center Power", list(supplier_tickers))
 
-# 4. Commodities / macro (yfinance)
-if holding.commodities:
-    render_sparkline_grid("Commodities & Macro", list(holding.commodities))
+# 4. Macro — commodities (yfinance) + macro FRED indicators, one consolidated section
+if holding.commodities or holding.fred_series:
+    section_header("Macro")
+    if holding.commodities:
+        render_sparkline_grid(None, list(holding.commodities))
+    if holding.fred_series:
+        render_fred_indicators(None, list(holding.fred_series))
 
 # 4b. Input-cost FRED PPI series (e.g. resin / recycled materials for Novolex)
 fred_inputs = getattr(holding, "fred_inputs", ()) or ()
 if fred_inputs:
     render_fred_indicators("Input Costs", list(fred_inputs))
 
-# 5. FRED indicators
-if holding.fred_series:
-    render_fred_indicators("Macro Indicators", list(holding.fred_series))
-
 # 6. Google Trends sentiment
 if holding.trends_queries:
     trends_note = ""
     if holding.key == "kelvion":
         trends_note = "Rising values may indicate increasing community resistance to DC buildout."
-    render_trends("Search-Interest Sentiment", list(holding.trends_queries), note=trends_note)
+    render_trends("Search-Interest", list(holding.trends_queries), note=trends_note)
 
 # 7. Static reference data
 for block in holding.static_blocks:
     render_static_block(block)
+
+# 7b. Live SG&A peer charts (e.g. pharma marketing-spend proxy for Real Chemistry)
+sga_groups = getattr(holding, "sga_groups", ()) or ()
+if sga_groups:
+    render_sga_groups(list(sga_groups))
 
 # 8. Per-holding caveats
 if holding.static_caption:

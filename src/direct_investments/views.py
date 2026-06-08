@@ -25,6 +25,8 @@ from src.direct_investments.config import (
 # ---------------------------------------------------------------------------
 
 def section_header(text: str):
+    if not text:   # allow sub-grids to render headerless under a shared section
+        return
     st.markdown(f'<div class="section-header">{text}</div>', unsafe_allow_html=True)
 
 
@@ -414,5 +416,100 @@ def render_static_block(block: StaticBlock):
         if block.caption:
             st.caption(block.caption)
         _render_static_meta(meta)
+
+    elif block.chart_kind == "line":
+        # Single-series line — accept both quarterly long (one company) and simple-series schemas
+        df_q, meta_q = static_loader.load_quarterly_long(block.yaml_file)
+        if not df_q.empty:
+            df, meta = df_q, meta_q
+        else:
+            df, meta = static_loader.load_simple_series(block.yaml_file)
+        if df.empty:
+            _empty_caption(f"Static file empty or missing: data/static/{block.yaml_file}")
+            return
+        x_vals, y_vals = df["period"], df["value"]
+        fig = go.Figure(go.Scatter(
+            x=x_vals, y=y_vals, mode="lines+markers",
+            line=dict(color=COLORS["accent"], width=2.2),
+            marker=dict(size=5, color=COLORS["accent"]),
+            name=block.title, hovertemplate="%{x}: %{y}<extra></extra>",
+        ))
+        if block.show_trend and len(x_vals) >= 2:
+            try:
+                x_num = np.arange(len(x_vals), dtype=float)
+                y_num = np.asarray(y_vals, dtype=float)
+                slope, intercept = np.polyfit(x_num, y_num, 1)
+                trend_y = slope * x_num + intercept
+                fig.add_trace(go.Scatter(
+                    x=x_vals, y=trend_y, mode="lines",
+                    line=dict(color=COLORS["text_secondary"], width=1.6, dash="dash"),
+                    name="Trend", hovertemplate="%{y:.1f}<extra>Trend</extra>",
+                ))
+            except (TypeError, ValueError):
+                pass
+        fig.update_layout(
+            height=280, margin=dict(l=10, r=20, t=10, b=10),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            showlegend=False,
+            xaxis=dict(tickfont=dict(color=COLORS["text_secondary"], size=10)),
+            yaxis=dict(
+                showgrid=True, gridcolor=COLORS["border"],
+                tickfont=dict(color=COLORS["text_secondary"], size=10),
+                title=dict(text=meta.get("unit", ""), font=dict(size=10, color=COLORS["text_secondary"])),
+            ),
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        if block.caption:
+            st.caption(block.caption)
+        _render_static_meta(meta)
+
+
+# ---------------------------------------------------------------------------
+# SG&A peer groups (live from yfinance, normalised to USD)
+# ---------------------------------------------------------------------------
+
+def render_sga_groups(groups: list):
+    """Render one grouped-bar chart per SgaGroup: annual SG&A (USD bn) by company."""
+    for group in groups:
+        section_header(group.title)
+        frames = []
+        for m in group.members:
+            sga = data_loader.fetch_sga_usd(m.ticker)  # {year:int -> usd_value:float}
+            if not sga:
+                continue
+            for yr, val in sga.items():
+                frames.append({"year": int(yr), "company": m.name, "value": val / 1e9})
+        if not frames:
+            _empty_caption("SG&A data unavailable — Yahoo Finance financials could not be loaded.")
+            continue
+        df = pd.DataFrame(frames).sort_values("year")
+        years = sorted(df["year"].unique())
+        # Preserve config order for the legend / colour assignment
+        order = [m.name for m in group.members if m.name in set(df["company"])]
+
+        fig = go.Figure()
+        palette = ["#4F7FD6", "#16A34A", "#F59E0B", "#DC2626", "#8B5CF6", "#0EA5E9"]
+        for i, comp in enumerate(order):
+            sub = df[df["company"] == comp].set_index("year").reindex(years)
+            fig.add_trace(go.Bar(
+                x=[str(y) for y in years], y=sub["value"], name=comp,
+                marker_color=palette[i % len(palette)],
+                hovertemplate=comp + " %{x}: $%{y:.2f}B<extra></extra>",
+            ))
+        fig.update_layout(
+            height=320, margin=dict(l=10, r=20, t=10, b=10),
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            barmode="group", bargap=0.2,
+            xaxis=dict(tickfont=dict(color=COLORS["text_secondary"], size=10)),
+            yaxis=dict(
+                showgrid=True, gridcolor=COLORS["border"],
+                tickfont=dict(color=COLORS["text_secondary"], size=10),
+                title=dict(text="SG&A (USD bn)", font=dict(size=10, color=COLORS["text_secondary"])),
+            ),
+            legend=dict(orientation="h", yanchor="bottom", y=-0.25, font=dict(size=10)),
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        if group.caption:
+            st.caption(group.caption)
 
 

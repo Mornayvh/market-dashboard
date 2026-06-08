@@ -110,6 +110,53 @@ def pick_most_liquid(candidates: list[str]) -> tuple[str, dict[str, Optional[flo
 
 
 # ---------------------------------------------------------------------------
+# Financials — annual SG&A, normalised to USD
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=86400, show_spinner=False)  # 24 h — fundamentals move slowly
+def _fx_to_usd(currency: str) -> Optional[float]:
+    """Spot rate to convert `currency` into USD (e.g. SEK -> 0.10). USD returns 1.0."""
+    if not currency or currency.upper() == "USD":
+        return 1.0
+    try:
+        df = fetch_history(f"{currency.upper()}USD=X", period="5d")
+        if df is None or df.empty:
+            return None
+        return float(df["Close"].iloc[-1])
+    except Exception as e:
+        logger.warning(f"FX fetch failed for {currency}: {e}")
+        return None
+
+
+@st.cache_data(ttl=86400, show_spinner=False)  # 24 h
+def fetch_sga_usd(ticker: str) -> dict[int, float]:
+    """
+    Annual Selling, General & Administration expense per fiscal year, converted to USD.
+    Returns {year: usd_value}, or {} if unavailable.
+    """
+    try:
+        t = yf.Ticker(ticker)
+        fin = t.income_stmt
+        if fin is None or fin.empty or "Selling General And Administration" not in fin.index:
+            return {}
+        currency = (t.info or {}).get("financialCurrency", "USD")
+        rate = _fx_to_usd(currency)
+        if rate is None:
+            return {}
+        row = fin.loc["Selling General And Administration"].dropna()
+        out: dict[int, float] = {}
+        for period, value in row.items():
+            try:
+                out[int(period.year)] = float(value) * rate
+            except (TypeError, ValueError, AttributeError):
+                continue
+        return out
+    except Exception as e:
+        logger.warning(f"SG&A fetch failed for {ticker}: {e}")
+        return {}
+
+
+# ---------------------------------------------------------------------------
 # FRED
 # ---------------------------------------------------------------------------
 
