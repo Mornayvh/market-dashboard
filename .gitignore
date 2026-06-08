@@ -1,3 +1,7 @@
 .DS_Store
 __pycache__/
 .venv/
+
+# SEC fundamentals SQLite DB (regenerated from EDGAR; data/ itself stays tracked)
+data/fundamentals.db
+data/fundamentals.db-journal

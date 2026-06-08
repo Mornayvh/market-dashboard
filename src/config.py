@@ -1,9 +1,13 @@
 """
 config.py — Asset universe and data source configuration.
 Central registry for all tracked instruments. Add or remove assets here only.
+Also holds the SEC EDGAR fundamentals settings (companies, metrics, API,
+database) used by src/fundamentals_*.py and pages/6_Fundamentals.py.
 """
 
+import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 # ---------------------------------------------------------------------------
@@ -84,3 +88,106 @@ EQUITY_PE_MAP = {
 # ---------------------------------------------------------------------------
 # Users must set FRED_API_KEY env var. Free key from https://fred.stlouisfed.org/docs/api/api_key.html
 FRED_LOOKBACK_DAYS = 365  # How far back to pull FRED history
+
+# ===========================================================================
+# SEC EDGAR fundamentals
+# Settings for the Fundamentals page (pages/6_Fundamentals.py) and the
+# src/fundamentals_* modules. Edit FUNDAMENTALS_TICKERS / FUNDAMENTALS_METRICS
+# to change what's tracked — tickers only; CIKs resolve automatically.
+# ===========================================================================
+
+def get_sec_user_agent() -> Optional[str]:
+    """Read the SEC User-Agent from env var or Streamlit Cloud secrets.
+
+    The SEC requires a descriptive User-Agent (name + email) on every request
+    and blocks requests without one, so there is deliberately no fallback —
+    set SEC_USER_AGENT, e.g. "Secco Capital mornay@seccocapital.com".
+    """
+    ua = os.environ.get("SEC_USER_AGENT")
+    if not ua:
+        try:
+            import streamlit as st
+            ua = st.secrets.get("general", {}).get("SEC_USER_AGENT")
+        except Exception:
+            pass
+    return ua
+
+
+SEC_TICKER_MAP_URL = "https://www.sec.gov/files/company_tickers.json"
+SEC_COMPANYFACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
+
+# SEC asks for < 10 requests/second. Sleep between calls keeps us safe.
+SEC_RATE_LIMIT_SECONDS = 0.15
+
+# SQLite file under data/ (gitignored). Swap for a Postgres URL later
+# (e.g. "postgresql+psycopg://user:pass@host/db") and the SQLAlchemy layer
+# keeps working with minimal changes.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+FUNDAMENTALS_DB_PATH = PROJECT_ROOT / "data" / "fundamentals.db"
+FUNDAMENTALS_DB_URL = f"sqlite:///{FUNDAMENTALS_DB_PATH}"
+
+# Companies to track — EDIT FREELY. Just tickers; CIK is resolved automatically.
+FUNDAMENTALS_TICKERS = ["NVDA", "META", "AAPL", "MSFT", "GOOGL", "AMZN"]
+
+# Metrics. Each metric has:
+#   - a friendly name (shown in the UI)
+#   - a unit ("USD" or "shares")
+#   - an ordered list of candidate XBRL (taxonomy, tag) pairs. The ingester
+#     tries them in priority order PER FISCAL YEAR (a later tag only fills
+#     years earlier tags didn't cover), because filers tag the same concept
+#     differently — and rename tags across eras.
+#   - scale: divide raw values by this for display (1e6 = millions)
+FUNDAMENTALS_METRICS = {
+    "capex": {
+        "name": "Capital Expenditure",
+        "unit": "USD",
+        "scale": 1e6,
+        # Cash-flow-statement "purchases of property & equipment" — NOT the MD&A
+        # "capital expenditures" figure (they differ). Apply consistently.
+        "tags": [
+            ("us-gaap", "PaymentsToAcquirePropertyPlantAndEquipment"),
+            ("us-gaap", "PaymentsToAcquireProductiveAssets"),
+            ("us-gaap", "PaymentsForCapitalImprovements"),
+        ],
+    },
+    "diluted_shares": {
+        "name": "Weighted Avg. Diluted Shares",
+        "unit": "shares",
+        "scale": 1e6,
+        "tags": [
+            ("us-gaap", "WeightedAverageNumberOfDilutedSharesOutstanding"),
+            ("us-gaap", "WeightedAverageNumberOfShareOutstandingBasicAndDiluted"),
+        ],
+    },
+    "repurchase_shares": {
+        "name": "Share Repurchases (shares)",
+        "unit": "shares",
+        "scale": 1e6,
+        "tags": [
+            ("us-gaap", "StockRepurchasedDuringPeriodShares"),
+            ("us-gaap", "StockRepurchasedAndRetiredDuringPeriodShares"),
+            ("us-gaap", "TreasuryStockSharesAcquired"),
+        ],
+    },
+    "issuance_shares": {
+        "name": "Share Issuances (shares)",
+        "unit": "shares",
+        "scale": 1e6,
+        "tags": [
+            ("us-gaap", "StockIssuedDuringPeriodSharesNewIssues"),
+            ("us-gaap", "StockIssuedDuringPeriodSharesShareBasedCompensation"),
+            ("us-gaap", "StockIssuedDuringPeriodSharesStockOptionsExercised"),
+            # AMZN tags its (benefit-plan) issuances this way; appended last so
+            # it only fills years the tags above don't cover.
+            ("us-gaap", "StockIssuedDuringPeriodSharesEmployeeBenefitPlan"),
+        ],
+    },
+    "repurchase_value": {
+        "name": "Repurchase Value ($)",
+        "unit": "USD",
+        "scale": 1e6,
+        "tags": [
+            ("us-gaap", "PaymentsForRepurchaseOfCommonStock"),
+        ],
+    },
+}
