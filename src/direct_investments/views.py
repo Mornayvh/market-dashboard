@@ -19,6 +19,11 @@ from src.direct_investments.config import (
     Holding, Sparkline, FredSeries, TrendsQuery, StaticBlock,
 )
 
+# Navy palette for column/bar charts — distinct shades of navy blue, dark → light.
+# Used for grouped-bar series and single-series bars across the dashboard.
+NAVY_PALETTE = ["#0B2545", "#13315C", "#1B4079", "#2A5A9E", "#3D74C4", "#5B9BD5"]
+NAVY_BAR = "#1B4079"   # single-series bar fill
+
 
 # ---------------------------------------------------------------------------
 # Section header (matches existing dashboard style)
@@ -394,12 +399,11 @@ def render_static_block(block: StaticBlock):
         unit = meta.get("unit") or ""
         fig = go.Figure()
         companies = df["company"].unique().tolist()
-        palette = ["#4F7FD6", "#16A34A", "#F59E0B", "#DC2626", "#94A3B8", "#0EA5E9"]
         for i, comp in enumerate(companies):
             sub = df[df["company"] == comp]
             fig.add_trace(go.Bar(
                 x=sub["period"], y=sub["value"], name=comp,
-                marker_color=palette[i % len(palette)],
+                marker_color=NAVY_PALETTE[i % len(NAVY_PALETTE)],
             ))
         fig.update_layout(
             height=320, margin=dict(l=10, r=20, t=10, b=10),
@@ -431,7 +435,7 @@ def render_static_block(block: StaticBlock):
                 return
             df, meta = df_s, meta_s
             x_vals, y_vals = df["period"], df["value"]
-        fig = go.Figure(go.Bar(x=x_vals, y=y_vals, marker_color=COLORS["accent"], name=block.title))
+        fig = go.Figure(go.Bar(x=x_vals, y=y_vals, marker_color=NAVY_BAR, name=block.title))
         if block.show_trend and len(x_vals) >= 2:
             try:
                 x_num = np.arange(len(x_vals), dtype=float)
@@ -531,12 +535,11 @@ def render_sga_groups(groups: list):
         order = [m.name for m in group.members if m.name in set(df["company"])]
 
         fig = go.Figure()
-        palette = ["#4F7FD6", "#16A34A", "#F59E0B", "#DC2626", "#8B5CF6", "#0EA5E9"]
         for i, comp in enumerate(order):
             sub = df[df["company"] == comp].set_index("year").reindex(years)
             fig.add_trace(go.Bar(
                 x=[str(y) for y in years], y=sub["value"], name=comp,
-                marker_color=palette[i % len(palette)],
+                marker_color=NAVY_PALETTE[i % len(NAVY_PALETTE)],
                 hovertemplate=comp + " %{x}: $%{y:.2f}B<extra></extra>",
             ))
         fig.update_layout(
