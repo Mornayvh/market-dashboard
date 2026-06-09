@@ -512,22 +512,22 @@ def render_static_block(block: StaticBlock):
 
 
 # ---------------------------------------------------------------------------
-# SG&A peer groups (live from yfinance, normalised to USD)
+# Advertising-spend peer groups (live from SEC EDGAR, USD)
 # ---------------------------------------------------------------------------
 
-def render_sga_groups(groups: list):
-    """Render one grouped-bar chart per SgaGroup: annual SG&A (USD bn) by company."""
+def render_ad_groups(groups: list):
+    """Render one grouped-bar chart per AdGroup: annual advertising expense (USD bn) by company."""
     for group in groups:
         section_header(group.title)
         frames = []
         for m in group.members:
-            sga = data_loader.fetch_sga_usd(m.ticker)  # {year:int -> usd_value:float}
-            if not sga:
+            ad = data_loader.fetch_advertising_usd(m.ticker)  # {fiscal_year:int -> usd_value:float}
+            if not ad:
                 continue
-            for yr, val in sga.items():
+            for yr, val in ad.items():
                 frames.append({"year": int(yr), "company": m.name, "value": val / 1e9})
         if not frames:
-            _empty_caption("SG&A data unavailable — Yahoo Finance financials could not be loaded.")
+            _empty_caption("Advertising data unavailable — SEC EDGAR could not be reached.")
             continue
         df = pd.DataFrame(frames).sort_values("year")
         years = sorted(df["year"].unique())
@@ -550,7 +550,7 @@ def render_sga_groups(groups: list):
             yaxis=dict(
                 showgrid=True, gridcolor=COLORS["border"],
                 tickfont=dict(color=COLORS["text_secondary"], size=10),
-                title=dict(text="SG&A (USD bn)", font=dict(size=10, color=COLORS["text_secondary"])),
+                title=dict(text="Advertising spend (USD bn)", font=dict(size=10, color=COLORS["text_secondary"])),
             ),
             legend=dict(orientation="h", yanchor="bottom", y=-0.25, font=dict(size=10)),
         )

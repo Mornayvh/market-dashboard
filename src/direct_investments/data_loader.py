@@ -138,50 +138,76 @@ def fetch_top_holdings(ticker: str) -> list[tuple[str, str, float]]:
 
 
 # ---------------------------------------------------------------------------
-# Financials — annual SG&A, normalised to USD
+# SEC EDGAR — annual advertising expense (actual marketing spend, US filers)
 # ---------------------------------------------------------------------------
 
-@st.cache_data(ttl=86400, show_spinner=False)  # 24 h — fundamentals move slowly
-def _fx_to_usd(currency: str) -> Optional[float]:
-    """Spot rate to convert `currency` into USD (e.g. SEK -> 0.10). USD returns 1.0."""
-    if not currency or currency.upper() == "USD":
-        return 1.0
-    try:
-        df = fetch_history(f"{currency.upper()}USD=X", period="5d")
-        if df is None or df.empty:
-            return None
-        return float(df["Close"].iloc[-1])
-    except Exception as e:
-        logger.warning(f"FX fetch failed for {currency}: {e}")
-        return None
+import requests
+from datetime import date as _date
+from src.config import (
+    get_sec_user_agent, SEC_TICKER_MAP_URL, SEC_COMPANYCONCEPT_URL,
+)
+
+# SEC requires a descriptive User-Agent; fall back to a contact string if unset.
+_DEFAULT_SEC_UA = "Secco Capital Dashboard mornay@seccocapital.com"
 
 
-@st.cache_data(ttl=86400, show_spinner=False)  # 24 h
-def fetch_sga_usd(ticker: str) -> dict[int, float]:
-    """
-    Annual Selling, General & Administration expense per fiscal year, converted to USD.
-    Returns {year: usd_value}, or {} if unavailable.
-    """
+def _sec_headers() -> dict:
+    return {"User-Agent": get_sec_user_agent() or _DEFAULT_SEC_UA,
+            "Accept-Encoding": "gzip, deflate"}
+
+
+@st.cache_data(ttl=86400, show_spinner=False)  # 24 h — ticker->CIK map is stable
+def _sec_ticker_to_cik() -> dict[str, str]:
+    """Map upper-case ticker -> zero-padded CIK from SEC's company_tickers.json."""
     try:
-        t = yf.Ticker(ticker)
-        fin = t.income_stmt
-        if fin is None or fin.empty or "Selling General And Administration" not in fin.index:
-            return {}
-        currency = (t.info or {}).get("financialCurrency", "USD")
-        rate = _fx_to_usd(currency)
-        if rate is None:
-            return {}
-        row = fin.loc["Selling General And Administration"].dropna()
-        out: dict[int, float] = {}
-        for period, value in row.items():
-            try:
-                out[int(period.year)] = float(value) * rate
-            except (TypeError, ValueError, AttributeError):
-                continue
-        return out
+        r = requests.get(SEC_TICKER_MAP_URL, headers=_sec_headers(), timeout=30)
+        r.raise_for_status()
+        return {row["ticker"].upper(): f'{row["cik_str"]:010d}' for row in r.json().values()}
     except Exception as e:
-        logger.warning(f"SG&A fetch failed for {ticker}: {e}")
+        logger.warning(f"SEC ticker map fetch failed: {e}")
         return {}
+
+
+@st.cache_data(ttl=86400, show_spinner=False)  # 24 h — annual data, refreshed at most daily
+def fetch_advertising_usd(ticker: str) -> dict[int, float]:
+    """
+    Annual advertising expense (us-gaap:AdvertisingExpense) per fiscal year, in USD,
+    pulled from SEC EDGAR's companyconcept endpoint. Keys are the period-end fiscal
+    year. Returns {} if the company doesn't file/disclose it (e.g. foreign IFRS filers).
+    """
+    cik = _sec_ticker_to_cik().get(ticker.upper())
+    if not cik:
+        return {}
+    try:
+        url = SEC_COMPANYCONCEPT_URL.format(cik=cik, tag="AdvertisingExpense")
+        r = requests.get(url, headers=_sec_headers(), timeout=30)
+        if r.status_code != 200:
+            return {}
+        usd = r.json().get("units", {}).get("USD", [])
+    except Exception as e:
+        logger.warning(f"EDGAR advertising fetch failed for {ticker}: {e}")
+        return {}
+
+    # Keep only annual 10-K facts, aligned to the filing's own fiscal year (period-end
+    # year == fy filters out the prior-year comparatives carried in each filing); the
+    # latest-filed value wins per year so restatements supersede.
+    by_fy: dict[int, dict] = {}
+    for it in usd:
+        if it.get("form") not in ("10-K", "10-K/A") or it.get("fp") != "FY":
+            continue
+        start, end, fy = it.get("start"), it.get("end"), it.get("fy")
+        if not start or not end or fy is None or int(end[:4]) != fy:
+            continue
+        try:
+            days = (_date.fromisoformat(end) - _date.fromisoformat(start)).days
+        except ValueError:
+            continue
+        if not 330 <= days <= 400:
+            continue
+        prev = by_fy.get(fy)
+        if prev is None or it.get("filed", "") > prev.get("filed", ""):
+            by_fy[fy] = it
+    return {fy: float(it["val"]) for fy, it in by_fy.items() if it.get("val") is not None}
 
 
 # ---------------------------------------------------------------------------

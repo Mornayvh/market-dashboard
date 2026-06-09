@@ -11,7 +11,7 @@ from src.direct_investments.config import HOLDINGS, HOLDING_ORDER, get_holding
 from src.direct_investments.views import (
     render_holding_header, render_comps, render_sparkline_grid,
     render_fred_indicators, render_trends, render_static_block,
-    render_sga_groups, section_header,
+    render_ad_groups, section_header,
 )
 
 st.set_page_config(
@@ -269,10 +269,10 @@ if holding.trends_queries:
 for block in holding.static_blocks:
     render_static_block(block)
 
-# 7b. Live SG&A peer charts (e.g. pharma marketing-spend proxy for Real Chemistry)
-sga_groups = getattr(holding, "sga_groups", ()) or ()
-if sga_groups:
-    render_sga_groups(list(sga_groups))
+# 7b. Live advertising-spend peer charts (EDGAR) — actual marketing spend for Real Chemistry
+ad_groups = getattr(holding, "ad_groups", ()) or ()
+if ad_groups:
+    render_ad_groups(list(ad_groups))
 
 # 8. Per-holding caveats
 if holding.static_caption:

@@ -115,6 +115,8 @@ def get_sec_user_agent() -> Optional[str]:
 
 SEC_TICKER_MAP_URL = "https://www.sec.gov/files/company_tickers.json"
 SEC_COMPANYFACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
+# Single-concept endpoint — tiny payload (one XBRL tag for one company), good for live use.
+SEC_COMPANYCONCEPT_URL = "https://data.sec.gov/api/xbrl/companyconcept/CIK{cik}/us-gaap/{tag}.json"
 
 # SEC asks for < 10 requests/second. Sleep between calls keeps us safe.
 SEC_RATE_LIMIT_SECONDS = 0.15

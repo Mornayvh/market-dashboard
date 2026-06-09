@@ -57,8 +57,8 @@ class StaticBlock:
 
 
 @dataclass(frozen=True)
-class SgaGroup:
-    """A peer group whose annual SG&A is pulled live from yfinance and normalised to USD."""
+class AdGroup:
+    """A peer group whose annual advertising expense is pulled live from SEC EDGAR (USD)."""
     title: str
     members: tuple                  # tuple[Comp] — name + ticker
     caption: str = ""
@@ -82,7 +82,7 @@ class Holding:
     supplier_tickers: tuple = ()     # tuple[Sparkline] for supply-side names (DC power, etc.)
     trends_queries: tuple = ()       # tuple[TrendsQuery]
     static_blocks: tuple = ()        # tuple[StaticBlock]
-    sga_groups: tuple = ()           # tuple[SgaGroup] — live SG&A peer charts
+    ad_groups: tuple = ()            # tuple[AdGroup] — live advertising-spend peer charts (EDGAR)
     static_caption: Optional[str] = None
     website: str = ""                # corporate site for the holding itself
 
@@ -358,29 +358,22 @@ REAL_CHEMISTRY = Holding(
             show_trend=True,
         ),
     ),
-    sga_groups=(
-        SgaGroup(
-            title="Large-cap pharma SG&A",
-            caption="Annual selling, general & administrative expense from company filings (proxy for marketing spend; SG&A is not broken out as marketing). Converted to USD at current FX.",
+    ad_groups=(
+        AdGroup(
+            title="Large-cap pharma advertising spend",
+            caption="Annual advertising expense (US-GAAP AdvertisingExpense) from 10-K filings via SEC EDGAR — actual paid advertising / DTC media spend, not broad SG&A. Foreign-listed peers (Novartis, AstraZeneca, GSK) file under IFRS and don't disclose advertising separately, so they're omitted.",
             members=(
-                Comp("Novartis",    "NVS"),
-                Comp("Pfizer",      "PFE"),
-                Comp("Merck",       "MRK"),
-                Comp("Eli Lilly",   "LLY"),
-                Comp("GSK",         "GSK"),
-                Comp("AstraZeneca", "AZN"),
+                Comp("Pfizer",    "PFE"),
+                Comp("Merck",     "MRK"),
+                Comp("Eli Lilly", "LLY"),
             ),
         ),
-        SgaGroup(
-            title="Specialty biotech SG&A",
-            caption="Annual selling, general & administrative expense from company filings (proxy for marketing spend). Converted to USD at current FX.",
+        AdGroup(
+            title="Specialty biotech advertising spend",
+            caption="Annual advertising expense (US-GAAP AdvertisingExpense) from 10-K filings via SEC EDGAR. Peers that don't disclose advertising (Ionis) or aren't SEC filers (Galderma, Sobi, Otsuka) are omitted.",
             members=(
-                Comp("Galderma",  "GALD.SW"),
-                Comp("Incyte",    "INCY"),
-                Comp("Ionis",     "IONS"),
+                Comp("Incyte",      "INCY"),
                 Comp("Jazz Pharma", "JAZZ"),
-                Comp("Sobi",      "SOBI.ST"),
-                Comp("Otsuka",    "4578.T"),
             ),
         ),
     ),
