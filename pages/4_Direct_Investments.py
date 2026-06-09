@@ -153,6 +153,16 @@ st.markdown("""
         color: #1E293B; background: #F1F5F9; border: 1px solid #E2E8F0;
         padding: 0.25rem 0.6rem; border-radius: 999px;
     }
+    /* (i) info icon explaining the search-interest chart — reuses .has-tooltip */
+    .info-icon {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 17px; height: 17px; border-radius: 50%;
+        background: #4F7FD6; color: #FFFFFF;
+        font-family: 'DM Sans', sans-serif; font-size: 0.66rem; font-weight: 700;
+        font-style: italic; line-height: 1; cursor: help;
+        border: none; border-bottom: none; flex: 0 0 auto;
+    }
+    .info-icon::after { width: 320px; }   /* wider tooltip for the longer explainer */
 
     .spark-label {
         display: flex; justify-content: space-between; align-items: baseline;

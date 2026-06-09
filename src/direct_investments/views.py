@@ -288,14 +288,22 @@ def render_trends(title: str, queries: list[TrendsQuery], note: str = ""):
             series_frames.append(df[col].rename(q.label))
             labels.append(q.label)
 
-    # Chip strip with per-query tooltips — shown regardless of whether data loaded
-    chips = ""
+    # Leading (i) icon explaining how the chart works, then a chip per query.
+    info_text = (
+        "Google Trends search interest, normalised 0–100 (100 = the term's peak "
+        "over the window), trailing 12 months, US. Each line tracks one search term. "
+        "These chips are hover-labels, not buttons — hover one to see what it proxies. "
+        "To hide or show a line, click its name in the legend below the chart."
+    )
+    info_esc = html.escape(info_text, quote=True)
+    chips = (
+        f'<span class="has-tooltip info-icon" data-tooltip="{info_esc}" title="{info_esc}">i</span>'
+    )
     for q in queries:
         chip_inner = _tooltip_wrap(q.label, q.caption)
         chip_inner = _link_wrap(chip_inner, getattr(q, "website", ""))
         chips += f'<span class="tooltip-chip">{chip_inner}</span>'
-    if chips:
-        st.markdown(f'<div class="tooltip-chip-row">{chips}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="tooltip-chip-row">{chips}</div>', unsafe_allow_html=True)
 
     if not series_frames:
         st.caption("Trends data unavailable — pytrends rate-limited or not installed.")
