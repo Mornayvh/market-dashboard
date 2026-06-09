@@ -401,11 +401,108 @@ REAL_CHEMISTRY = Holding(
 
 
 # ---------------------------------------------------------------------------
+# SAP Fioneer — banking & insurance software (SAP–Dediq JV)
+# NOTE: thesis/risk/description below are sector-accurate drafts — confirm against
+# the actual holding's mandate and adjust the comp set as needed.
+# ---------------------------------------------------------------------------
+
+SAP_FIONEER = Holding(
+    key="sap_fioneer",
+    name="SAP Fioneer",
+    description="Banking & insurance software platform (SAP–Dediq JV): core systems, cloud migration, embedded finance.",
+    thesis="Financial institutions modernising core banking/insurance systems and moving to cloud; embedded-finance and regulation-driven IT demand.",
+    risk="Long enterprise sales cycles; bank/insurer IT-budget sensitivity; competition from entrenched core-system vendors.",
+    comps=(
+        Comp("Temenos", "TEMN.SW", is_primary=True,
+             rationale="Core banking software pure-play; closest public read on Fioneer's banking-platform market.",
+             website="https://www.temenos.com/"),
+        Comp("nCino", "NCNO",
+             rationale="Cloud banking operating system; signal on banks' SaaS-platform adoption.",
+             website="https://www.ncino.com/"),
+        Comp("Q2 Holdings", "QTWO",
+             rationale="Digital banking & lending platform; reads on mid-market bank software spend.",
+             website="https://www.q2.com/"),
+        Comp("Guidewire", "GWRE",
+             rationale="Insurance core-systems leader; closest comp for Fioneer's insurance platform.",
+             website="https://www.guidewire.com/"),
+        Comp("FIS", "FIS",
+             rationale="Large-scale banking & payments technology; broad financial-software demand baseline.",
+             website="https://www.fisglobal.com/"),
+        Comp("SAP", "SAP",
+             rationale="Co-parent of the Fioneer JV; enterprise-software cycle and finance/ERP backdrop.",
+             website="https://www.sap.com/"),
+    ),
+    sparklines=(
+        Sparkline("S&P 500 Information Technology", "^SP500-45",
+                  "US IT sector index — broad software/tech demand backdrop; no ETF tracking error.",
+                  holdings_ticker="XLK"),
+        Sparkline("Software (IGV)", "IGV",
+                  "iShares Expanded Tech-Software ETF — application-software peers; no clean Yahoo software index.",
+                  holdings_ticker="IGV"),
+        Sparkline("FinTech (FINX)", "FINX",
+                  "Global X FinTech ETF — financial-technology demand read.",
+                  holdings_ticker="FINX"),
+    ),
+    trends_queries=(
+        TrendsQuery("Core banking software", ("core banking software",),
+                    caption="Search interest in core-banking modernisation — demand proxy for Fioneer's platform."),
+        TrendsQuery("Digital banking", ("digital banking",),
+                    caption="Broad digitisation interest across retail/commercial banking."),
+        TrendsQuery("Insurtech", ("insurtech",),
+                    caption="Insurance-technology interest — Fioneer's insurance-platform side."),
+    ),
+    website="https://www.sapfioneer.com/",
+)
+
+
+# ---------------------------------------------------------------------------
+# Asia Restaurants — Asian QSR / casual-dining operator
+# NOTE: the actual holding wasn't specified; this is modelled as an Asian
+# restaurant operator with regional public comps. Confirm the company identity,
+# thesis/risk, and comp set, and I'll refine.
+# ---------------------------------------------------------------------------
+
+ASIA_RESTAURANTS = Holding(
+    key="asia_restaurants",
+    name="Asia Restaurants",
+    description="Asian quick-service & casual-dining restaurant operator across Greater China and East/SE Asia.",
+    thesis="Asian dining-out recovery and middle-class consumption; store-network expansion and delivery growth.",
+    risk="China consumer softness; FX translation; competitive discounting; food & labour cost inflation.",
+    comps=(
+        Comp("Yum China", "YUMC", is_primary=True,
+             rationale="Largest China restaurant operator (KFC, Pizza Hut); primary read on Asian QSR demand.",
+             website="https://www.yumchina.com/"),
+        Comp("Super Hi (Haidilao)", "HDL",
+             rationale="International arm of Haidilao hotpot; Asian casual-dining expansion signal.",
+             website="https://www.superhiinternational.com/"),
+        Comp("Café de Coral", "0341.HK",
+             rationale="Hong Kong fast-food & catering chain; mature Greater-China dining read.",
+             website="https://www.cafedecoral.com/"),
+        Comp("Toridoll", "3397.T",
+             rationale="Japanese multi-brand operator (Marugame Udon); East-Asia casual-dining comp.",
+             website="https://www.toridoll.com/en/"),
+        Comp("Xiabuxiabu", "0520.HK",
+             rationale="China hotpot chain; cross-check on mainland dining traffic and discounting.",
+             website="https://www.xiabu.com/"),
+    ),
+    sparklines=(
+        Sparkline("Hang Seng", "^HSI",
+                  "Hong Kong market index — regional consumption backdrop for Greater-China dining. No Asia-restaurant index exists on Yahoo."),
+        Sparkline("Nikkei 225", "^N225",
+                  "Japan market index — East-Asia consumer backdrop."),
+    ),
+    website="",
+)
+
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
-HOLDINGS: dict[str, Holding] = {h.name: h for h in (NOVOLEX, KELVION, REAL_CHEMISTRY)}
-HOLDING_ORDER = ("Novolex", "Kelvion", "Real Chemistry")
+HOLDINGS: dict[str, Holding] = {
+    h.name: h for h in (NOVOLEX, KELVION, REAL_CHEMISTRY, SAP_FIONEER, ASIA_RESTAURANTS)
+}
+HOLDING_ORDER = ("Novolex", "Kelvion", "Real Chemistry", "SAP Fioneer", "Asia Restaurants")
 
 
 def get_holding(name: str) -> Holding:
