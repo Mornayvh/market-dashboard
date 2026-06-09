@@ -23,6 +23,8 @@ class Sparkline:
     ticker: str
     caption: str = ""                # one-line "why this ETF/commodity matters"
     website: str = ""                # corporate site when the name is an operating company
+    holdings_ticker: str = ""        # fund/ETF to pull top-10 holdings from (for an index,
+                                     # its tracking ETF; for an ETF, itself). "" = no holdings box.
 
 
 @dataclass(frozen=True)
@@ -207,13 +209,17 @@ KELVION = Holding(
     ),
     sparklines=(
         Sparkline("S&P 500 Industrials", "^SP500-20",
-                  "S&P 500 Industrials sector index — pure market signal, no ETF tracking error."),
+                  "S&P 500 Industrials sector index — pure market signal, no ETF tracking error.",
+                  holdings_ticker="XLI"),
         Sparkline("PHLX Semiconductor",  "^SOX",
-                  "Established US chip-stocks index (Philadelphia Semiconductor); AI capex cycle driver for DC cooling demand."),
+                  "Established US chip-stocks index (Philadelphia Semiconductor); AI capex cycle driver for DC cooling demand.",
+                  holdings_ticker="SOXX"),
         Sparkline("S&P 500 Utilities", "^SP500-55",
-                  "Power-utility sector index — the generation/grid names that supply data-centre load; clean index, no ETF tracking error."),
+                  "Power-utility sector index — the generation/grid names that supply data-centre load; clean index, no ETF tracking error.",
+                  holdings_ticker="XLU"),
         Sparkline("Global Infrastructure", "IGF",
-                  "Global infra capex cycle proxy for large project pipeline. ETF — no clean Yahoo index alternative."),
+                  "Global infra capex cycle proxy for large project pipeline. ETF — no clean Yahoo index alternative.",
+                  holdings_ticker="IGF"),
     ),
     extra_tickers=(
         Sparkline("Nvidia",    "NVDA",

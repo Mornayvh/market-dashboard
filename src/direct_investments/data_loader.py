@@ -110,6 +110,34 @@ def pick_most_liquid(candidates: list[str]) -> tuple[str, dict[str, Optional[flo
 
 
 # ---------------------------------------------------------------------------
+# Fund / ETF top holdings (used to show index constituents via a tracking ETF)
+# ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=86400, show_spinner=False)  # 24 h — holdings change slowly
+def fetch_top_holdings(ticker: str) -> list[tuple[str, str, float]]:
+    """
+    Top-10 holdings of a fund/ETF as [(symbol, name, weight_pct), ...].
+    Only works for funds (indices have no holdings feed). Returns [] on failure.
+    """
+    try:
+        th = yf.Ticker(ticker).funds_data.top_holdings
+        if th is None or th.empty:
+            return []
+        out: list[tuple[str, str, float]] = []
+        for sym, row in th.head(10).iterrows():
+            name = str(row.get("Name", "") or "")
+            try:
+                weight = float(row.get("Holding Percent")) * 100
+            except (TypeError, ValueError):
+                continue
+            out.append((str(sym), name, weight))
+        return out
+    except Exception as e:
+        logger.warning(f"Top-holdings fetch failed for {ticker}: {e}")
+        return []
+
+
+# ---------------------------------------------------------------------------
 # Financials — annual SG&A, normalised to USD
 # ---------------------------------------------------------------------------
 

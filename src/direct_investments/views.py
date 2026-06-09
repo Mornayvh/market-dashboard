@@ -201,6 +201,39 @@ def render_comps(holding: Holding):
 # Sparkline grid (sector ETFs, commodities, extra YF tickers)
 # ---------------------------------------------------------------------------
 
+def _render_holdings_popover(sp: Sparkline):
+    """Click-to-open box with the benchmark's top-10 holdings + weights (via tracking ETF)."""
+    ht = getattr(sp, "holdings_ticker", "")
+    if not ht:
+        return
+    holdings = data_loader.fetch_top_holdings(ht)
+    with st.popover("ⓘ Top 10 holdings", use_container_width=True):
+        if not holdings:
+            st.caption("Holdings data unavailable.")
+            return
+        if ht != sp.ticker:
+            st.caption(
+                f"Top 10 holdings of {ht} — the ETF that tracks {sp.name} ({sp.ticker}). "
+                "Index constituents aren't published via the data feed, so the tracking "
+                "ETF's holdings stand in; weights are the ETF's and may differ marginally."
+            )
+        else:
+            st.caption(f"Top 10 holdings of {sp.name} ({sp.ticker}).")
+        rows = ""
+        for sym, name, w in holdings:
+            disp = name if len(name) <= 34 else name[:33] + "…"
+            rows += (
+                f'<tr><td>{html.escape(disp)}</td>'
+                f'<td>{html.escape(sym)}</td><td>{w:.2f}%</td></tr>'
+            )
+        st.markdown(
+            '<table class="data-table"><thead><tr>'
+            '<th>Company</th><th>Ticker</th><th>Weight</th>'
+            f'</tr></thead><tbody>{rows}</tbody></table>',
+            unsafe_allow_html=True,
+        )
+
+
 def render_sparkline_grid(title: str, sparklines: list[Sparkline], days: int = 252):
     if not sparklines:
         return
@@ -215,6 +248,7 @@ def render_sparkline_grid(title: str, sparklines: list[Sparkline], days: int = 2
             if df is None or df.empty:
                 st.markdown(label, unsafe_allow_html=True)
                 _empty_caption("Data unavailable")
+                _render_holdings_popover(sp)
                 continue
 
             first = float(df["Close"].iloc[0])
@@ -230,6 +264,7 @@ def render_sparkline_grid(title: str, sparklines: list[Sparkline], days: int = 2
             st.markdown(label + metric_html, unsafe_allow_html=True)
             fig = make_sparkline(df, name=sp.name, days=days, height=80)
             st.plotly_chart(fig, use_container_width=True)
+            _render_holdings_popover(sp)
 
 
 # ---------------------------------------------------------------------------
