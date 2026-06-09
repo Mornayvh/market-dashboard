@@ -1,3 +1,10 @@
+[server]
+# Disable the inotify file-watcher. On Streamlit Cloud the shared host can hit the
+# OS inotify watch limit at startup ("OSError: [Errno 28] inotify watch limit
+# reached"), which crashes the app before it runs. Hot-reload isn't needed in
+# deployment — the app redeploys on each git push.
+fileWatcherType = "none"
+
 # Force a light theme so widgets that follow Streamlit's theme (notably
 # st.dataframe) render light, matching the app's slate/white house style.
 # Without this, Streamlit inherits the OS theme (dark on this machine) and the
