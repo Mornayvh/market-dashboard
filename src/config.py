@@ -192,4 +192,46 @@ FUNDAMENTALS_METRICS = {
             ("us-gaap", "PaymentsForRepurchaseOfCommonStock"),
         ],
     },
+    "issuance_value": {
+        "name": "Stock Issued — Proceeds ($)",
+        "unit": "USD",
+        "scale": 1e6,
+        # Proceeds from share issuance under stock/option plans. Sparsely tagged —
+        # Amazon and Alphabet don't report it, so expect gaps.
+        "tags": [
+            ("us-gaap", "ProceedsFromIssuanceOfCommonStock"),
+            ("us-gaap", "ProceedsFromStockOptionsExercised"),
+            ("us-gaap", "ProceedsFromIssuanceOfSharesUnderIncentiveAndShareBasedCompensationPlans"),
+        ],
+    },
+    "shares_outstanding": {
+        "name": "Shares Outstanding (year-end)",
+        "unit": "shares",
+        "scale": 1e6,
+        # Balance-sheet shares at period end. Meta's dual-class structure isn't
+        # captured by the single us-gaap tag, so Meta may be blank.
+        "tags": [
+            ("us-gaap", "CommonStockSharesOutstanding"),
+            ("dei", "EntityCommonStockSharesOutstanding"),
+        ],
+    },
+    "basic_shares": {
+        "name": "Weighted Avg. Basic Shares",
+        "unit": "shares",
+        "scale": 1e6,
+        "tags": [
+            ("us-gaap", "WeightedAverageNumberOfSharesOutstandingBasic"),
+            ("us-gaap", "WeightedAverageNumberOfShareOutstandingBasicAndDiluted"),
+        ],
+    },
+    "intangibles": {
+        "name": "Intangible Asset Purchases",
+        "unit": "USD",
+        "scale": 1e6,
+        # Most of the set bundles intangibles into PP&E / "other"; typically only
+        # Apple reports this line, so capex (PP&E)+intangibles ≈ PP&E elsewhere.
+        "tags": [
+            ("us-gaap", "PaymentsToAcquireIntangibleAssets"),
+        ],
+    },
 }
