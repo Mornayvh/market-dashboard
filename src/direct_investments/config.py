@@ -54,6 +54,7 @@ class StaticBlock:
     chart_kind: str                 # "grouped_bar" | "line" | "bar"
     caption: str = ""
     show_trend: bool = False        # overlay a linear-fit trend line (bar charts only)
+    smooth: bool = False            # spline-smooth the line (line charts only)
 
 
 @dataclass(frozen=True)
@@ -375,6 +376,7 @@ REAL_CHEMISTRY = Holding(
             chart_kind="line",
             caption="CDER annual novel approvals, 2000–2025 (FDA).",
             show_trend=True,
+            smooth=True,
         ),
     ),
     ad_groups=(

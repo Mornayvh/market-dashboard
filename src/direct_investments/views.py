@@ -475,9 +475,14 @@ def render_static_block(block: StaticBlock):
             _empty_caption(f"Static file empty or missing: data/static/{block.yaml_file}")
             return
         x_vals, y_vals = df["period"], df["value"]
+        line_kw = dict(color=COLORS["accent"], width=2.2)
+        if getattr(block, "smooth", False):
+            # Gentle spline so the year-to-year line reads less jagged; markers stay on
+            # the actual data points.
+            line_kw.update(shape="spline", smoothing=0.6)
         fig = go.Figure(go.Scatter(
             x=x_vals, y=y_vals, mode="lines+markers",
-            line=dict(color=COLORS["accent"], width=2.2),
+            line=line_kw,
             marker=dict(size=5, color=COLORS["accent"]),
             name=block.title, hovertemplate="%{x}: %{y}<extra></extra>",
         ))
