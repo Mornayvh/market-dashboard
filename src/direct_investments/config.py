@@ -116,9 +116,11 @@ NOVOLEX = Holding(
     ),
     sparklines=(
         Sparkline("Consumer Discretionary", "^SP500-25",
-                  "Restaurant traffic and dining demand — Novolex's largest end-market. S&P 500 Consumer Discretionary index (no ETF tracking error)."),
+                  "Restaurant traffic and dining demand — Novolex's largest end-market. S&P 500 Consumer Discretionary index (no ETF tracking error).",
+                  holdings_ticker="XLY"),
         Sparkline("Consumer Staples",       "^SP500-30",
-                  "CPG buyers (food, household products) that drive Novolex packaging volumes. S&P 500 Consumer Staples index."),
+                  "CPG buyers (food, household products) that drive Novolex packaging volumes. S&P 500 Consumer Staples index.",
+                  holdings_ticker="XLP"),
     ),
     commodities=(
         Sparkline("Brent",        "BZ=F",
@@ -332,11 +334,14 @@ REAL_CHEMISTRY = Holding(
         # Dow Jones US Pharmaceuticals / Biotechnology indices return only a single
         # stale point), so the sector ETFs are retained as the cleanest proxy.
         Sparkline("Pharmaceuticals", "IHE",
-                  "iShares U.S. Pharmaceuticals ETF — pharma-specific demand baseline; no clean Yahoo pharma index exists."),
+                  "iShares U.S. Pharmaceuticals ETF — pharma-specific demand baseline; no clean Yahoo pharma index exists.",
+                  holdings_ticker="IHE"),
         Sparkline("Health Insurers", "IHF",
-                  "US healthcare providers & payors ETF; reads on payor-side budget environment. No clean Yahoo sub-sector index."),
+                  "US healthcare providers & payors ETF; reads on payor-side budget environment. No clean Yahoo sub-sector index.",
+                  holdings_ticker="IHF"),
         Sparkline("Biotech",         "XBI",
-                  "SPDR biotech ETF — cleanest read on early-stage biotech funding; no clean Yahoo biotech index exists."),
+                  "SPDR biotech ETF — cleanest read on early-stage biotech funding; no clean Yahoo biotech index exists.",
+                  holdings_ticker="XBI"),
     ),
     trends_queries=(
         TrendsQuery("GLP-1 interest",   ("GLP-1",),
