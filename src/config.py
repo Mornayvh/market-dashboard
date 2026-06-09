@@ -91,7 +91,7 @@ FRED_LOOKBACK_DAYS = 365  # How far back to pull FRED history
 
 # ===========================================================================
 # SEC EDGAR fundamentals
-# Settings for the Fundamentals page (pages/6_Fundamentals.py) and the
+# Settings for the AI Capex & Fundamentals page (pages/7_AI_Capex.py) and the
 # src/fundamentals_* modules. Edit FUNDAMENTALS_TICKERS / FUNDAMENTALS_METRICS
 # to change what's tracked — tickers only; CIKs resolve automatically.
 # ===========================================================================

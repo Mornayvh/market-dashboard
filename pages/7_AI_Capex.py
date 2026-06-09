@@ -1,9 +1,9 @@
 """
-AI Capex — Secco Capital.
-Capital-allocation dashboard for the mega-cap AI buildout cohort (NVDA, META,
-AAPL, MSFT, GOOGL, AMZN). All fundamentals are 10-K annual values from SEC
-EDGAR (via src/fundamentals_*); market cap is derived from SEC year-end share
-counts × Yahoo Finance prices (split-adjusted). Reads the shared SQLite DB
+AI Capex & Fundamentals — Secco Capital.
+Blended capital-allocation + fundamentals view for the mega-cap AI cohort
+(NVDA, META, AAPL, MSFT, GOOGL, AMZN). All fundamentals are 10-K annual values
+from SEC EDGAR (via src/fundamentals_*); market cap is derived from SEC year-end
+share counts × split-adjusted Yahoo Finance prices. Reads the shared SQLite DB
 (data/fundamentals.db); use "Refresh from SEC" to (re)ingest.
 """
 
@@ -13,11 +13,15 @@ import streamlit as st
 import yfinance as yf
 
 from src import fundamentals_process as fp
-from src.config import FUNDAMENTALS_TICKERS as TICKERS, get_sec_user_agent
+from src.config import (
+    FUNDAMENTALS_TICKERS as TICKERS,
+    FUNDAMENTALS_METRICS as METRICS,
+    get_sec_user_agent,
+)
 from src.viz_helpers import COLORS
 
 st.set_page_config(
-    page_title="AI Capex | Secco Capital",
+    page_title="AI Capex & Fundamentals | Secco Capital",
     page_icon="◼",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -47,27 +51,47 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 NAVY_PALETTE = ["#0A2A4A", "#15528A", "#2E7BC4", "#5BA0DA", "#93C0EA", "#1B4079"]
+TICKER_PALETTE = [COLORS["accent"], COLORS["green"], "#1E3A8A",
+                  COLORS["red"], COLORS["neutral"], COLORS["text_secondary"]]
 
 
 def section_header(text):
     st.markdown(f'<div class="section-header">{text}</div>', unsafe_allow_html=True)
 
 
-# ---------------------------------------------------------------------------
-# Display rows: (label, builder). Builder returns {fiscal_year: display_value}.
-# Fundamentals come pre-scaled to millions (value_scaled); market cap in $bn.
-# ---------------------------------------------------------------------------
+def ticker_colors(tickers):
+    return {t: TICKER_PALETTE[i % len(TICKER_PALETTE)] for i, t in enumerate(sorted(tickers))}
+
+
+def style_fig(fig, height, y_title=""):
+    fig.update_layout(
+        height=height, margin=dict(l=10, r=10, t=10, b=10),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="DM Sans, sans-serif", color=COLORS["text_primary"]),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02,
+                    font=dict(size=11, color=COLORS["text_secondary"])),
+        xaxis=dict(showgrid=False, tickformat="d", dtick=1,
+                   tickfont=dict(size=10, color=COLORS["text_secondary"], family="JetBrains Mono, monospace")),
+        yaxis=dict(showgrid=True, gridcolor=COLORS["border"], zeroline=False,
+                   title=dict(text=y_title, font=dict(size=11, color=COLORS["text_secondary"])),
+                   tickfont=dict(size=10, color=COLORS["text_secondary"], family="JetBrains Mono, monospace")),
+    )
+    return fig
+
+
+# Per-company detail rows: (label, key). Fundamentals are pre-scaled to millions;
+# capex_total/market-cap are computed below.
 DISPLAY_ROWS = [
-    ("Shares repurchased (M)",       "repurchase_shares"),
-    ("Shares issued (M)",            "issuance_shares"),
-    ("Shares outstanding, EOY (M)",  "shares_outstanding"),
-    ("Avg basic shares (M)",         "basic_shares"),
-    ("Avg diluted shares (M)",       "diluted_shares"),
-    ("$ repurchased ($M)",           "repurchase_value"),
-    ("$ issued — stock plans ($M)",  "issuance_value"),
+    ("Shares repurchased (M)",        "repurchase_shares"),
+    ("Shares issued (M)",             "issuance_shares"),
+    ("Shares outstanding, EOY (M)",   "shares_outstanding"),
+    ("Avg basic shares (M)",          "basic_shares"),
+    ("Avg diluted shares (M)",        "diluted_shares"),
+    ("$ repurchased ($M)",            "repurchase_value"),
+    ("$ issued — stock plans ($M)",   "issuance_value"),
     ("Capex: PP&E + intangibles ($M)", "_capex_total"),
-    ("Market cap, EOY ($bn)",        "_mc_eoy"),
-    ("Avg market cap ($bn)",         "_mc_avg"),
+    ("Market cap, EOY ($bn)",         "_mc_eoy"),
+    ("Avg market cap ($bn)",          "_mc_avg"),
 ]
 
 
@@ -91,8 +115,7 @@ def price_history(ticker: str):
 
 @st.cache_data(ttl=86400, show_spinner=False)
 def split_history(ticker: str):
-    """List of (date, ratio) stock splits, used to put as-reported shares on the
-    same split basis as yfinance's split-adjusted prices."""
+    """(date, ratio) splits — puts as-reported shares on yfinance's split-adjusted basis."""
     try:
         s = yf.Ticker(ticker).splits
         if s is None or len(s) == 0:
@@ -103,12 +126,9 @@ def split_history(ticker: str):
 
 
 def market_caps(hist, splits, period_end, shares_raw):
-    """(EOY, avg-over-FY) market cap in USD.
-
-    yfinance closes are split-adjusted but SEC shares are as-reported at the time,
-    so scale shares by the cumulative split factor for splits AFTER the period end.
-    Then market cap = split-adjusted close × split-adjusted shares (split-invariant).
-    """
+    """(EOY, avg-over-FY) market cap in USD. yfinance closes are split-adjusted but
+    SEC shares are as-reported, so scale shares by the cumulative split factor for
+    splits AFTER the period end; market cap is then split-invariant."""
     if hist is None or hist.empty or shares_raw is None or pd.isna(shares_raw):
         return (None, None)
     try:
@@ -128,15 +148,15 @@ def market_caps(hist, splits, period_end, shares_raw):
 
 
 # ---------------------------------------------------------------------------
-# Header + controls
+# Header + refresh
 # ---------------------------------------------------------------------------
 last = fp.get_last_refresh()
 ts_text = (f"Last refresh: {pd.Timestamp(last['run_at']).strftime('%d %b %Y  %H:%M')} UTC "
            f"· {last.get('status')}" if last and last.get("run_at") else "No data yet")
 st.markdown(
     f"""<div class="fd-header">
-        <div><div class="fd-title">◼ AI Capex</div>
-        <div class="fd-subtitle">Capital allocation of the mega-cap AI cohort · SEC 10-K filings ·
+        <div><div class="fd-title">◼ AI Capex &amp; Fundamentals</div>
+        <div class="fd-subtitle">Capital allocation &amp; fundamentals of the mega-cap AI cohort · SEC 10-K filings ·
         share counts in millions, $ in millions, market cap in $bn</div></div>
         <div class="fd-timestamp">{ts_text}</div>
     </div>""",
@@ -165,8 +185,10 @@ if df.empty:
     st.info("No data yet — click **Refresh from SEC** to pull the AI cohort's 10-K history.")
     st.stop()
 
+tk_colors = ticker_colors(df["ticker"].unique())
+
 # ---------------------------------------------------------------------------
-# Assemble a tidy per-(ticker, fiscal_year) table across all display metrics
+# Assemble tidy per-(ticker, fiscal_year) table across all display metrics
 # ---------------------------------------------------------------------------
 def metric_map(tkr, metric, col="value_scaled"):
     s = df[(df["ticker"] == tkr) & (df["metric"] == metric)]
@@ -175,12 +197,11 @@ def metric_map(tkr, metric, col="value_scaled"):
 
 records = []
 for tk in TICKERS:
-    years = sorted(df[df["ticker"] == tk]["fiscal_year"].unique())
-    years = years[-10:]                      # last 10 fiscal years
+    years = sorted(df[df["ticker"] == tk]["fiscal_year"].unique())[-10:]
     if not years:
         continue
-    pe = metric_map(tk, "shares_outstanding", "period_end")
-    pe = {**metric_map(tk, "diluted_shares", "period_end"), **pe}  # fallback period_end
+    pe = {**metric_map(tk, "diluted_shares", "period_end"),
+          **metric_map(tk, "shares_outstanding", "period_end")}
     capex = metric_map(tk, "capex"); intan = metric_map(tk, "intangibles")
     shares_raw = metric_map(tk, "shares_outstanding", "value")
     diluted_raw = metric_map(tk, "diluted_shares", "value")
@@ -193,12 +214,8 @@ for tk in TICKERS:
         rec = {"ticker": tk, "fiscal_year": y}
         for m, mm in base.items():
             rec[m] = mm.get(y)
-        # capex PP&E + intangibles (intangibles often absent → treat as 0 only if PP&E present)
         ct = capex.get(y)
-        if ct is not None:
-            rec["_capex_total"] = ct + (intan.get(y) or 0.0)
-        else:
-            rec["_capex_total"] = None
+        rec["_capex_total"] = ct + (intan.get(y) or 0.0) if ct is not None else None
         sh = shares_raw.get(y) if shares_raw.get(y) is not None else diluted_raw.get(y)
         mc_eoy, mc_avg = market_caps(hist, splits, pe.get(y), sh)
         rec["_mc_eoy"] = mc_eoy / 1e9 if mc_eoy is not None else None
@@ -208,30 +225,42 @@ for tk in TICKERS:
 tidy = pd.DataFrame(records)
 
 # ---------------------------------------------------------------------------
-# Per-company metric table (metrics × fiscal years)
+# Metric explorer — trend across the cohort + latest-year comparison
 # ---------------------------------------------------------------------------
-section_header("Company detail — metrics by fiscal year")
-sel = st.selectbox("Company", options=TICKERS, index=0, key="ai_company")
-sub = tidy[tidy["ticker"] == sel].sort_values("fiscal_year")
-if sub.empty:
-    st.info("No rows for this company yet.")
-else:
-    years = [int(y) for y in sub["fiscal_year"]]
-    table = {}
-    for label, key in DISPLAY_ROWS:
-        table[label] = [sub[sub["fiscal_year"] == y][key].iloc[0] for y in years]
-    out = pd.DataFrame(table, index=[str(y) for y in years]).T
-    out = out.apply(lambda r: r.map(lambda v: f"{v:,.1f}" if pd.notna(v) else "—"), axis=1)
-    st.dataframe(out, use_container_width=True)
-    st.caption(
-        f"{sel} · per its own fiscal year-end. Blanks (—) are concepts the filer doesn't "
-        "tag in its 10-K (e.g. Meta's dual-class shares-outstanding, Amazon/Alphabet stock-plan "
-        "proceeds, intangible-asset purchases outside Apple). Market cap = SEC year-end shares × "
-        "Yahoo price (split-adjusted)."
-    )
+section_header("Metric explorer")
+sel_metric = st.selectbox("Metric", options=list(METRICS.keys()),
+                          format_func=lambda k: METRICS[k]["name"], index=0, key="ai_metric")
+unit_label = "$M" if METRICS[sel_metric]["unit"] == "USD" else "shares (M)"
+trend = df[df["metric"] == sel_metric].sort_values("fiscal_year")
+
+left, right = st.columns([3, 2])
+with left:
+    section_header(f"{METRICS[sel_metric]['name']} — trend ({unit_label})")
+    if trend.empty:
+        st.caption("No data for this metric.")
+    else:
+        fig = go.Figure()
+        for tk in sorted(trend["ticker"].unique()):
+            sub = trend[trend["ticker"] == tk]
+            fig.add_trace(go.Scatter(
+                x=sub["fiscal_year"], y=sub["value_scaled"], name=tk, mode="lines+markers",
+                line=dict(color=tk_colors[tk], width=2), marker=dict(size=6)))
+        st.plotly_chart(style_fig(fig, 380, unit_label), use_container_width=True)
+with right:
+    section_header(f"Latest year — {METRICS[sel_metric]['name']}")
+    if not trend.empty:
+        latest_year = int(trend["fiscal_year"].max())
+        snap = trend[trend["fiscal_year"] == latest_year].sort_values("value_scaled", ascending=False)
+        bar = go.Figure(go.Bar(x=snap["ticker"], y=snap["value_scaled"],
+                               marker_color=[tk_colors[t] for t in snap["ticker"]]))
+        bar = style_fig(bar, 380, unit_label)
+        bar.update_xaxes(tickformat=None, dtick=None, type="category",
+                         tickfont=dict(family="DM Sans, sans-serif", size=11))
+        st.plotly_chart(bar, use_container_width=True)
+        st.caption(f"Fiscal year {latest_year} (per each filer's own year-end)")
 
 # ---------------------------------------------------------------------------
-# Capex comparison across the cohort
+# Capex (PP&E + intangibles) across the cohort
 # ---------------------------------------------------------------------------
 section_header("Capex (PP&E + intangibles) — AI cohort ($bn)")
 fig = go.Figure()
@@ -240,22 +269,51 @@ for i, tk in enumerate(TICKERS):
     if s.empty:
         continue
     fig.add_trace(go.Scatter(
-        x=[int(y) for y in s["fiscal_year"]], y=s["_capex_total"] / 1e3,  # $M -> $bn
-        name=tk, mode="lines+markers",
-        line=dict(color=NAVY_PALETTE[i % len(NAVY_PALETTE)], width=2),
-        marker=dict(size=6),
-    ))
-fig.update_layout(
-    height=420, margin=dict(l=10, r=10, t=10, b=10),
-    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, font=dict(size=11)),
-    xaxis=dict(showgrid=False, tickformat="d", dtick=1,
-               tickfont=dict(size=10, color=COLORS["text_secondary"], family="JetBrains Mono, monospace")),
-    yaxis=dict(showgrid=True, gridcolor=COLORS["border"], zeroline=False,
-               title=dict(text="$bn", font=dict(size=11, color=COLORS["text_secondary"])),
-               tickfont=dict(size=10, color=COLORS["text_secondary"], family="JetBrains Mono, monospace")),
-)
-st.plotly_chart(fig, use_container_width=True)
+        x=[int(y) for y in s["fiscal_year"]], y=s["_capex_total"] / 1e3, name=tk,
+        mode="lines+markers", line=dict(color=NAVY_PALETTE[i % len(NAVY_PALETTE)], width=2),
+        marker=dict(size=6)))
+st.plotly_chart(style_fig(fig, 420, "$bn"), use_container_width=True)
+
+# ---------------------------------------------------------------------------
+# Combined buybacks vs issuances
+# ---------------------------------------------------------------------------
+section_header("Combined buybacks vs issuances (shares, M)")
+rep = fp.pivot_metric(df, "repurchase_shares")
+iss = fp.pivot_metric(df, "issuance_shares")
+if not rep.empty or not iss.empty:
+    years = sorted(set(rep.index) | set(iss.index))
+    rep_tot = rep.reindex(years).sum(axis=1) if not rep.empty else pd.Series(0, index=years)
+    iss_tot = iss.reindex(years).sum(axis=1) if not iss.empty else pd.Series(0, index=years)
+    comb = go.Figure()
+    comb.add_trace(go.Scatter(x=years, y=rep_tot, name="Repurchases", mode="lines+markers",
+                              line=dict(color=COLORS["accent"], width=2)))
+    comb.add_trace(go.Scatter(x=years, y=iss_tot, name="Issuances", mode="lines+markers",
+                              line=dict(color=COLORS["neutral"], width=2)))
+    st.plotly_chart(style_fig(comb, 340, "shares (M)"), use_container_width=True)
+    st.caption("Share counts are not split-normalized across filers; totals can be dominated "
+               "by the largest-share-count company.")
+
+# ---------------------------------------------------------------------------
+# Per-company detail — metrics by fiscal year
+# ---------------------------------------------------------------------------
+section_header("Company detail — metrics by fiscal year")
+sel = st.selectbox("Company", options=TICKERS, index=0, key="ai_company")
+sub = tidy[tidy["ticker"] == sel].sort_values("fiscal_year")
+if sub.empty:
+    st.info("No rows for this company yet.")
+else:
+    years = [int(y) for y in sub["fiscal_year"]]
+    table = {label: [sub[sub["fiscal_year"] == y][key].iloc[0] for y in years]
+             for label, key in DISPLAY_ROWS}
+    out = pd.DataFrame(table, index=[str(y) for y in years]).T
+    out = out.apply(lambda r: r.map(lambda v: f"{v:,.1f}" if pd.notna(v) else "—"), axis=1)
+    st.dataframe(out, use_container_width=True)
+    st.caption(
+        f"{sel} · per its own fiscal year-end. Blanks (—) are concepts the filer doesn't tag "
+        "in its 10-K (e.g. Meta's dual-class shares-outstanding, Amazon/Alphabet stock-plan "
+        "proceeds, intangible-asset purchases outside Apple). Market cap = SEC year-end shares × "
+        "Yahoo price (split-adjusted)."
+    )
 
 # ---------------------------------------------------------------------------
 # Full dataset download

@@ -170,8 +170,8 @@ CARDS = [
      "Public-market proxy tracker for private holdings. Comps, sector ETFs, capex, sentiment for Novolex, Kelvion, Real Chemistry."),
     ("/Alt_Managers", altmgr_b64, "Alternative Managers",
      "Compare 19 listed alternative asset managers as stocks. Valuation, returns, and risk across Blackstone, KKR, Apollo, Brookfield and peers."),
-    ("/AI_Capex", ai_capex_b64, "AI Capex",
-     "Capital allocation of the mega-cap AI cohort — capex, buybacks, issuances, share counts, and market cap from SEC 10-K filings."),
+    ("/AI_Capex", ai_capex_b64, "AI Capex & Fundamentals",
+     "Capital allocation & fundamentals of the mega-cap AI cohort — capex, buybacks, issuances, share counts, and market cap from SEC 10-K filings."),
 ]
 
 # Build the slides + dots; the carousel is rendered inside a sandboxed
