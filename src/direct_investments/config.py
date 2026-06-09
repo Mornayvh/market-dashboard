@@ -155,8 +155,6 @@ NOVOLEX = Holding(
     fred_inputs=(
         FredSeries("Plastic Resins (PPI)", "WPU066", "",
                    caption="PPI for plastic resins and materials — virgin-resin headline input cost."),
-        FredSeries("Recyclable Plastics (PPI)", "PCU42993042993042", "",
-                   caption="PPI for recycled plastics (rPET/rHDPE feedstock); drives sustainability-line economics."),
         FredSeries("Recyclable Paper (PPI)", "WPU0912", "",
                    caption="PPI for recyclable paper — fibre input cost; cross-check on paper-vs-plastic substitution."),
     ),
