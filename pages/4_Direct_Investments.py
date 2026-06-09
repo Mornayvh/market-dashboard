@@ -11,7 +11,7 @@ from src.direct_investments.config import HOLDINGS, HOLDING_ORDER, get_holding
 from src.direct_investments.views import (
     render_holding_header, render_comps, render_sparkline_grid,
     render_fred_indicators, render_trends, render_static_block,
-    render_ad_groups, section_header,
+    render_ad_groups, render_capex_chart, section_header,
 )
 
 st.set_page_config(
@@ -264,6 +264,10 @@ if holding.trends_queries:
     if holding.key == "kelvion":
         trends_note = "Rising values may indicate increasing community resistance to DC buildout."
     render_trends("Search-Interest", list(holding.trends_queries), note=trends_note)
+
+# 6c. Live quarterly capex charts (EDGAR) — e.g. hyperscaler & neocloud for Kelvion
+for chart in getattr(holding, "capex_charts", ()) or ():
+    render_capex_chart(chart)
 
 # 7. Static reference data
 for block in holding.static_blocks:

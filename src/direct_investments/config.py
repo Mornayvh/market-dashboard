@@ -57,6 +57,17 @@ class StaticBlock:
 
 
 @dataclass(frozen=True)
+class CapexChart:
+    """Quarterly capex grouped-bar pulled live from SEC EDGAR, with optional static overlay
+    for non-EDGAR series (e.g. foreign 20-F filers with no 10-Q)."""
+    title: str
+    members: tuple                  # tuple[Comp] — name + ticker, pulled live from EDGAR
+    caption: str = ""
+    static_yaml: str = ""           # optional YAML for series EDGAR can't provide
+    static_series: tuple = ()       # tuple[(yaml_company_key, display_name)] to pull from static_yaml
+
+
+@dataclass(frozen=True)
 class AdGroup:
     """A peer group whose annual advertising expense is pulled live from SEC EDGAR (USD)."""
     title: str
@@ -83,6 +94,7 @@ class Holding:
     trends_queries: tuple = ()       # tuple[TrendsQuery]
     static_blocks: tuple = ()        # tuple[StaticBlock]
     ad_groups: tuple = ()            # tuple[AdGroup] — live advertising-spend peer charts (EDGAR)
+    capex_charts: tuple = ()         # tuple[CapexChart] — live quarterly capex charts (EDGAR)
     static_caption: Optional[str] = None
     website: str = ""                # corporate site for the holding itself
 
@@ -272,24 +284,31 @@ KELVION = Holding(
         TrendsQuery("DC water use",  ("data center water use",),
                     caption="Public concern over DC cooling water use; can shift cooling-tech specification."),
     ),
-    static_blocks=(
-        StaticBlock(
+    capex_charts=(
+        CapexChart(
             title="Hyperscaler quarterly capex",
-            yaml_file="hyperscaler_capex.yaml",
-            chart_kind="grouped_bar",
-            caption="GOOGL, MSFT, META, AMZN — total quarterly capex from 10-Q filings.",
+            caption="Total-company capital expenditure by calendar quarter, derived live from 10-Q/10-K cash-flow filings via SEC EDGAR (YTD differenced; Microsoft's fiscal quarters fall into calendar quarters by period-end). Not split data-centre vs other.",
+            members=(
+                Comp("Alphabet",  "GOOGL"),
+                Comp("Microsoft", "MSFT"),
+                Comp("Meta",      "META"),
+                Comp("Amazon",    "AMZN"),
+            ),
         ),
-        StaticBlock(
+        CapexChart(
             title="Neocloud quarterly capex",
-            yaml_file="neocloud_capex.yaml",
-            chart_kind="grouped_bar",
-            caption="CoreWeave & Nebius capex disclosures.",
+            caption="CoreWeave capex by calendar quarter, live from 10-Q filings via SEC EDGAR. Nebius (Dutch 20-F filer — no quarterly US-GAAP filings) is hand-entered.",
+            members=(Comp("CoreWeave", "CRWV"),),
+            static_yaml="neocloud_capex.yaml",
+            static_series=(("NBIS", "Nebius"),),
         ),
+    ),
+    static_blocks=(
         StaticBlock(
             title="NVDA Data Center segment revenue",
             yaml_file="nvda_dc_revenue.yaml",
             chart_kind="bar",
-            caption="Quarterly DC segment revenue from NVDA earnings releases.",
+            caption="Quarterly DC segment revenue from NVDA earnings releases. (Segment-level data isn't exposed by SEC's XBRL API — it lives in dimensional tags — so this stays hand-entered.)",
         ),
         StaticBlock(
             title="Global DC supply additions",

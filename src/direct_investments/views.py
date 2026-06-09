@@ -19,10 +19,10 @@ from src.direct_investments.config import (
     Holding, Sparkline, FredSeries, TrendsQuery, StaticBlock,
 )
 
-# Navy palette for column/bar charts — distinct shades of navy blue, dark → light.
-# Used for grouped-bar series and single-series bars across the dashboard.
-NAVY_PALETTE = ["#0B2545", "#13315C", "#1B4079", "#2A5A9E", "#3D74C4", "#5B9BD5"]
-NAVY_BAR = "#1B4079"   # single-series bar fill
+# Navy palette for column/bar charts — shades of navy blue with enough lightness
+# spread between adjacent steps to stay legible in grouped bars. Dark → light.
+NAVY_PALETTE = ["#0A2A4A", "#15528A", "#2E7BC4", "#5BA0DA", "#93C0EA", "#C7DEF4"]
+NAVY_BAR = "#15528A"   # single-series bar fill
 
 
 # ---------------------------------------------------------------------------
@@ -557,5 +557,70 @@ def render_ad_groups(groups: list):
         st.plotly_chart(fig, use_container_width=True)
         if group.caption:
             st.caption(group.caption)
+
+
+# ---------------------------------------------------------------------------
+# Quarterly capex charts (live from SEC EDGAR, optional static overlay)
+# ---------------------------------------------------------------------------
+
+def _q_sort_key(q: str):
+    return (int(q[:4]), int(q[5:]))
+
+
+def render_capex_chart(chart):
+    """Grouped-bar of quarterly capex (USD bn) by calendar quarter, live from EDGAR."""
+    section_header(chart.title)
+    frames = []
+    companies = []
+    for m in chart.members:
+        q = data_loader.fetch_quarterly_capex(m.ticker)  # {calendar_quarter -> usd}
+        if q:
+            companies.append(m.name)
+        for cq, v in q.items():
+            frames.append({"period": cq, "company": m.name, "value": v / 1e9})
+
+    # Optional static overlay for series EDGAR can't supply (e.g. Nebius 20-F filer)
+    if chart.static_yaml and chart.static_series:
+        sdf, _ = static_loader.load_quarterly_long(chart.static_yaml)
+        keymap = dict(chart.static_series)
+        for _, row in sdf.iterrows():
+            if row["company"] in keymap:
+                disp = keymap[row["company"]]
+                if disp not in companies:
+                    companies.append(disp)
+                frames.append({"period": row["period"], "company": disp, "value": row["value"]})
+
+    if not frames:
+        _empty_caption("Capex data unavailable — SEC EDGAR could not be reached.")
+        return
+
+    df = pd.DataFrame(frames)
+    quarters = sorted(df["period"].unique(), key=_q_sort_key)[-12:]   # last ~3 years
+    df = df[df["period"].isin(quarters)]
+    companies = [c for c in companies if c in set(df["company"])]
+
+    fig = go.Figure()
+    for i, comp in enumerate(companies):
+        sub = df[df["company"] == comp].set_index("period").reindex(quarters)
+        fig.add_trace(go.Bar(
+            x=quarters, y=sub["value"], name=comp,
+            marker_color=NAVY_PALETTE[i % len(NAVY_PALETTE)],
+            hovertemplate=comp + " %{x}: $%{y:.2f}B<extra></extra>",
+        ))
+    fig.update_layout(
+        height=320, margin=dict(l=10, r=20, t=10, b=10),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        barmode="group", bargap=0.2,
+        xaxis=dict(tickfont=dict(color=COLORS["text_secondary"], size=10)),
+        yaxis=dict(
+            showgrid=True, gridcolor=COLORS["border"],
+            tickfont=dict(color=COLORS["text_secondary"], size=10),
+            title=dict(text="Capex (USD bn)", font=dict(size=10, color=COLORS["text_secondary"])),
+        ),
+        legend=dict(orientation="h", yanchor="bottom", y=-0.25, font=dict(size=10)),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    if chart.caption:
+        st.caption(chart.caption)
 
 

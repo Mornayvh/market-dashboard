@@ -211,6 +211,83 @@ def fetch_advertising_usd(ticker: str) -> dict[int, float]:
 
 
 # ---------------------------------------------------------------------------
+# SEC EDGAR — quarterly capex by calendar quarter (cash-flow YTD differencing)
+# ---------------------------------------------------------------------------
+
+# Filers tag capex differently (Amazon uses ProductiveAssets, others PP&E); try in order.
+_CAPEX_TAGS = ("PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsToAcquireProductiveAssets")
+
+
+def _calendar_quarter(end_iso: str) -> str:
+    """Map a period-end date to a calendar quarter label, e.g. '2025-09-30' -> '2025Q3'."""
+    return f"{int(end_iso[:4])}Q{(int(end_iso[5:7]) - 1)//3 + 1}"
+
+
+def _derive_quarterly_capex(usd_facts: list) -> dict[str, float]:
+    """
+    Cash-flow capex is reported year-to-date in 10-Qs, so derive standalone quarters by
+    differencing the YTD chain within each fiscal year. The fiscal-year start is anchored
+    on the 10-K boundary (period-end year == fy) so prior-year comparatives are excluded;
+    YTD facts are those sharing that start date. Q = YTD(this) - YTD(prev); each maps to a
+    calendar quarter by its period-end. Latest-filed fact wins per period.
+    """
+    fy_start, annual = {}, {}
+    for it in usd_facts:
+        s, e, fy, v, f = it.get("start"), it.get("end"), it.get("fy"), it.get("val"), it.get("filed", "")
+        if not (s and e and v is not None and fy is not None):
+            continue
+        try:
+            d = (_date.fromisoformat(e) - _date.fromisoformat(s)).days
+        except ValueError:
+            continue
+        if it.get("form", "").startswith("10-K") and 330 <= d <= 400 and int(e[:4]) == fy:
+            if fy not in annual or f > annual[fy][1]:
+                annual[fy] = (float(v), f)
+                fy_start[fy] = s
+    out: dict[str, float] = {}
+    for fy, fstart in fy_start.items():
+        pts: dict[str, tuple] = {}
+        for it in usd_facts:
+            s, e, v, f = it.get("start"), it.get("end"), it.get("val"), it.get("filed", "")
+            if s != fstart or not e or v is None:
+                continue
+            if e not in pts or f > pts[e][1]:
+                pts[e] = (float(v), f)
+        prev = 0.0
+        for end, (v, _) in sorted(pts.items()):
+            out[_calendar_quarter(end)] = v - prev
+            prev = v
+    return out
+
+
+@st.cache_data(ttl=86400, show_spinner=False)  # 24 h
+def fetch_quarterly_capex(ticker: str) -> dict[str, float]:
+    """
+    Standalone quarterly capex (USD) keyed by calendar quarter, derived from SEC EDGAR
+    cash-flow filings. Picks the capex tag with the most recent coverage. Returns {} for
+    non-US filers (e.g. foreign 20-F issuers don't file 10-Qs).
+    """
+    cik = _sec_ticker_to_cik().get(ticker.upper())
+    if not cik:
+        return {}
+    best: dict[str, float] = {}
+    _recent = lambda d: sum(1 for q in d if int(q[:4]) >= 2022)
+    for tag in _CAPEX_TAGS:
+        try:
+            r = requests.get(SEC_COMPANYCONCEPT_URL.format(cik=cik, tag=tag), headers=_sec_headers(), timeout=30)
+            if r.status_code != 200:
+                continue
+            usd = r.json().get("units", {}).get("USD", [])
+        except Exception as e:
+            logger.warning(f"EDGAR capex fetch failed for {ticker}/{tag}: {e}")
+            continue
+        series = _derive_quarterly_capex(usd)
+        if _recent(series) > _recent(best):
+            best = series
+    return best
+
+
+# ---------------------------------------------------------------------------
 # FRED
 # ---------------------------------------------------------------------------
 
