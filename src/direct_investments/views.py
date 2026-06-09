@@ -479,7 +479,7 @@ def render_static_block(block: StaticBlock):
         if getattr(block, "smooth", False):
             # Gentle spline so the year-to-year line reads less jagged; markers stay on
             # the actual data points.
-            line_kw.update(shape="spline", smoothing=0.6)
+            line_kw.update(shape="spline", smoothing=1.0)
         fig = go.Figure(go.Scatter(
             x=x_vals, y=y_vals, mode="lines+markers",
             line=line_kw,
