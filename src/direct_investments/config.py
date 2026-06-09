@@ -76,6 +76,7 @@ class Holding:
     fred_inputs: tuple = ()          # tuple[FredSeries] — input-cost (PPI) series, rendered separately
     extra_tickers: tuple = ()        # tuple[Sparkline] for industry/sentiment YF series (XBI etc.)
     extra_tickers_title: str = "Industry & Sentiment"
+    macro_title: str = "Macro"       # heading for the consolidated commodities + macro-FRED section
     supplier_tickers: tuple = ()     # tuple[Sparkline] for supply-side names (DC power, etc.)
     trends_queries: tuple = ()       # tuple[TrendsQuery]
     static_blocks: tuple = ()        # tuple[StaticBlock]
@@ -141,6 +142,7 @@ NOVOLEX = Holding(
     # Restaurants & Bars ^DJUSRU returns only a single stale point), so these
     # large-cap QSR names remain the read on quick-service restaurant volume.
     extra_tickers_title="QSR",
+    macro_title="Supply Chain",
     fred_series=(
         # NAPM was discontinued; ISM Manufacturing is no longer redistributed on FRED.
         # MANEMP (Manufacturing employees) and IPMAN (Industrial Production: Manufacturing)

@@ -237,7 +237,7 @@ if supplier_tickers:
 
 # 4. Macro — commodities (yfinance) + macro FRED indicators, one consolidated section
 if holding.commodities or holding.fred_series:
-    section_header("Macro")
+    section_header(getattr(holding, "macro_title", "Macro"))
     if holding.commodities:
         render_sparkline_grid(None, list(holding.commodities))
     if holding.fred_series:
