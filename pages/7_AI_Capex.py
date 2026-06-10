@@ -270,31 +270,32 @@ st.plotly_chart(style_fig(fig, 420, "$bn"), use_container_width=True)
 # ---------------------------------------------------------------------------
 # Combined buybacks vs issuances
 # ---------------------------------------------------------------------------
-section_header("Combined buybacks vs issuances (shares, M)")
-rep = fp.pivot_metric(df, "repurchase_shares")
-iss = fp.pivot_metric(df, "issuance_shares")
+section_header("Combined buybacks vs issuances ($bn)")
+# pivot_metric returns value_scaled ($M for dollar metrics); /1e3 → $bn.
+rep = fp.pivot_metric(df, "repurchase_value")
+iss = fp.pivot_metric(df, "issuance_value")
 if not rep.empty or not iss.empty:
     years = sorted(set(rep.index) | set(iss.index))
-    rep_tot = rep.reindex(years).sum(axis=1) if not rep.empty else pd.Series(0, index=years)
-    iss_tot = iss.reindex(years).sum(axis=1) if not iss.empty else pd.Series(0, index=years)
+    rep_tot = (rep.reindex(years).sum(axis=1) if not rep.empty else pd.Series(0, index=years)) / 1e3
+    iss_tot = (iss.reindex(years).sum(axis=1) if not iss.empty else pd.Series(0, index=years)) / 1e3
     comb = go.Figure()
     comb.add_trace(go.Scatter(x=years, y=rep_tot, name="Repurchases", mode="lines+markers",
                               line=dict(color=COLORS["accent"], width=2)))
     comb.add_trace(go.Scatter(x=years, y=iss_tot, name="Issuances", mode="lines+markers",
                               line=dict(color=COLORS["neutral"], width=2), yaxis="y2"))
-    comb = style_fig(comb, 340, "Repurchases (shares, M)")
+    comb = style_fig(comb, 340, "Repurchases ($bn)")
     comb.update_layout(
         yaxis2=dict(
-            title=dict(text="Issuances (shares, M)",
+            title=dict(text="Issuances ($bn)",
                        font=dict(size=11, color=COLORS["text_secondary"])),
             overlaying="y", side="right", showgrid=False, zeroline=False,
             tickfont=dict(size=10, color=COLORS["text_secondary"],
                           family="JetBrains Mono, monospace")),
     )
     st.plotly_chart(comb, use_container_width=True)
-    st.caption("Repurchases (left axis) and issuances (right axis) are on separate scales. "
-               "Share counts are not split-normalized across filers; totals can be dominated "
-               "by the largest-share-count company.")
+    st.caption("Cohort-total $ repurchased (left axis) vs $ from stock issuances / plan proceeds "
+               "(right axis), on separate scales. Dollar values are comparable across filers. "
+               "Issuance proceeds are sparsely tagged, so that line understates true issuance.")
 
 # ---------------------------------------------------------------------------
 # Per-company detail — metrics by fiscal year
