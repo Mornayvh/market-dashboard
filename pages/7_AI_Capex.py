@@ -298,6 +298,28 @@ if not rep.empty or not iss.empty:
                "Issuance proceeds are sparsely tagged, so that line understates true issuance.")
 
 # ---------------------------------------------------------------------------
+# Debt issued vs repaid
+# ---------------------------------------------------------------------------
+section_header("Debt issued vs repaid — AI cohort ($bn)")
+dbt_iss = fp.pivot_metric(df, "debt_issuance")
+dbt_rep = fp.pivot_metric(df, "debt_repayment")
+if not dbt_iss.empty or not dbt_rep.empty:
+    yrs = sorted(set(dbt_iss.index) | set(dbt_rep.index))
+    iss_tot = (dbt_iss.reindex(yrs).sum(axis=1) if not dbt_iss.empty else pd.Series(0, index=yrs)) / 1e3
+    rep_tot = (dbt_rep.reindex(yrs).sum(axis=1) if not dbt_rep.empty else pd.Series(0, index=yrs)) / 1e3
+    dfig = go.Figure()
+    dfig.add_trace(go.Scatter(x=yrs, y=iss_tot, name="Debt issued", mode="lines+markers",
+                              line=dict(color=COLORS["accent"], width=2)))
+    dfig.add_trace(go.Scatter(x=yrs, y=rep_tot, name="Debt repaid", mode="lines+markers",
+                              line=dict(color=COLORS["red"], width=2)))
+    st.plotly_chart(style_fig(dfig, 360, "$bn"), use_container_width=True)
+    st.caption("Cohort-total gross debt proceeds vs repayments; the gap between the lines is net "
+               "new borrowing. Apple/Amazon/Meta/Nvidia report long-term debt only, but Alphabet "
+               "and Microsoft bundle short-term commercial paper that rolls over intra-year, so "
+               "their gross lines are inflated and roughly cancel (near-zero net). Meta had no debt "
+               "before FY2022. Per-company trends are in the Metric explorer above.")
+
+# ---------------------------------------------------------------------------
 # Per-company detail — metrics by fiscal year
 # ---------------------------------------------------------------------------
 section_header("Company detail — metrics by fiscal year")
