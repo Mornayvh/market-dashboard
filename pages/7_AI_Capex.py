@@ -240,31 +240,17 @@ sel_metric = st.selectbox("Metric", options=list(METRICS.keys()),
 unit_label = "$M" if METRICS[sel_metric]["unit"] == "USD" else "shares (M)"
 trend = df[df["metric"] == sel_metric].sort_values("fiscal_year")
 
-left, right = st.columns([3, 2])
-with left:
-    section_header(f"{METRICS[sel_metric]['name']} — trend ({unit_label})")
-    if trend.empty:
-        st.caption("No data for this metric.")
-    else:
-        fig = go.Figure()
-        for tk in sorted(trend["ticker"].unique()):
-            sub = trend[trend["ticker"] == tk]
-            fig.add_trace(go.Scatter(
-                x=sub["fiscal_year"], y=sub["value_scaled"], name=tk, mode="lines+markers",
-                line=dict(color=tk_colors[tk], width=2), marker=dict(size=6)))
-        st.plotly_chart(style_fig(fig, 380, unit_label), use_container_width=True)
-with right:
-    section_header(f"Latest year — {METRICS[sel_metric]['name']}")
-    if not trend.empty:
-        latest_year = int(trend["fiscal_year"].max())
-        snap = trend[trend["fiscal_year"] == latest_year].sort_values("value_scaled", ascending=False)
-        bar = go.Figure(go.Bar(x=snap["ticker"], y=snap["value_scaled"],
-                               marker_color=[tk_colors[t] for t in snap["ticker"]]))
-        bar = style_fig(bar, 380, unit_label)
-        bar.update_xaxes(tickformat=None, dtick=None, type="category",
-                         tickfont=dict(family="DM Sans, sans-serif", size=11))
-        st.plotly_chart(bar, use_container_width=True)
-        st.caption(f"Fiscal year {latest_year} (per each filer's own year-end)")
+section_header(f"{METRICS[sel_metric]['name']} — trend ({unit_label})")
+if trend.empty:
+    st.caption("No data for this metric.")
+else:
+    fig = go.Figure()
+    for tk in sorted(trend["ticker"].unique()):
+        sub = trend[trend["ticker"] == tk]
+        fig.add_trace(go.Scatter(
+            x=sub["fiscal_year"], y=sub["value_scaled"], name=tk, mode="lines+markers",
+            line=dict(color=tk_colors[tk], width=2), marker=dict(size=6)))
+    st.plotly_chart(style_fig(fig, 380, unit_label), use_container_width=True)
 
 # ---------------------------------------------------------------------------
 # Capex (PP&E + intangibles) across the cohort
@@ -295,9 +281,19 @@ if not rep.empty or not iss.empty:
     comb.add_trace(go.Scatter(x=years, y=rep_tot, name="Repurchases", mode="lines+markers",
                               line=dict(color=COLORS["accent"], width=2)))
     comb.add_trace(go.Scatter(x=years, y=iss_tot, name="Issuances", mode="lines+markers",
-                              line=dict(color=COLORS["neutral"], width=2)))
-    st.plotly_chart(style_fig(comb, 340, "shares (M)"), use_container_width=True)
-    st.caption("Share counts are not split-normalized across filers; totals can be dominated "
+                              line=dict(color=COLORS["neutral"], width=2), yaxis="y2"))
+    comb = style_fig(comb, 340, "Repurchases (shares, M)")
+    comb.update_layout(
+        yaxis2=dict(
+            title=dict(text="Issuances (shares, M)",
+                       font=dict(size=11, color=COLORS["text_secondary"])),
+            overlaying="y", side="right", showgrid=False, zeroline=False,
+            tickfont=dict(size=10, color=COLORS["text_secondary"],
+                          family="JetBrains Mono, monospace")),
+    )
+    st.plotly_chart(comb, use_container_width=True)
+    st.caption("Repurchases (left axis) and issuances (right axis) are on separate scales. "
+               "Share counts are not split-normalized across filers; totals can be dominated "
                "by the largest-share-count company.")
 
 # ---------------------------------------------------------------------------
