@@ -260,35 +260,4 @@ FUNDAMENTALS_METRICS = {
             ("us-gaap", "PaymentsToAcquireIntangibleAssets"),
         ],
     },
-    # Debt financing (cash-flow statement). Filers use different tags for the same
-    # line, so candidates are tried per fiscal year in priority order. NOTE on
-    # comparability: Apple/Amazon/Meta/Nvidia tag long-term debt only, but Alphabet
-    # (ProceedsFromDebtNetOfIssuanceCosts) and Microsoft (…MaturingInMoreThanThree-
-    # Months) bundle short-term commercial paper that rolls over many times a year,
-    # so their GROSS proceeds/repayments are inflated. The net (issuance −
-    # repayment) neutralises the churn and is the comparable figure.
-    "debt_issuance": {
-        "name": "Debt Issued (proceeds)",
-        "unit": "USD",
-        "scale": 1e6,
-        "tags": [
-            ("us-gaap", "ProceedsFromIssuanceOfLongTermDebt"),
-            ("us-gaap", "ProceedsFromIssuanceOfSeniorLongTermDebt"),
-            ("us-gaap", "ProceedsFromDebtNetOfIssuanceCosts"),          # GOOGL
-            ("us-gaap", "ProceedsFromDebtMaturingInMoreThanThreeMonths"),  # MSFT
-            ("us-gaap", "ProceedsFromIssuanceOfDebt"),
-        ],
-    },
-    "debt_repayment": {
-        "name": "Debt Repaid",
-        "unit": "USD",
-        "scale": 1e6,
-        "tags": [
-            ("us-gaap", "RepaymentsOfLongTermDebt"),
-            ("us-gaap", "RepaymentsOfSeniorLongTermDebt"),
-            ("us-gaap", "RepaymentsOfDebtMaturingInMoreThanThreeMonths"),    # MSFT
-            ("us-gaap", "RepaymentsOfDebtAndCapitalLeaseObligations"),       # GOOGL
-            ("us-gaap", "RepaymentsOfDebt"),
-        ],
-    },
 }
