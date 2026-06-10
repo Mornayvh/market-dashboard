@@ -79,20 +79,25 @@ def style_fig(fig, height, y_title=""):
     return fig
 
 
-# Per-company detail rows: (label, key). Fundamentals are pre-scaled to millions;
-# capex_total/market-cap are computed below.
+# Per-company detail rows: (label, key). Units are standardised so rows are
+# comparable across companies — every share count is in millions (M) and every
+# dollar figure is in billions ($bn). Share metrics arrive pre-scaled to millions
+# from load_frame; the dollar rows below are normalised to $bn when assembled.
 DISPLAY_ROWS = [
-    ("Shares repurchased (M)",        "repurchase_shares"),
-    ("Shares issued (M)",             "issuance_shares"),
-    ("Shares outstanding, EOY (M)",   "shares_outstanding"),
-    ("Avg basic shares (M)",          "basic_shares"),
-    ("Avg diluted shares (M)",        "diluted_shares"),
-    ("$ repurchased ($M)",            "repurchase_value"),
-    ("$ issued — stock plans ($M)",   "issuance_value"),
-    ("Capex: PP&E + intangibles ($M)", "_capex_total"),
-    ("Market cap, EOY ($bn)",         "_mc_eoy"),
-    ("Avg market cap ($bn)",          "_mc_avg"),
+    ("Shares repurchased (M)",         "repurchase_shares"),
+    ("Shares issued (M)",              "issuance_shares"),
+    ("Shares outstanding, EOY (M)",    "shares_outstanding"),
+    ("Avg basic shares (M)",           "basic_shares"),
+    ("Avg diluted shares (M)",         "diluted_shares"),
+    ("$ repurchased ($bn)",            "repurchase_value"),
+    ("$ issued — stock plans ($bn)",   "issuance_value"),
+    ("Capex: PP&E + intangibles ($bn)", "_capex_total"),
+    ("Market cap, EOY ($bn)",          "_mc_eoy"),
+    ("Avg market cap ($bn)",           "_mc_avg"),
 ]
+
+# Dollar metrics pulled from load_frame arrive scaled to $M; divide by 1e3 → $bn.
+DOLLAR_M_TO_BN = {"repurchase_value", "issuance_value"}
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -157,7 +162,7 @@ st.markdown(
     f"""<div class="fd-header">
         <div><div class="fd-title">◼ AI Capex &amp; Fundamentals</div>
         <div class="fd-subtitle">Capital allocation &amp; fundamentals of the mega-cap AI cohort · SEC 10-K filings ·
-        share counts in millions, $ in millions, market cap in $bn</div></div>
+        share counts in millions, all $ figures in billions</div></div>
         <div class="fd-timestamp">{ts_text}</div>
     </div>""",
     unsafe_allow_html=True,
@@ -213,9 +218,11 @@ for tk in TICKERS:
     for y in years:
         rec = {"ticker": tk, "fiscal_year": y}
         for m, mm in base.items():
-            rec[m] = mm.get(y)
+            v = mm.get(y)
+            rec[m] = (v / 1e3 if v is not None else None) if m in DOLLAR_M_TO_BN else v
         ct = capex.get(y)
-        rec["_capex_total"] = ct + (intan.get(y) or 0.0) if ct is not None else None
+        # capex + intangibles are in $M; normalise to $bn for the detail table.
+        rec["_capex_total"] = (ct + (intan.get(y) or 0.0)) / 1e3 if ct is not None else None
         sh = shares_raw.get(y) if shares_raw.get(y) is not None else diluted_raw.get(y)
         mc_eoy, mc_avg = market_caps(hist, splits, pe.get(y), sh)
         rec["_mc_eoy"] = mc_eoy / 1e9 if mc_eoy is not None else None
@@ -269,7 +276,7 @@ for i, tk in enumerate(TICKERS):
     if s.empty:
         continue
     fig.add_trace(go.Scatter(
-        x=[int(y) for y in s["fiscal_year"]], y=s["_capex_total"] / 1e3, name=tk,
+        x=[int(y) for y in s["fiscal_year"]], y=s["_capex_total"], name=tk,
         mode="lines+markers", line=dict(color=NAVY_PALETTE[i % len(NAVY_PALETTE)], width=2),
         marker=dict(size=6)))
 st.plotly_chart(style_fig(fig, 420, "$bn"), use_container_width=True)
