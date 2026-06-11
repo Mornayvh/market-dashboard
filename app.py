@@ -145,9 +145,6 @@ direct_b64 = base64.b64encode(direct_svg.encode()).decode()
 altmgr_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200"><rect width="400" height="200" fill="#F8FAFC"/><rect x="15" y="14" width="370" height="5" rx="2" fill="#CBD5E1"/><rect x="15" y="28" width="70" height="4" rx="1" fill="#E2E8F0"/><rect x="120" y="28" width="40" height="4" rx="1" fill="#4F7FD6" opacity="0.6"/><rect x="190" y="28" width="35" height="4" rx="1" fill="#16A34A" opacity="0.5"/><rect x="260" y="28" width="40" height="4" rx="1" fill="#DC2626" opacity="0.4"/><rect x="320" y="28" width="50" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="15" y="40" width="70" height="4" rx="1" fill="#E2E8F0"/><rect x="120" y="40" width="40" height="4" rx="1" fill="#4F7FD6" opacity="0.6"/><rect x="190" y="40" width="35" height="4" rx="1" fill="#DC2626" opacity="0.5"/><rect x="260" y="40" width="40" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="320" y="40" width="50" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="15" y="52" width="70" height="4" rx="1" fill="#E2E8F0"/><rect x="120" y="52" width="40" height="4" rx="1" fill="#4F7FD6" opacity="0.6"/><rect x="190" y="52" width="35" height="4" rx="1" fill="#16A34A" opacity="0.5"/><rect x="260" y="52" width="40" height="4" rx="1" fill="#DC2626" opacity="0.4"/><rect x="320" y="52" width="50" height="4" rx="1" fill="#DC2626" opacity="0.4"/><polyline points="20,180 60,165 100,168 140,150 180,155 220,135 260,138 300,120 340,110 380,100" fill="none" stroke="#4F7FD6" stroke-width="2"/><polyline points="20,185 60,178 100,180 140,170 180,172 220,162 260,165 300,158 340,150 380,145" fill="none" stroke="#16A34A" stroke-width="1.4" opacity="0.6"/><polyline points="20,188 60,184 100,182 140,180 180,178 220,176 260,172 300,170 340,168 380,164" fill="none" stroke="#94A3B8" stroke-width="1" opacity="0.5"/></svg>'
 altmgr_b64 = base64.b64encode(altmgr_svg.encode()).decode()
 
-ai_capex_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200"><rect width="400" height="200" fill="#F8FAFC"/><rect x="15" y="12" width="130" height="18" rx="3" fill="#E2E8F0"/><g fill="#3B82F6"><rect x="30" y="150" width="40" height="35" rx="2" opacity="0.35"/><rect x="90" y="130" width="40" height="55" rx="2" opacity="0.45"/><rect x="150" y="105" width="40" height="80" rx="2" opacity="0.55"/><rect x="210" y="80" width="40" height="105" rx="2" opacity="0.65"/><rect x="270" y="55" width="40" height="130" rx="2" opacity="0.75"/><rect x="330" y="30" width="40" height="155" rx="2" opacity="0.85"/></g><polyline points="50,150 110,130 170,105 230,80 290,55 350,30" fill="none" stroke="#1E3A8A" stroke-width="2" opacity="0.6"/></svg>'
-ai_capex_b64 = base64.b64encode(ai_capex_svg.encode()).decode()
-
 st.markdown(
     f"""<div class="hero">
         <div class="hero-eyebrow">Internal Platform</div>
@@ -170,8 +167,6 @@ CARDS = [
      "Public-market proxy tracker for private holdings. Comps, sector ETFs, capex, sentiment for Novolex, Kelvion, Real Chemistry."),
     ("/Alt_Managers", altmgr_b64, "Alternative Managers",
      "Compare 19 listed alternative asset managers as stocks. Valuation, returns, and risk across Blackstone, KKR, Apollo, Brookfield and peers."),
-    ("/AI_Capex", ai_capex_b64, "AI Capex & Fundamentals",
-     "Capital allocation & fundamentals of the mega-cap AI cohort — capex, buybacks, issuances, share counts, and market cap from SEC 10-K filings."),
 ]
 
 # Build the slides + dots; the carousel is rendered inside a sandboxed

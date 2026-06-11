@@ -1,13 +1,10 @@
 """
 config.py — Asset universe and data source configuration.
 Central registry for all tracked instruments. Add or remove assets here only.
-Also holds the SEC EDGAR fundamentals settings (companies, metrics, API,
-database) used by src/fundamentals_*.py and pages/6_Fundamentals.py.
 """
 
 import os
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Optional
 
 # ---------------------------------------------------------------------------
@@ -90,10 +87,8 @@ EQUITY_PE_MAP = {
 FRED_LOOKBACK_DAYS = 365  # How far back to pull FRED history
 
 # ===========================================================================
-# SEC EDGAR fundamentals
-# Settings for the AI Capex & Fundamentals page (pages/7_AI_Capex.py) and the
-# src/fundamentals_* modules. Edit FUNDAMENTALS_TICKERS / FUNDAMENTALS_METRICS
-# to change what's tracked — tickers only; CIKs resolve automatically.
+# SEC EDGAR helpers — User-Agent + endpoints used by the Direct Investments page
+# (src/direct_investments/data_loader.py).
 # ===========================================================================
 
 def get_sec_user_agent() -> Optional[str]:
@@ -114,150 +109,5 @@ def get_sec_user_agent() -> Optional[str]:
 
 
 SEC_TICKER_MAP_URL = "https://www.sec.gov/files/company_tickers.json"
-SEC_COMPANYFACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
 # Single-concept endpoint — tiny payload (one XBRL tag for one company), good for live use.
 SEC_COMPANYCONCEPT_URL = "https://data.sec.gov/api/xbrl/companyconcept/CIK{cik}/us-gaap/{tag}.json"
-# Filing history + raw filing directory — needed to reach the dimensional XBRL
-# instance documents that companyfacts doesn't expose (see EQUITY_ROLLFORWARD below).
-SEC_SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
-SEC_SUBMISSIONS_FILE_URL = "https://data.sec.gov/submissions/{name}"
-SEC_FILING_DIR_URL = "https://www.sec.gov/Archives/edgar/data/{cik_int}/{accn}"
-
-# SEC asks for < 10 requests/second. Sleep between calls keeps us safe.
-SEC_RATE_LIMIT_SECONDS = 0.15
-
-# --- Equity-statement rollforward (dimensional) extraction --------------------
-# Some filers (notably Meta) tag share issuances ONLY against the equity-statement
-# rollforward dimension (us-gaap:StatementEquityComponentsAxis on a common-stock
-# member). The companyfacts API returns only the dimension-less default member, so
-# those issuances vanish. Metrics flagged `equity_rollforward` trigger a fallback
-# that parses each 10-K's raw XBRL instance and sums every StockIssuedDuringPeriod-
-# Shares* concept reported against a single common-stock equity component.
-EQUITY_COMPONENTS_AXIS = "StatementEquityComponentsAxis"
-COMMON_STOCK_MEMBERS = {
-    "CommonStockMember",
-    "CommonClassAMember",
-    "CommonClassBMember",
-    "CommonStockIncludingAdditionalPaidInCapitalMember",
-}
-ISSUANCE_SHARES_CONCEPT_PREFIX = "StockIssuedDuringPeriodShares"
-
-# SQLite file under data/ (gitignored). Swap for a Postgres URL later
-# (e.g. "postgresql+psycopg://user:pass@host/db") and the SQLAlchemy layer
-# keeps working with minimal changes.
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-FUNDAMENTALS_DB_PATH = PROJECT_ROOT / "data" / "fundamentals.db"
-FUNDAMENTALS_DB_URL = f"sqlite:///{FUNDAMENTALS_DB_PATH}"
-
-# Companies to track — EDIT FREELY. Just tickers; CIK is resolved automatically.
-FUNDAMENTALS_TICKERS = ["NVDA", "META", "AAPL", "MSFT", "GOOGL", "AMZN"]
-
-# Metrics. Each metric has:
-#   - a friendly name (shown in the UI)
-#   - a unit ("USD" or "shares")
-#   - an ordered list of candidate XBRL (taxonomy, tag) pairs. The ingester
-#     tries them in priority order PER FISCAL YEAR (a later tag only fills
-#     years earlier tags didn't cover), because filers tag the same concept
-#     differently — and rename tags across eras.
-#   - scale: divide raw values by this for display (1e6 = millions)
-FUNDAMENTALS_METRICS = {
-    "capex": {
-        "name": "Capital Expenditure",
-        "unit": "USD",
-        "scale": 1e6,
-        # Cash-flow-statement "purchases of property & equipment" — NOT the MD&A
-        # "capital expenditures" figure (they differ). Apply consistently.
-        "tags": [
-            ("us-gaap", "PaymentsToAcquirePropertyPlantAndEquipment"),
-            ("us-gaap", "PaymentsToAcquireProductiveAssets"),
-            ("us-gaap", "PaymentsForCapitalImprovements"),
-        ],
-    },
-    "diluted_shares": {
-        "name": "Weighted Avg. Diluted Shares",
-        "unit": "shares",
-        "scale": 1e6,
-        "tags": [
-            ("us-gaap", "WeightedAverageNumberOfDilutedSharesOutstanding"),
-            ("us-gaap", "WeightedAverageNumberOfShareOutstandingBasicAndDiluted"),
-        ],
-    },
-    "repurchase_shares": {
-        "name": "Share Repurchases (shares)",
-        "unit": "shares",
-        "scale": 1e6,
-        "tags": [
-            ("us-gaap", "StockRepurchasedDuringPeriodShares"),
-            ("us-gaap", "StockRepurchasedAndRetiredDuringPeriodShares"),
-            ("us-gaap", "TreasuryStockSharesAcquired"),
-        ],
-    },
-    "issuance_shares": {
-        "name": "Share Issuances (shares)",
-        "unit": "shares",
-        "scale": 1e6,
-        "tags": [
-            ("us-gaap", "StockIssuedDuringPeriodSharesNewIssues"),
-            ("us-gaap", "StockIssuedDuringPeriodSharesShareBasedCompensation"),
-            ("us-gaap", "StockIssuedDuringPeriodSharesStockOptionsExercised"),
-            # AMZN tags its (benefit-plan) issuances this way; appended last so
-            # it only fills years the tags above don't cover.
-            ("us-gaap", "StockIssuedDuringPeriodSharesEmployeeBenefitPlan"),
-        ],
-        # Meta tags RSU-settlement / acquisition / option issuances only on the
-        # equity-statement rollforward dimension, invisible to companyfacts. For
-        # fiscal years the tags above leave empty, parse the raw 10-K XBRL instance
-        # and sum the dimensional issuance lines. See fundamentals_ingest.
-        "equity_rollforward": True,
-    },
-    "repurchase_value": {
-        "name": "Repurchase Value ($)",
-        "unit": "USD",
-        "scale": 1e6,
-        "tags": [
-            ("us-gaap", "PaymentsForRepurchaseOfCommonStock"),
-        ],
-    },
-    "issuance_value": {
-        "name": "Stock Issued — Proceeds ($)",
-        "unit": "USD",
-        "scale": 1e6,
-        # Proceeds from share issuance under stock/option plans. Sparsely tagged —
-        # Amazon and Alphabet don't report it, so expect gaps.
-        "tags": [
-            ("us-gaap", "ProceedsFromIssuanceOfCommonStock"),
-            ("us-gaap", "ProceedsFromStockOptionsExercised"),
-            ("us-gaap", "ProceedsFromIssuanceOfSharesUnderIncentiveAndShareBasedCompensationPlans"),
-        ],
-    },
-    "shares_outstanding": {
-        "name": "Shares Outstanding (year-end)",
-        "unit": "shares",
-        "scale": 1e6,
-        # Balance-sheet shares at period end. Meta's dual-class structure isn't
-        # captured by the single us-gaap tag, so Meta may be blank.
-        "tags": [
-            ("us-gaap", "CommonStockSharesOutstanding"),
-            ("dei", "EntityCommonStockSharesOutstanding"),
-        ],
-    },
-    "basic_shares": {
-        "name": "Weighted Avg. Basic Shares",
-        "unit": "shares",
-        "scale": 1e6,
-        "tags": [
-            ("us-gaap", "WeightedAverageNumberOfSharesOutstandingBasic"),
-            ("us-gaap", "WeightedAverageNumberOfShareOutstandingBasicAndDiluted"),
-        ],
-    },
-    "intangibles": {
-        "name": "Intangible Asset Purchases",
-        "unit": "USD",
-        "scale": 1e6,
-        # Most of the set bundles intangibles into PP&E / "other"; typically only
-        # Apple reports this line, so capex (PP&E)+intangibles ≈ PP&E elsewhere.
-        "tags": [
-            ("us-gaap", "PaymentsToAcquireIntangibleAssets"),
-        ],
-    },
-}

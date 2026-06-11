@@ -2,10 +2,6 @@
 __pycache__/
 .venv/
 
-# SEC fundamentals SQLite DB (regenerated from EDGAR; data/ itself stays tracked)
-data/fundamentals.db
-data/fundamentals.db-journal
-
 # Generated PDF exports (dated dashboard/watchlist snapshots)
 market_dashboard_*.pdf
 stock_watchlist_*.pdf
