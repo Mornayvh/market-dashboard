@@ -5,7 +5,7 @@
 #   https://www.fda.gov/drugs/new-drugs-fda-cders-new-molecular-entities-and-new-therapeutic-biological-products
 # UPDATE ANNUALLY (around Feb each year, once FDA publishes the prior-year summary).
 
-last_updated: "2026-02-15"
+last_updated: "2026-06-12"
 unit: "approvals per year"
 sources:
   "FDA CDER": "Annual Novel Drug Approvals summary (FDA.gov)"
@@ -15,7 +15,8 @@ notes: |
   CDER began publishing the consolidated annual "Novel Drug Approvals" report in 2015;
   figures for 2000–2014 are NME/new-BLA counts compiled from FDA historical summaries
   and may differ slightly from later-revised tallies — verify before citing externally.
-  2025 figure preliminary — confirm against final FDA CDER report.
+  2025 figure (46 = 34 NMEs + 12 new biologics) confirmed against CDER's final
+  "New Drug Therapy Approvals 2025" report (published Jan 2026).
 
 periods:
   - period: "2000"
@@ -69,4 +70,4 @@ periods:
   - period: "2024"
     value: 50
   - period: "2025"
-    value: 50
+    value: 46

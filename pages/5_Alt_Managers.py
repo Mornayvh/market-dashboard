@@ -280,6 +280,17 @@ shown = [d for d in ROWS if _shown(d)]
 # ---------------------------------------------------------------------------
 section_header("Comparison Table")
 
+# Surface wholesale Yahoo `info` failures (rate limiting) — without this the
+# valuation columns just show "—" across the board with no explanation.
+_broken = [tk for tk, flds in FAILURES.items() if "trailingPE" in flds and "marketCap" in flds]
+if len(_broken) >= len(ROWS) // 2:
+    st.warning(
+        f"Yahoo's quote endpoint returned no fundamentals for {len(_broken)} of "
+        f"{len(ROWS)} tickers (likely rate-limited). Valuation columns will show '—'. "
+        "Use **Refresh data** in the sidebar to refetch — results are otherwise cached for 1h.",
+        icon="⚠️",
+    )
+
 table_rows = []
 for d in shown:
     m = d["_meta"]
@@ -308,13 +319,15 @@ for d in shown:
     })
 
 df = pd.DataFrame(table_rows)
-# Drop an OPTIONAL column only when it's empty for every shown ticker. Core columns
-# (identity, price, size, returns) are always kept — otherwise a transient Yahoo
-# rate-limit on the history endpoint would blank the return columns for all firms and
-# make them disappear entirely.
+# Drop an OPTIONAL column only when it's empty for every shown ticker. Metric columns
+# are always kept and render as "—" when blank — a transient Yahoo rate-limit on the
+# info endpoint blanks every valuation field for all firms at once, and silently
+# dropping a dozen columns reads as a page bug rather than a data outage.
 always_keep = {
     "Ticker", "Name", "Category", "Geo", "Tilt",
     "AUM (USD bn)",
+    "Trail P/E", "Fwd P/E", "P/B", "EV/EBITDA", "EV/Sales",
+    "Div Yield %", "Payout %", "Beta", "ROE %",
     "LTM %", "3Y % (ann)", "5Y % (ann)",
 }
 for col in list(df.columns):
