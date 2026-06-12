@@ -229,6 +229,7 @@ def load_all():
     failures = {}  # ticker -> [fields]
     for tk, meta in TICKERS.items():
         d = dl.fetch_ticker_data(tk)
+        dl.fix_cross_currency_ratios(d, fx)
         d["_meta"] = meta
         rows.append(d)
         if d["_failed_fields"]:
@@ -340,7 +341,7 @@ with st.expander("Explain the columns / data-quality notes"):
     st.markdown("""
 - **Price** — latest close in the firm's **native currency** (see Ccy column). Not FX-converted.
 - **AUM (USD bn)** — Total assets under management. **Hand-maintained reference data — not from Yahoo** (Yahoo carries no AUM). Figures are approximate, refreshed manually each quarter; the **AUM as of** column shows the reporting date. *Verify against the firm's disclosure before relying on it.* Blank for any firm with no comparable Total-AUM figure.
-- **Valuation multiples (Trail P/E, P/B, EV/EBITDA, EV/Sales)** — all GAAP-based, off Yahoo's `info` payload. Alt managers themselves guide on **Fee-Related Earnings (FRE)** and **Distributable Earnings (DE)** — these GAAP multiples are *not* what sell-side analysts use to value the firms and will look richer/cheaper than the FRE/DE-based multiples in research notes. Treat them as a rough cross-sectional read, not a price target. *EV/EBITDA is frequently missing for the US listings (Yahoo doesn't compute `enterpriseValue` for them); EV/Sales fills that gap.*
+- **Valuation multiples (Trail P/E, P/B, EV/EBITDA, EV/Sales)** — all GAAP-based, off Yahoo's `info` payload. Alt managers themselves guide on **Fee-Related Earnings (FRE)** and **Distributable Earnings (DE)** — these GAAP multiples are *not* what sell-side analysts use to value the firms and will look richer/cheaper than the FRE/DE-based multiples in research notes. Treat them as a rough cross-sectional read, not a price target. *EV/EBITDA is frequently missing for the US listings (Yahoo doesn't compute `enterpriseValue` for them); EV/Sales fills that gap.* For firms that list in one currency but report in another (EQT: SEK price, EUR financials), Yahoo's P/B / EV/EBITDA / EV/Sales are inflated by the cross rate — these are **FX-corrected here** before display.
 - **Div Yield %** — Yahoo reports this already in percent; shown as-is.
 - **Payout %, ROE %** — Yahoo reports these as fractions; multiplied by 100 here.
 - **LTM** — last-twelve-months total return (trailing ~365 days). **3Y / 5Y** — *annualized* (CAGR). Blank if the listing lacks that much history (e.g. CVC, EQT listed relatively recently).
@@ -483,12 +484,12 @@ with right:
     if close5 is None or close5.empty:
         st.caption("Price history unavailable.")
     else:
-        ma50 = close5.rolling(50).mean()
+        ma1y = close5.rolling(252).mean()
         ma180 = close5.rolling(180).mean()
         fig2 = go.Figure()
         fig2.add_trace(go.Scatter(x=close5.index, y=close5.values, mode="lines", name="Price",
                                   line=dict(color=ACCENT, width=1.6)))
-        fig2.add_trace(go.Scatter(x=ma50.index, y=ma50.values, mode="lines", name="50d MA",
+        fig2.add_trace(go.Scatter(x=ma1y.index, y=ma1y.values, mode="lines", name="1y MA",
                                   line=dict(color="#F59E0B", width=1.1)))
         fig2.add_trace(go.Scatter(x=ma180.index, y=ma180.values, mode="lines", name="180d MA",
                                   line=dict(color="#94A3B8", width=1.1)))

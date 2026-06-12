@@ -27,7 +27,7 @@ FMP_BASE = "https://financialmodelingprep.com/api/v3"
 
 # Scalar fields pulled from yf.Ticker(...).info
 INFO_FIELDS = [
-    "longName", "sector", "industry", "country", "currency",
+    "longName", "sector", "industry", "country", "currency", "financialCurrency",
     "marketCap", "enterpriseValue", "sharesOutstanding",
     "trailingPE", "forwardPE", "priceToBook", "priceToSalesTrailing12Months",
     "enterpriseToEbitda", "enterpriseToRevenue",
@@ -109,6 +109,43 @@ def fetch_ticker_data(ticker: str) -> dict:
             result["currentPrice"] = float(close.iloc[-1])
 
     return result
+
+
+# Ratios Yahoo builds as (listing-currency price or EV) ÷ (reporting-currency
+# statement figure). When a firm lists in one currency but reports in another
+# (EQT.ST: SEK price, EUR financials) Yahoo skips the conversion, inflating the
+# ratio by the cross rate (~11x for SEK/EUR). P/E fields are NOT affected —
+# Yahoo converts the EPS quote fields to the listing currency.
+CROSS_CCY_RATIO_FIELDS = [
+    "priceToBook", "enterpriseToEbitda", "enterpriseToRevenue",
+    "priceToSalesTrailing12Months",
+]
+
+
+def fix_cross_currency_ratios(d: dict, fx: dict) -> None:
+    """Correct Yahoo's currency-mismatched valuation ratios in place.
+
+    Multiplies each affected ratio by (USD-per-listing-ccy / USD-per-reporting-
+    ccy), i.e. divides out the listing-per-reporting cross rate. EV-based ratios
+    keep a small residual error (Yahoo mixes reporting-currency debt/cash into
+    the listing-currency market cap when building EV) — a few percent, versus
+    the ~11x raw error. If the needed FX rates are missing the raw values are
+    known-wrong, so they are blanked rather than shown.
+    """
+    listing, reporting = d.get("currency"), d.get("financialCurrency")
+    if not listing or not reporting or listing == reporting:
+        return
+    rate_listing, rate_reporting = fx.get(listing), fx.get(reporting)
+    if rate_listing is None or rate_reporting is None or rate_reporting == 0:
+        for f in CROSS_CCY_RATIO_FIELDS:
+            if d.get(f) is not None:
+                d[f] = None
+                d["_failed_fields"].append(f)
+        return
+    factor = rate_listing / rate_reporting
+    for f in CROSS_CCY_RATIO_FIELDS:
+        if d.get(f) is not None:
+            d[f] = d[f] * factor
 
 
 def to_usd(value: float | None, ccy: str, fx: dict) -> float | None:
