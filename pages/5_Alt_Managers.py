@@ -291,8 +291,6 @@ for d in shown:
         "Category": m["category"],
         "Geo": m["geo"],
         "Tilt": m["tilt"],
-        "Price": d.get("currentPrice"),
-        "Ccy": m["ccy"],
         "AUM (USD bn)": aum,
         "AUM as of": rd.get("as_of"),
         "Trail P/E": d.get("trailingPE"),
@@ -315,8 +313,8 @@ df = pd.DataFrame(table_rows)
 # rate-limit on the history endpoint would blank the return columns for all firms and
 # make them disappear entirely.
 always_keep = {
-    "Ticker", "Name", "Category", "Geo", "Tilt", "Ccy",
-    "Price", "AUM (USD bn)",
+    "Ticker", "Name", "Category", "Geo", "Tilt",
+    "AUM (USD bn)",
     "LTM %", "3Y % (ann)", "5Y % (ann)",
 }
 for col in list(df.columns):
@@ -325,14 +323,13 @@ for col in list(df.columns):
 num_pct = ["Div Yield %", "Payout %", "LTM %", "3Y % (ann)", "5Y % (ann)", "ROE %"]
 num_x = ["Trail P/E", "Fwd P/E", "P/B", "EV/EBITDA", "EV/Sales", "Beta"]
 fmts = {
-    "Price": "{:.2f}",
     "AUM (USD bn)": "{:.0f}",
 }
 for c in num_pct:
     fmts[c] = "{:.1f}%"
 for c in num_x:
     fmts[c] = "{:.1f}"
-text_cols = {"Ticker", "Name", "Category", "Geo", "Tilt", "Ccy", "AUM as of"}
+text_cols = {"Ticker", "Name", "Category", "Geo", "Tilt", "AUM as of"}
 # Signed performance columns get green/red tinting, like the other pages' change cols.
 color_cols = {"LTM %", "3Y % (ann)", "5Y % (ann)"}
 
@@ -340,12 +337,13 @@ st.markdown(render_html_table(df, fmts, text_cols, color_cols), unsafe_allow_htm
 
 with st.expander("Explain the columns / data-quality notes"):
     st.markdown("""
-- **Price** — latest close in the firm's **native currency** (see Ccy column). Not FX-converted.
 - **AUM (USD bn)** — Total assets under management. **Hand-maintained reference data — not from Yahoo** (Yahoo carries no AUM). Figures are approximate, refreshed manually each quarter; the **AUM as of** column shows the reporting date. *Verify against the firm's disclosure before relying on it.* Blank for any firm with no comparable Total-AUM figure.
 - **Valuation multiples (Trail P/E, P/B, EV/EBITDA, EV/Sales)** — all GAAP-based, off Yahoo's `info` payload.
 - **Fwd P/E** — price ÷ analyst consensus forward EPS. Consensus for alt managers is on **adjusted** earnings (FRE/DE basis), not GAAP, so Fwd P/E can sit far below Trail P/E whenever GAAP earnings are depressed by mark-to-market swings (e.g. Apollo/Athene investment marks). The Trail-vs-Fwd gap is mostly an accounting-basis gap, not an expected earnings explosion. Alt managers themselves guide on **Fee-Related Earnings (FRE)** and **Distributable Earnings (DE)** — these GAAP multiples are *not* what sell-side analysts use to value the firms and will look richer/cheaper than the FRE/DE-based multiples in research notes. Treat them as a rough cross-sectional read, not a price target. *EV/EBITDA is frequently missing for the US listings (Yahoo doesn't compute `enterpriseValue` for them); EV/Sales fills that gap.* For firms that list in one currency but report in another (EQT: SEK price, EUR financials), Yahoo's P/B / EV/EBITDA / EV/Sales are inflated by the cross rate — these are **FX-corrected here** before display.
 - **Div Yield %** — Yahoo reports this already in percent; shown as-is.
-- **Payout %, ROE %** — Yahoo reports these as fractions; multiplied by 100 here.
+- **Payout %** — dividends as a share of **trailing GAAP earnings** (≈ trailing dividend rate ÷ trailing GAAP EPS). Alt managers set dividends off **Distributable Earnings**, not GAAP net income, so a GAAP loss/realization-light year produces absurd readings (>100%, even >500%) without the dividend being at risk. Read it against DE coverage in the firm's own disclosure, not at face value.
+- **ROE %** — trailing GAAP net income ÷ average shareholders' equity, per Yahoo. Same GAAP caveat: mark-to-market swings (e.g. Apollo/Athene) depress or inflate it, and book equity is small/odd for asset-light managers, so cross-firm comparisons are rough.
+- **Beta** — Yahoo's 5-year **monthly**-return regression against the **listing market's benchmark**: S&P 500 for the US listings (incl. BAM), but the **local index** for the Europeans (EQT vs Stockholm, CVC vs Amsterdam, PGHN vs SMI) — verified empirically. Betas are therefore **not comparable across markets**: EQT's beta vs the S&P 500 would be ~1.9, not the ~1.4 shown. Listings younger than 5y (CVC) use whatever history exists.
 - **LTM** — last-twelve-months total return (trailing ~365 days). **3Y / 5Y** — *annualized* (CAGR). Blank if the listing lacks that much history (e.g. CVC, EQT listed relatively recently).
 - Missing values render as blank to keep columns sortable.
 """)
