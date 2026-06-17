@@ -52,6 +52,7 @@ ASSETS: list[Asset] = [
     Asset("Bitcoin",            "BTC-USD", None,             "Sentiment"),
     Asset("GameStop",           "GME",     None,             "Sentiment"),
     Asset("Mag 7",              "MAGS",    None,             "Sentiment"),
+    Asset("SpaceX",             "SPCX",    None,             "Sentiment"),
     Asset("10Y-2Y Spread",      None,     "T10Y2Y",          "Sentiment",  is_rate=True, invert_color=True),
 
     # Volatility
