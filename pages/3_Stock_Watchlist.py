@@ -122,6 +122,7 @@ WATCHLIST = {
         ("Meta", "META", "USD"),
         ("Microsoft", "MSFT", "USD"),
         ("Nvidia", "NVDA", "USD"),
+        ("SpaceX", "SPCX", "USD"),
         ("Tesla", "TSLA", "USD"),
         ("Palo Alto", "PANW", "USD"),
         ("Uber", "UBER", "USD"),
