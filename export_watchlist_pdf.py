@@ -54,31 +54,45 @@ WATCHLIST = {
         ("OUTsurance", "OUT.JO", "ZAR"),
         ("Discovery", "DSY.JO", "ZAR"),
     ],
-    "Global": [
-        ("Berkshire Hathaway", "BRK-B", "USD"),
-        ("Apple", "AAPL", "USD"),
+    "Tiger Global IPO's": [
+        ("Cerebras", "CBRS", "USD"),
+    ],
+    "USA Tech": [
         ("Alphabet", "GOOGL", "USD"),
         ("Amazon", "AMZN", "USD"),
+        ("Apple", "AAPL", "USD"),
+        ("Dell", "DELL", "USD"),
         ("Meta", "META", "USD"),
         ("Microsoft", "MSFT", "USD"),
         ("Nvidia", "NVDA", "USD"),
+        ("SpaceX", "SPCX", "USD"),
         ("Tesla", "TSLA", "USD"),
+        ("Palo Alto", "PANW", "USD"),
+        ("Uber", "UBER", "USD"),
+    ],
+    "China Tech": [
         ("Alibaba", "BABA", "USD"),
-        ("BYD", "BYDDY", "USD"),
+        ("BYD", "002594.SZ", "CNY"),
         ("Tencent", "TCEHY", "USD"),
+    ],
+    "Financials": [
+        ("JP Morgan", "JPM", "USD"),
+        ("Goldman Sachs", "GS", "USD"),
+        ("BofA", "BAC", "USD"),
+        ("Morgan Stanley", "MS", "USD"),
+        ("Berkshire Hathaway", "BRK-B", "USD"),
+        ("Markel", "MKL", "USD"),
         ("Apollo", "APO", "USD"),
         ("KKR", "KKR", "USD"),
-        ("Dell", "DELL", "USD"),
-        ("Palo Alto", "PANW", "USD"),
+    ],
+    "Real World": [
         ("Deere & Co", "DE", "USD"),
         ("Teledyne", "TDY", "USD"),
         ("Waste Management", "WM", "USD"),
-        ("Uber", "UBER", "USD"),
-        ("Markel", "MKL", "USD"),
     ],
 }
 
-CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "EUR": "€", "CHF": "CHF ", "ZAR": "R"}
+CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "EUR": "€", "CHF": "CHF ", "ZAR": "R", "CNY": "¥"}
 
 
 def fmt_price(val, currency):
