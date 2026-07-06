@@ -106,8 +106,11 @@ for href, title, desc, tag, preview in CARDS:
         <div class="card-preview">{preview}</div>
         <div class="card-body">
           <div class="card-title">{title}</div>
-          <p class="card-desc">{desc}</p>
-          <div class="card-foot"><span class="card-tag">{tag}</span><span class="card-open">Open &#8594;</span></div>
+          <div class="card-tag" style="margin-top:9px;">{tag}</div>
+          <div class="card-foot" style="display:block;margin-top:13px;padding-top:13px;border-top:1px solid #F1F5F9;">
+            <p class="card-desc" style="margin:0;">{desc}</p>
+            <div style="text-align:right;margin-top:2px;"><span class="card-open">Open &#8594;</span></div>
+          </div>
         </div>
       </div>'''
 
