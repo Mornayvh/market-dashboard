@@ -1,41 +1,35 @@
-# Neocloud quarterly capex — CoreWeave (CRWV) and Nebius (NBIS).
-# Both went public in 2025; pre-IPO capex disclosures are limited.
+# Neocloud quarterly capex — Nebius (NBIS) only.
+# CoreWeave (CRWV) is NOT in this file: it files 10-Qs, so its quarters come live
+# from SEC EDGAR (see CapexChart members in config.py). Nebius is a Dutch 20-F/6-K
+# filer with no quarterly US-GAAP XBRL, so its series is hand-entered here.
 #
-# UPDATE QUARTERLY: pull from 10-Q filings after each earnings release.
-# Live stock prices are tracked on the Industry & Sentiment section of the page.
+# UPDATE QUARTERLY: pull from Nebius 6-K earnings releases ("Capital expenditures
+# totaled $X for the three months ended ..."). Q2/Q3 are disclosed as H1/9M YTD —
+# difference them against the prior quarter's YTD.
 
-last_updated: "2026-05-20"
+last_updated: "2026-06-12"
 unit: "USD billions"
 sources:
-  CRWV: "CoreWeave 10-Q filings post-IPO (Mar 2025)"
-  NBIS: "Nebius Group financial statements; capex from cash flow statement"
+  NBIS: "Nebius Group 6-K earnings releases (capex as disclosed; Q2/Q3 derived from H1/9M YTD)"
 notes: |
-  Pre-IPO quarters carry less granular disclosure — figures may be approximate or
-  derived from press releases. Verify each value against the latest filing.
-  Capex here is total property/equipment purchases; majority is GPU & DC infrastructure.
+  All values verified against the SEC-filed 6-K exhibits on 2026-06-12.
+  2024Q2 and earlier are omitted: capex was not separately disclosed before the
+  Q3 2024 trading update (Yandex-era consolidated reporting).
+  Q4'25 (~$2.1bn) and Q1'26 (~$2.5bn) are disclosed as approximate figures.
+  Capex is total property/equipment purchases; majority is GPU & DC infrastructure.
 
 quarters:
-  - period: "2024Q2"
-    CRWV: 0.8
-    NBIS: 0.2
   - period: "2024Q3"
-    CRWV: 1.2
-    NBIS: 0.3
+    NBIS: 0.17
   - period: "2024Q4"
-    CRWV: 1.6
-    NBIS: 0.4
+    NBIS: 0.42
   - period: "2025Q1"
-    CRWV: 1.9
-    NBIS: 0.5
+    NBIS: 0.54
   - period: "2025Q2"
-    CRWV: 2.3
-    NBIS: 0.7
+    NBIS: 0.51
   - period: "2025Q3"
-    CRWV: 2.8
-    NBIS: 0.9
+    NBIS: 0.96
   - period: "2025Q4"
-    CRWV: 3.2
-    NBIS: 1.1
+    NBIS: 2.1
   - period: "2026Q1"
-    CRWV: 3.5
-    NBIS: 1.3
+    NBIS: 2.5

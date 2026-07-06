@@ -311,12 +311,6 @@ KELVION = Holding(
             chart_kind="bar",
             caption="Quarterly DC segment revenue from NVDA earnings releases. (Segment-level data isn't exposed by SEC's XBRL API — it lives in dimensional tags — so this stays hand-entered.)",
         ),
-        StaticBlock(
-            title="Global DC supply additions",
-            yaml_file="dc_supply_additions.yaml",
-            chart_kind="bar",
-            caption="DC Byte / Synergy equivalents are subscription-only — figures here are hand-entered from public summaries.",
-        ),
     ),
     website="https://www.kelvion.com/",
 )

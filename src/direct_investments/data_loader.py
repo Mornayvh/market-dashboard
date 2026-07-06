@@ -142,7 +142,7 @@ def fetch_top_holdings(ticker: str) -> list[tuple[str, str, float]]:
 # ---------------------------------------------------------------------------
 
 import requests
-from datetime import date as _date
+from datetime import date as _date, timedelta as _timedelta
 from src.config import (
     get_sec_user_agent, SEC_TICKER_MAP_URL, SEC_COMPANYCONCEPT_URL,
 )
@@ -230,8 +230,12 @@ def _derive_quarterly_capex(usd_facts: list) -> dict[str, float]:
     on the 10-K boundary (period-end year == fy) so prior-year comparatives are excluded;
     YTD facts are those sharing that start date. Q = YTD(this) - YTD(prev); each maps to a
     calendar quarter by its period-end. Latest-filed fact wins per period.
+
+    The in-progress fiscal year has no 10-K yet, so it is anchored on the day after the
+    latest filed fiscal year-end — otherwise its 10-Q quarters never appear (for a June
+    fiscal-year filer like Microsoft that hides up to three calendar quarters).
     """
-    fy_start, annual = {}, {}
+    fy_start, fy_end, annual = {}, {}, {}
     for it in usd_facts:
         s, e, fy, v, f = it.get("start"), it.get("end"), it.get("fy"), it.get("val"), it.get("filed", "")
         if not (s and e and v is not None and fy is not None):
@@ -244,6 +248,11 @@ def _derive_quarterly_capex(usd_facts: list) -> dict[str, float]:
             if fy not in annual or f > annual[fy][1]:
                 annual[fy] = (float(v), f)
                 fy_start[fy] = s
+                fy_end[fy] = e
+    if annual:
+        last = max(annual)
+        nxt = _date.fromisoformat(fy_end[last]) + _timedelta(days=1)
+        fy_start.setdefault(last + 1, nxt.isoformat())
     out: dict[str, float] = {}
     for fy, fstart in fy_start.items():
         pts: dict[str, tuple] = {}
