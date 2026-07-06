@@ -1,5 +1,13 @@
 """
 app.py — Secco Capital Platform Home Page
+
+Renders the entire front page (topbar + live clock, ticker strip, hero, and the
+dashboard carousel) inside ONE sandboxed components.html iframe. This is required
+because Streamlit's st.markdown sanitiser strips <script> tags, so the live clock,
+ticker updates, and carousel controls can only run from inside a component iframe.
+
+Drop this file in at market-dashboard/app.py (replacing the existing one).
+It reads logo.png from the same folder, exactly like the current version.
 """
 
 import base64
@@ -16,300 +24,298 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------------
-# Load logo
+# Load logo -> base64 data URI (must be inlined; the iframe can't read local files)
 # ---------------------------------------------------------------------------
-
-logo_b64 = ""
-logo_mime = ""
 root = Path(__file__).parent
-for name, mime in [("logo.png", "image/png"), ("logo.svg", "image/svg+xml"), ("Secco_logo.png", "image/png"), ("Secco_logo.svg", "image/svg+xml")]:
+logo_uri = ""
+for name, mime in [("logo.png", "image/png"), ("logo.svg", "image/svg+xml")]:
     p = root / name
     if p.exists():
-        logo_b64 = base64.b64encode(p.read_bytes()).decode()
-        logo_mime = mime
+        logo_uri = f"data:{mime};base64," + base64.b64encode(p.read_bytes()).decode()
         break
 
 # ---------------------------------------------------------------------------
-# Preview images as base64 PNGs generated from inline SVG
+# Dashboard cards — (streamlit page path, title, description, tag, preview SVG)
+# The page paths must match the filenames in pages/ (Streamlit slugifies them).
 # ---------------------------------------------------------------------------
+ACCENT = "#4F7FD6"
 
-market_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200"><rect width="400" height="200" fill="#F8FAFC"/><rect x="15" y="12" width="58" height="28" rx="3" fill="#E2E8F0"/><rect x="80" y="12" width="58" height="28" rx="3" fill="#E2E8F0"/><rect x="145" y="12" width="58" height="28" rx="3" fill="#E2E8F0"/><rect x="210" y="12" width="58" height="28" rx="3" fill="#E2E8F0"/><rect x="275" y="12" width="58" height="28" rx="3" fill="#E2E8F0"/><rect x="340" y="12" width="46" height="28" rx="3" fill="#E2E8F0"/><rect x="15" y="55" width="175" height="6" rx="2" fill="#CBD5E1"/><rect x="15" y="68" width="175" height="4" rx="1" fill="#E2E8F0"/><rect x="15" y="78" width="175" height="4" rx="1" fill="#E2E8F0"/><rect x="15" y="88" width="175" height="4" rx="1" fill="#E2E8F0"/><rect x="15" y="98" width="175" height="4" rx="1" fill="#E2E8F0"/><rect x="210" y="55" width="175" height="6" rx="2" fill="#CBD5E1"/><rect x="210" y="68" width="175" height="4" rx="1" fill="#E2E8F0"/><rect x="210" y="78" width="175" height="4" rx="1" fill="#E2E8F0"/><rect x="210" y="88" width="175" height="4" rx="1" fill="#E2E8F0"/><rect x="210" y="98" width="175" height="4" rx="1" fill="#E2E8F0"/><rect x="15" y="115" width="175" height="6" rx="2" fill="#CBD5E1"/><rect x="15" y="128" width="175" height="4" rx="1" fill="#E2E8F0"/><rect x="15" y="138" width="175" height="4" rx="1" fill="#E2E8F0"/><polyline points="15,185 55,172 95,176 135,162 175,168 215,155 255,158 295,148 335,153 385,142" fill="none" stroke="#16A34A" stroke-width="2" opacity="0.6"/><polyline points="15,190 55,180 95,184 135,174 175,178 215,170 255,172 295,164 335,168 385,158" fill="none" stroke="#3B82F6" stroke-width="2" opacity="0.4"/></svg>'
+CARDS = [
+    (
+        "/Market_Dashboard", "Market Dashboard", "Macro · Daily",
+        "Daily macro snapshot — rates, equities, commodities, credit spreads, FX and volatility in a single glance.",
+        '''<svg viewBox="0 0 300 132" width="100%" height="100%" preserveAspectRatio="none">
+             <line x1="0" y1="40" x2="300" y2="40" stroke="#EDF1F5"/><line x1="0" y1="72" x2="300" y2="72" stroke="#EDF1F5"/><line x1="0" y1="104" x2="300" y2="104" stroke="#EDF1F5"/>
+             <path d="M0,100 L37,92 L75,95 L112,80 L150,86 L187,66 L225,72 L262,52 L300,46 L300,132 L0,132 Z" fill="var(--accent)" opacity="0.09"/>
+             <polyline points="0,100 37,92 75,95 112,80 150,86 187,66 225,72 262,52 300,46" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+             <polyline points="0,112 37,108 75,110 112,102 150,105 187,98 225,100 262,92 300,90" fill="none" stroke="#94A3B8" stroke-width="1.4" opacity="0.55"/>
+           </svg>''',
+    ),
+    (
+        "/Partner_Dashboard", "Partner Dashboard", "Portfolio",
+        "Allocations across geography, asset class, sector and stage. Spot the gaps, shape the strategy.",
+        '''<svg viewBox="0 0 132 132" width="132" height="132" style="display:block;margin:0 auto;">
+             <g transform="rotate(-90 66 66)" fill="none" stroke-width="15">
+               <circle cx="66" cy="66" r="38" stroke="var(--accent)" stroke-dasharray="96 143"/>
+               <circle cx="66" cy="66" r="38" stroke="#64748B" stroke-dasharray="60 179" stroke-dashoffset="-96"/>
+               <circle cx="66" cy="66" r="38" stroke="#A9B6C6" stroke-dasharray="48 191" stroke-dashoffset="-156"/>
+               <circle cx="66" cy="66" r="38" stroke="#D3DBE4" stroke-dasharray="35 204" stroke-dashoffset="-204"/>
+             </g>
+             <text x="66" y="63" text-anchor="middle" style="font:700 15px 'JetBrains Mono',monospace;fill:#0F172A;">62%</text>
+             <text x="66" y="78" text-anchor="middle" style="font:600 7.5px 'JetBrains Mono',monospace;fill:#94A3B8;letter-spacing:0.1em;">DEPLOYED</text>
+           </svg>''',
+    ),
+    (
+        "/Stock_Watchlist", "Stock Watchlist", "Live Prices",
+        "Live prices for core, connected and global holdings across exchanges and currencies.",
+        '''<div style="padding:16px 20px;display:flex;flex-direction:column;justify-content:center;gap:9px;height:100%;">
+             <div class="wl-row"><span>NVDA</span><span style="color:#16A34A;">&#9650; 2.14%</span></div>
+             <div class="wl-row"><span>MSFT</span><span style="color:#16A34A;">&#9650; 0.38%</span></div>
+             <div class="wl-row"><span>ASML</span><span style="color:#DC2626;">&#9660; 1.02%</span></div>
+             <div class="wl-row"><span>NPN.JO</span><span style="color:#16A34A;">&#9650; 0.71%</span></div>
+           </div>''',
+    ),
+    (
+        "/Direct_Investments", "Direct Investments", "Novolex · Kelvion · Real Chem",
+        "Public-market proxy tracker for private holdings — comps, sector ETFs, capex and sentiment.",
+        '''<svg viewBox="0 0 300 132" width="100%" height="100%" preserveAspectRatio="none">
+             <polyline points="0,110 37,104 75,106 112,96 150,100 187,90 225,92 262,84 300,80" fill="none" stroke="#C3CDD9" stroke-width="1.4" opacity="0.7"/>
+             <polyline points="0,118 37,116 75,112 112,110 150,106 187,104 225,98 262,96 300,90" fill="none" stroke="#C3CDD9" stroke-width="1.4" opacity="0.5"/>
+             <path d="M0,104 L37,96 L75,88 L112,84 L150,68 L187,58 L225,50 L262,38 L300,30 L300,132 L0,132 Z" fill="var(--accent)" opacity="0.08"/>
+             <polyline points="0,104 37,96 75,88 112,84 150,68 187,58 225,50 262,38 300,30" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+             <circle cx="300" cy="30" r="3.4" fill="var(--accent)"/>
+           </svg>''',
+    ),
+    (
+        "/Alt_Managers", "Alternative Managers", "Blackstone · KKR · Apollo",
+        "19 listed alternative managers compared as stocks — valuation, returns and risk, side by side.",
+        '''<svg viewBox="0 0 300 132" width="100%" height="100%" preserveAspectRatio="none">
+             <line x1="18" y1="112" x2="282" y2="112" stroke="#E2E8F0"/>
+             <rect x="24" y="72" width="20" height="40" rx="2" fill="#D3DBE4"/><rect x="54" y="57" width="20" height="55" rx="2" fill="#C3CDD9"/>
+             <rect x="84" y="64" width="20" height="48" rx="2" fill="#D3DBE4"/><rect x="114" y="42" width="20" height="70" rx="2" fill="#A9B6C6"/>
+             <rect x="144" y="52" width="20" height="60" rx="2" fill="#C3CDD9"/><rect x="174" y="27" width="20" height="85" rx="2" fill="var(--accent)"/>
+             <rect x="204" y="60" width="20" height="52" rx="2" fill="#C3CDD9"/><rect x="234" y="46" width="20" height="66" rx="2" fill="#D3DBE4"/>
+           </svg>''',
+    ),
+]
 
-portfolio_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200"><rect width="400" height="200" fill="#F8FAFC"/><rect x="15" y="12" width="85" height="35" rx="3" fill="#E2E8F0"/><rect x="110" y="12" width="85" height="35" rx="3" fill="#E2E8F0"/><rect x="205" y="12" width="85" height="35" rx="3" fill="#E2E8F0"/><rect x="300" y="12" width="85" height="35" rx="3" fill="#E2E8F0"/><path d="M20,80 L380,80 L380,170 L20,170 Z" fill="#EFF6FF" stroke="#E2E8F0" stroke-width="1"/><rect x="60" y="95" width="45" height="55" rx="2" fill="#3B82F6" opacity="0.3"/><rect x="140" y="105" width="30" height="45" rx="2" fill="#3B82F6" opacity="0.5"/><rect x="200" y="110" width="25" height="40" rx="2" fill="#3B82F6" opacity="0.2"/><rect x="270" y="100" width="35" height="50" rx="2" fill="#3B82F6" opacity="0.4"/><rect x="330" y="120" width="20" height="30" rx="2" fill="#3B82F6" opacity="0.15"/><circle cx="80" cy="115" r="4" fill="#1E3A8A" opacity="0.5"/><circle cx="155" cy="120" r="3" fill="#1E3A8A" opacity="0.5"/><circle cx="290" cy="118" r="3.5" fill="#1E3A8A" opacity="0.5"/></svg>'
+cards_html = ""
+for href, title, desc, tag, preview in CARDS:
+    cards_html += f'''
+      <div class="card" data-card data-href="{href}">
+        <div class="card-preview">{preview}</div>
+        <div class="card-body">
+          <div class="card-title">{title}</div>
+          <p class="card-desc">{desc}</p>
+          <div class="card-foot"><span class="card-tag">{tag}</span><span class="card-open">Open &#8594;</span></div>
+        </div>
+      </div>'''
 
-market_b64 = base64.b64encode(market_svg.encode()).decode()
-portfolio_b64 = base64.b64encode(portfolio_svg.encode()).decode()
+dots_html = "".join(
+    f'<button data-dot class="dot{" active" if i == 0 else ""}" aria-label="Slide {i+1}"></button>'
+    for i in range(len(CARDS))
+)
 
-# ---------------------------------------------------------------------------
-# CSS
-# ---------------------------------------------------------------------------
-
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
-
-    .stApp {
-        background:
-            radial-gradient(1100px 460px at 50% -140px, rgba(79,127,214,0.10), rgba(79,127,214,0) 72%),
-            linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 52%, #F1F5F9 100%);
-        background-attachment: fixed;
-    }
-    .block-container { padding-top: 2.25rem; padding-bottom: 1.5rem; max-width: 1060px; }
-
-    #MainMenu { visibility: hidden; }
-    footer { visibility: hidden; }
-    .stDeployButton { display: none; }
-    header[data-testid="stHeader"] { background: transparent; }
-
-    /* ---- Hero ---- */
-    .hero {
-        display: flex; flex-direction: column; align-items: center;
-        text-align: center; width: 100%; padding: 1.25rem 0 0.25rem 0;
-    }
-    .hero-eyebrow {
-        display: flex; align-items: center; gap: 0.7rem;
-        font-family: 'JetBrains Mono', monospace; font-size: 0.66rem; font-weight: 600;
-        letter-spacing: 0.24em; text-transform: uppercase; color: #94A3B8;
-        margin-bottom: 1.15rem;
-    }
-    .hero-eyebrow::before, .hero-eyebrow::after {
-        content: ""; width: 26px; height: 1px; background: #CBD5E1;
-    }
-    .hero-logo { height: 128px; display: block; margin-bottom: 1.05rem; }
-    .hero-title {
-        font-family: 'DM Sans', sans-serif; font-size: 2.35rem; font-weight: 700;
-        letter-spacing: -0.03em; color: #1E293B; line-height: 1.1; margin: 0;
-    }
-    .hero-sub {
-        font-family: 'DM Sans', sans-serif; font-size: 1.02rem; color: #64748B;
-        max-width: 530px; margin: 0.95rem auto 0; line-height: 1.6;
-    }
-
-    /* ---- Section kicker above carousel ---- */
-    .section-kicker {
-        display: flex; align-items: center; justify-content: center; gap: 0.8rem;
-        font-family: 'JetBrains Mono', monospace; font-size: 0.64rem; font-weight: 600;
-        letter-spacing: 0.22em; text-transform: uppercase; color: #94A3B8;
-        margin: 2.6rem 0 0.2rem 0;
-    }
-    .section-kicker::before, .section-kicker::after {
-        content: ""; height: 1px; width: 56px; background: #E2E8F0;
-    }
-
-    .carousel-hint {
-        text-align: center; font-family: 'DM Sans', sans-serif;
-        font-size: 0.76rem; color: #94A3B8; margin-top: 0.1rem;
-    }
-
-    /* ---- Footer ---- */
-    .home-footer {
-        display: flex; justify-content: space-between; align-items: center; gap: 1rem;
-        max-width: 1060px; margin: 2.75rem auto 0 auto; padding-top: 1.4rem;
-        border-top: 1px solid #E2E8F0;
-        font-family: 'DM Sans', sans-serif; font-size: 0.72rem; color: #94A3B8;
-    }
-    .home-footer .brand {
-        font-weight: 700; color: #475569; letter-spacing: 0.06em; text-transform: uppercase;
-        font-size: 0.7rem;
-    }
-    .home-footer .meta { display: flex; gap: 1.3rem; }
-
-    @media (max-width: 768px) {
-        .block-container { padding-top: 1rem; padding-left: 1rem; padding-right: 1rem; }
-        .hero { padding-top: 0.5rem; }
-        .hero-logo { height: 88px; }
-        .hero-title { font-size: 1.7rem; }
-        .hero-sub { font-size: 0.9rem; }
-        .section-kicker { margin-top: 1.8rem; }
-        .section-kicker::before, .section-kicker::after { width: 28px; }
-        .home-footer { flex-direction: column; gap: 0.5rem; text-align: center; margin-top: 2rem; }
-        .home-footer .meta { gap: 0.9rem; }
-    }
-</style>
-""", unsafe_allow_html=True)
+logo_img = f'<img src="{logo_uri}" alt="Secco Capital" class="logo"/>' if logo_uri else ""
 
 # ---------------------------------------------------------------------------
-# Layout
+# Hide Streamlit chrome on the home page
 # ---------------------------------------------------------------------------
-
-logo_img = ""
-if logo_b64:
-    logo_img = f'<img class="hero-logo" src="data:{logo_mime};base64,{logo_b64}" />'
-
-watchlist_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200"><rect width="400" height="200" fill="#F8FAFC"/><rect x="15" y="12" width="370" height="6" rx="2" fill="#CBD5E1"/><rect x="15" y="28" width="120" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="28" width="40" height="4" rx="1" fill="#16A34A" opacity="0.5"/><rect x="260" y="28" width="35" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="320" y="28" width="40" height="4" rx="1" fill="#DC2626" opacity="0.4"/><rect x="15" y="40" width="100" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="40" width="30" height="4" rx="1" fill="#DC2626" opacity="0.5"/><rect x="260" y="40" width="45" height="4" rx="1" fill="#DC2626" opacity="0.4"/><rect x="320" y="40" width="35" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="15" y="52" width="110" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="52" width="35" height="4" rx="1" fill="#16A34A" opacity="0.5"/><rect x="260" y="52" width="30" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="320" y="52" width="45" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="15" y="72" width="370" height="6" rx="2" fill="#CBD5E1"/><rect x="15" y="88" width="90" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="88" width="35" height="4" rx="1" fill="#16A34A" opacity="0.5"/><rect x="260" y="88" width="40" height="4" rx="1" fill="#DC2626" opacity="0.4"/><rect x="320" y="88" width="30" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="15" y="100" width="105" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="100" width="40" height="4" rx="1" fill="#DC2626" opacity="0.5"/><rect x="260" y="100" width="35" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="320" y="100" width="40" height="4" rx="1" fill="#DC2626" opacity="0.4"/><rect x="15" y="120" width="370" height="6" rx="2" fill="#CBD5E1"/><rect x="15" y="136" width="80" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="136" width="35" height="4" rx="1" fill="#16A34A" opacity="0.5"/><rect x="15" y="148" width="95" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="148" width="40" height="4" rx="1" fill="#DC2626" opacity="0.5"/><rect x="15" y="160" width="85" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="160" width="30" height="4" rx="1" fill="#16A34A" opacity="0.5"/><rect x="15" y="172" width="110" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="172" width="45" height="4" rx="1" fill="#16A34A" opacity="0.5"/><rect x="15" y="184" width="75" height="4" rx="1" fill="#E2E8F0"/><rect x="200" y="184" width="35" height="4" rx="1" fill="#DC2626" opacity="0.5"/></svg>'
-watchlist_b64 = base64.b64encode(watchlist_svg.encode()).decode()
-
-direct_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200"><rect width="400" height="200" fill="#F8FAFC"/><rect x="15" y="15" width="160" height="55" rx="4" fill="#FFFFFF" stroke="#E2E8F0"/><rect x="25" y="25" width="60" height="4" rx="1" fill="#1E293B"/><rect x="25" y="35" width="100" height="3" rx="1" fill="#E2E8F0"/><rect x="25" y="44" width="80" height="3" rx="1" fill="#16A34A" opacity="0.5"/><rect x="25" y="53" width="65" height="3" rx="1" fill="#DC2626" opacity="0.4"/><rect x="225" y="15" width="160" height="55" rx="4" fill="#FFFFFF" stroke="#4F7FD6" stroke-width="1.5"/><rect x="235" y="25" width="70" height="4" rx="1" fill="#1E293B"/><rect x="235" y="35" width="90" height="3" rx="1" fill="#E2E8F0"/><rect x="235" y="44" width="100" height="3" rx="1" fill="#16A34A" opacity="0.6"/><rect x="235" y="53" width="55" height="3" rx="1" fill="#16A34A" opacity="0.4"/><polyline points="20,170 60,160 100,155 140,140 180,148 220,128 260,118 300,112 340,98 380,90" fill="none" stroke="#4F7FD6" stroke-width="2"/><polyline points="20,175 60,170 100,166 140,160 180,162 220,152 260,148 300,142 340,135 380,130" fill="none" stroke="#94A3B8" stroke-width="1" opacity="0.5"/><polyline points="20,178 60,174 100,172 140,168 180,170 220,164 260,160 300,158 340,154 380,150" fill="none" stroke="#94A3B8" stroke-width="1" opacity="0.5"/></svg>'
-direct_b64 = base64.b64encode(direct_svg.encode()).decode()
-
-altmgr_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200"><rect width="400" height="200" fill="#F8FAFC"/><rect x="15" y="14" width="370" height="5" rx="2" fill="#CBD5E1"/><rect x="15" y="28" width="70" height="4" rx="1" fill="#E2E8F0"/><rect x="120" y="28" width="40" height="4" rx="1" fill="#4F7FD6" opacity="0.6"/><rect x="190" y="28" width="35" height="4" rx="1" fill="#16A34A" opacity="0.5"/><rect x="260" y="28" width="40" height="4" rx="1" fill="#DC2626" opacity="0.4"/><rect x="320" y="28" width="50" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="15" y="40" width="70" height="4" rx="1" fill="#E2E8F0"/><rect x="120" y="40" width="40" height="4" rx="1" fill="#4F7FD6" opacity="0.6"/><rect x="190" y="40" width="35" height="4" rx="1" fill="#DC2626" opacity="0.5"/><rect x="260" y="40" width="40" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="320" y="40" width="50" height="4" rx="1" fill="#16A34A" opacity="0.4"/><rect x="15" y="52" width="70" height="4" rx="1" fill="#E2E8F0"/><rect x="120" y="52" width="40" height="4" rx="1" fill="#4F7FD6" opacity="0.6"/><rect x="190" y="52" width="35" height="4" rx="1" fill="#16A34A" opacity="0.5"/><rect x="260" y="52" width="40" height="4" rx="1" fill="#DC2626" opacity="0.4"/><rect x="320" y="52" width="50" height="4" rx="1" fill="#DC2626" opacity="0.4"/><polyline points="20,180 60,165 100,168 140,150 180,155 220,135 260,138 300,120 340,110 380,100" fill="none" stroke="#4F7FD6" stroke-width="2"/><polyline points="20,185 60,178 100,180 140,170 180,172 220,162 260,165 300,158 340,150 380,145" fill="none" stroke="#16A34A" stroke-width="1.4" opacity="0.6"/><polyline points="20,188 60,184 100,182 140,180 180,178 220,176 260,172 300,170 340,168 380,164" fill="none" stroke="#94A3B8" stroke-width="1" opacity="0.5"/></svg>'
-altmgr_b64 = base64.b64encode(altmgr_svg.encode()).decode()
-
 st.markdown(
-    f"""<div class="hero">
-        <div class="hero-eyebrow">Internal Platform</div>
-        {logo_img}
-        <h1 class="hero-title">Investment Intelligence Platform</h1>
-        <p class="hero-sub">Markets, portfolio, holdings, and alternative managers &mdash; a single live view, updated in real time.</p>
-    </div>""",
+    """
+    <style>
+      .block-container { padding: 0 !important; max-width: 100% !important; }
+      #MainMenu, footer, .stDeployButton { visibility: hidden; }
+      header[data-testid="stHeader"] { background: transparent; }
+      .stApp { background: #FFFFFF; }
+      iframe { border: none !important; }
+    </style>
+    """,
     unsafe_allow_html=True,
 )
 
-# Card registry — each slide links to a page
-CARDS = [
-    ("/Market_Dashboard", market_b64, "Market Dashboard",
-     "Daily macro and market snapshot. Rates, equities, commodities, credit spreads, currencies, and volatility."),
-    ("/Partner_Dashboard", portfolio_b64, "Partner Dashboard",
-     "Current investment allocations by geography, asset class, sector, and stage. Identify gaps and inform strategy."),
-    ("/Stock_Watchlist", watchlist_b64, "Stock Watchlist",
-     "Live prices for core, connected, and global holdings. Track performance across exchanges and currencies."),
-    ("/Direct_Investments", direct_b64, "Direct Investments",
-     "Public-market proxy tracker for private holdings. Comps, sector ETFs, capex, sentiment for Novolex, Kelvion, Real Chemistry."),
-    ("/Alt_Managers", altmgr_b64, "Alternative Managers",
-     "Compare 19 listed alternative asset managers as stocks. Valuation, returns, and risk across Blackstone, KKR, Apollo, Brookfield and peers."),
-]
-
-# Build the slides + dots; the carousel is rendered inside a sandboxed
-# components.html iframe so its JavaScript controls actually fire (Streamlit's
-# markdown sanitiser strips ids/anchors, which broke the pure-CSS version).
-slides = ""
-for href, img_b64, title, desc in CARDS:
-    slides += (
-        f'<div class="slide">'
-        f'<div class="nav-card" data-href="{href}">'
-        f'<div class="nav-card-preview"><img src="data:image/svg+xml;base64,{img_b64}" /></div>'
-        f'<div class="nav-card-body"><div class="nav-card-title">{title}</div>'
-        f'<div class="nav-card-desc">{desc}</div></div></div>'
-        f'</div>'
-    )
-
-dots = "".join('<button class="dot"></button>' for _ in CARDS)
-
-carousel_html = f"""
+# ---------------------------------------------------------------------------
+# The whole front page as one self-contained document (styles + script inline)
+# ---------------------------------------------------------------------------
+PAGE = r"""
 <!doctype html><html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
-    * {{ box-sizing: border-box; }}
-    html, body {{ margin: 0; padding: 0; background: transparent; overflow: hidden; }}
+  *{box-sizing:border-box;} html,body{margin:0;padding:0;}
+  :root{--accent:__ACCENT__;}
+  body{font-family:'DM Sans',system-ui,sans-serif;color:#1E293B;
+    background:radial-gradient(1200px 520px at 50% -180px, rgba(79,127,214,0.10), rgba(79,127,214,0) 70%), linear-gradient(180deg,#FFFFFF 0%,#F8FAFC 55%,#F1F5F9 100%);}
+  @keyframes marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+  @keyframes livepulse{0%{transform:scale(1);opacity:1;}70%{transform:scale(2.6);opacity:0;}100%{opacity:0;}}
 
-    .carousel {{ position: relative; width: 100%; height: 380px; overflow: hidden; }}
-    .track {{
-        position: absolute; top: 30px; left: 50%;
-        display: flex; align-items: flex-start; gap: 28px;
-        transition: transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
-    }}
-    .slide {{ flex: 0 0 300px; width: 300px; display: flex; justify-content: center; }}
+  .bar{width:100%;border-bottom:1px solid #E9EDF2;background:rgba(255,255,255,0.72);backdrop-filter:blur(8px);}
+  .bar-in{max-width:1180px;margin:0 auto;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;gap:24px;}
+  .brand{display:flex;align-items:center;gap:14px;}
+  .logo{height:30px;width:auto;display:block;}
+  .divider{width:1px;height:22px;background:#E2E8F0;}
+  .platform{font:600 10px 'JetBrains Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:#94A3B8;}
+  .clocks{display:flex;align-items:center;gap:20px;}
+  .clock{text-align:right;}
+  .clock .t{font:600 13px 'JetBrains Mono',monospace;color:#0F172A;letter-spacing:.02em;}
+  .clock .c{font:600 9px 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#94A3B8;margin-top:2px;}
+  .vd{width:1px;height:26px;background:#E2E8F0;}
+  .live{display:flex;align-items:center;gap:7px;padding:6px 12px;border:1px solid #E2E8F0;border-radius:999px;background:#FFF;}
+  .live .ring{position:relative;display:inline-flex;width:7px;height:7px;}
+  .live .ring b{position:absolute;inset:0;border-radius:50%;background:#16A34A;animation:livepulse 2.2s ease-out infinite;}
+  .live .ring i{position:relative;width:7px;height:7px;border-radius:50%;background:#16A34A;}
+  .live span{font:700 10px 'JetBrains Mono',monospace;letter-spacing:.16em;color:#15803D;}
 
-    .nav-card {{
-        background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px;
-        width: 300px; height: 300px; overflow: hidden; cursor: pointer;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        filter: blur(3px) saturate(0.85); opacity: 0.45; transform: scale(0.8);
-        transition: transform 0.45s ease, filter 0.45s ease, opacity 0.45s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-    }}
-    .nav-card.active {{
-        filter: none; opacity: 1; transform: scale(1);
-        box-shadow: 0 12px 32px rgba(15,23,42,0.14); position: relative; z-index: 3;
-    }}
-    .nav-card.active:hover {{ border-color: #4F7FD6; box-shadow: 0 14px 36px rgba(79,127,214,0.2); }}
+  .ticker{width:100%;border-bottom:1px solid #E9EDF2;background:linear-gradient(180deg,#FFF,#FBFCFE);overflow:hidden;}
+  .ticker-track{display:inline-flex;align-items:center;height:46px;animation:marquee 48s linear infinite;will-change:transform;}
+  .ticker:hover .ticker-track{animation-play-state:paused;}
+  .tk{display:flex;align-items:baseline;gap:9px;padding:0 22px;border-right:1px solid #EDF1F5;white-space:nowrap;}
+  .tk .s{font:600 11px 'JetBrains Mono',monospace;letter-spacing:.03em;color:#64748B;}
+  .tk .v{font:600 12.5px 'JetBrains Mono',monospace;color:#0F172A;transition:background .4s ease;padding:1px 3px;border-radius:3px;}
+  .tk .g{font:600 11px 'JetBrains Mono',monospace;}
 
-    .nav-card-preview {{
-        width: 100%; height: 120px; overflow: hidden;
-        border-bottom: 1px solid #E2E8F0;
-        display: flex; align-items: center; justify-content: center; background: #F8FAFC;
-    }}
-    .nav-card-preview img {{ width: 100%; height: 100%; object-fit: cover; opacity: 0.7; }}
-    .nav-card-body {{ padding: 1.2rem 1.5rem; text-align: center; }}
-    .nav-card-title {{
-        font-family: 'DM Sans', sans-serif; font-size: 1.1rem; font-weight: 700;
-        color: #1E293B; margin-bottom: 0.4rem;
-    }}
-    .nav-card-desc {{
-        font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: #64748B; line-height: 1.5;
-    }}
+  .hero{max-width:1100px;margin:0 auto;padding:72px 32px 34px;text-align:center;display:flex;flex-direction:column;align-items:center;}
+  .eyebrow{display:flex;align-items:center;gap:12px;font:600 10.5px 'JetBrains Mono',monospace;letter-spacing:.26em;text-transform:uppercase;color:#94A3B8;margin-bottom:26px;}
+  .eyebrow i{width:28px;height:1px;background:#CBD5E1;display:block;}
+  .hero h1{font-weight:600;font-size:clamp(2.5rem,5.4vw,4.1rem);line-height:1.04;letter-spacing:-.035em;color:#0F172A;margin:0;max-width:16ch;text-wrap:balance;}
+  .hero p{font-size:1.1rem;line-height:1.6;color:#64748B;max-width:600px;margin:22px auto 0;text-wrap:pretty;}
 
-    .arrow {{
-        position: absolute; top: 180px; transform: translateY(-50%);
-        width: 42px; height: 42px; border-radius: 50%;
-        background: #FFFFFF; border: 1px solid #E2E8F0; cursor: pointer;
-        display: flex; align-items: center; justify-content: center;
-        color: #475569; font-family: 'DM Sans', sans-serif; font-size: 1.5rem; line-height: 1;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.12); transition: all 0.2s ease; z-index: 7;
-    }}
-    .arrow:hover {{ border-color: #4F7FD6; color: #4F7FD6; box-shadow: 0 4px 14px rgba(79,127,214,0.22); }}
-    .arrow.left {{ left: calc(50% - 200px); }}
-    .arrow.right {{ left: calc(50% + 158px); }}
+  .kicker{display:flex;align-items:center;justify-content:center;gap:11px;font:600 10px 'JetBrains Mono',monospace;letter-spacing:.24em;text-transform:uppercase;color:#94A3B8;margin:14px 0 6px;}
+  .kicker i{width:44px;height:1px;background:#E2E8F0;display:block;}
 
-    .dots {{
-        position: absolute; bottom: 14px; left: 0; right: 0;
-        display: flex; gap: 0.5rem; justify-content: center; z-index: 7;
-    }}
-    .dot {{
-        width: 8px; height: 8px; border-radius: 50%; border: none; padding: 0;
-        background: #CBD5E1; cursor: pointer; transition: all 0.2s ease;
-    }}
-    .dot:hover {{ background: #94A3B8; }}
-    .dot.active {{ background: #4F7FD6; width: 22px; border-radius: 4px; }}
+  .carousel{position:relative;width:100%;height:400px;overflow:hidden;}
+  .track{position:absolute;top:38px;left:50%;display:flex;align-items:flex-start;gap:28px;transition:transform .5s cubic-bezier(.22,.61,.36,1);}
+  .card{flex:0 0 300px;width:300px;background:#FFF;border:1px solid #E2E8F0;border-radius:14px;overflow:hidden;cursor:pointer;
+    transition:transform .5s cubic-bezier(.22,.61,.36,1),filter .5s ease,opacity .5s ease,box-shadow .25s ease,border-color .2s ease;}
+  .card-preview{height:132px;background:#F8FAFC;border-bottom:1px solid #EEF2F6;position:relative;display:flex;align-items:center;justify-content:center;}
+  .card-body{padding:20px 22px 22px;}
+  .card-title{font-size:1.12rem;font-weight:600;color:#0F172A;letter-spacing:-.01em;}
+  .card-desc{font-size:.82rem;line-height:1.55;color:#64748B;margin:8px 0 0;min-height:63px;}
+  .card-foot{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid #F1F5F9;}
+  .card-tag{font:600 9px 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#94A3B8;}
+  .card-open{font:600 12px 'DM Sans',sans-serif;color:var(--accent);}
+  .wl-row{display:flex;align-items:center;justify-content:space-between;font:600 11px 'JetBrains Mono',monospace;color:#475569;}
 
-    @media (max-width: 768px) {{
-        .arrow {{ top: 175px; width: 36px; height: 36px; font-size: 1.3rem; }}
-        .arrow.left {{ left: calc(50% - 174px); }}
-        .arrow.right {{ left: calc(50% + 138px); }}
-    }}
+  .arrow{position:absolute;top:196px;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:#FFF;border:1px solid #E2E8F0;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;color:#475569;font-size:20px;line-height:1;box-shadow:0 2px 10px rgba(15,23,42,.10);z-index:7;transition:all .2s ease;}
+  .arrow:hover{border-color:var(--accent);color:var(--accent);box-shadow:0 4px 16px rgba(79,127,214,.24);}
+  .arrow.l{left:calc(50% - 208px);} .arrow.r{left:calc(50% + 164px);}
+  .dots{position:absolute;bottom:6px;left:0;right:0;display:flex;gap:8px;justify-content:center;z-index:7;}
+  .dot{width:8px;height:8px;border-radius:4px;border:none;padding:0;background:#CBD5E1;cursor:pointer;transition:all .25s ease;}
+  .dot.active{width:22px;background:var(--accent);}
+  .hint{text-align:center;font-size:.78rem;color:#94A3B8;margin-top:2px;}
+
+  .foot{max-width:1180px;margin:56px auto 0;padding:20px 32px 30px;}
+  .foot-in{border-top:1px solid #E9EDF2;padding-top:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+  .foot-brand{font:700 11px 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#475569;}
+  .foot-meta{display:flex;gap:24px;font-size:.74rem;color:#94A3B8;}
 </style></head>
 <body>
-<div class="carousel">
-    <div class="track">{slides}</div>
-    <button class="arrow left" aria-label="Previous">&lsaquo;</button>
-    <button class="arrow right" aria-label="Next">&rsaquo;</button>
-    <div class="dots">{dots}</div>
-</div>
-<script>
-    const STEP = 328, CARD_CENTER = 150;
-    const cards = Array.from(document.querySelectorAll('.nav-card'));
-    const dots  = Array.from(document.querySelectorAll('.dot'));
-    const track = document.querySelector('.track');
-    const n = cards.length;
-    let cur = 0;
+  <div class="bar"><div class="bar-in">
+    <div class="brand">__LOGO__<span class="divider"></span><span class="platform">Investment Intelligence Platform</span></div>
+    <div style="display:flex;align-items:center;gap:22px;">
+      <div class="clocks">
+        <div class="clock"><div class="t" data-tz="America/New_York">--:--:--</div><div class="c">New York</div></div>
+        <span class="vd"></span>
+        <div class="clock"><div class="t" data-tz="Europe/London">--:--:--</div><div class="c">London</div></div>
+        <span class="vd"></span>
+        <div class="clock"><div class="t" data-tz="Africa/Johannesburg">--:--:--</div><div class="c">Johannesburg</div></div>
+      </div>
+      <div class="live"><span class="ring"><b></b><i></i></span><span>LIVE</span></div>
+    </div>
+  </div></div>
 
-    function render() {{
-        track.style.transform = 'translateX(' + (-(CARD_CENTER + cur * STEP)) + 'px)';
-        cards.forEach((c, i) => c.classList.toggle('active', i === cur));
-        dots.forEach((d, i) => d.classList.toggle('active', i === cur));
-    }}
-    document.querySelector('.arrow.left').addEventListener('click', () => {{ cur = (cur - 1 + n) % n; render(); }});
-    document.querySelector('.arrow.right').addEventListener('click', () => {{ cur = (cur + 1) % n; render(); }});
-    dots.forEach((d, i) => d.addEventListener('click', () => {{ cur = i; render(); }}));
-    cards.forEach((c, i) => c.addEventListener('click', () => {{
-        if (i !== cur) {{ cur = i; render(); return; }}        // clicking a side card centres it first
-        // Streamlit sandboxes this iframe without allow-top-navigation, so we
-        // open the page in a new tab (allowed via allow-popups). Resolve to an
-        // absolute URL against the parent origin (readable: same-origin).
-        var href = c.dataset.href;
-        try {{ href = window.top.location.origin + href; }} catch (e) {{}}
-        window.open(href, '_blank');
-    }}));
-    render();
+  <div class="ticker"><div class="ticker-track" data-ticker-track></div></div>
+
+  <div class="hero">
+    <div class="eyebrow"><i></i>Internal Platform &middot; Confidential<i></i></div>
+    <h1>Investment intelligence, in one live view.</h1>
+    <p>Markets, portfolio, holdings and alternative managers &mdash; continuously updated, and built for speed of interpretation.</p>
+  </div>
+
+  <div class="kicker"><i></i>Explore the workspaces &middot; 5 dashboards<i></i></div>
+
+  <div class="carousel" data-carousel>
+    <div class="track" data-track>__CARDS__</div>
+    <button class="arrow l" data-prev aria-label="Previous">&lsaquo;</button>
+    <button class="arrow r" data-next aria-label="Next">&rsaquo;</button>
+    <div class="dots">__DOTS__</div>
+  </div>
+  <div class="hint">Use the arrows, dots or &larr; &rarr; keys to browse &middot; select the centre card to open it</div>
+
+  <div class="foot"><div class="foot-in">
+    <span class="foot-brand">Secco Capital</span>
+    <div class="foot-meta"><span>Investment Intelligence Platform</span><span>Confidential</span><span>&copy; 2026</span></div>
+  </div></div>
+
+<script>
+  var instruments = [
+    {s:'S&P 500',v:6120.34,c:0.42,dec:2},{s:'Nasdaq 100',v:22480.9,c:0.61,dec:1},
+    {s:'Russell 2000',v:2310.55,c:-0.18,dec:2},{s:'US 10Y',v:4.283,c:2,dec:3,mode:'bp'},
+    {s:'Gold',v:3412.8,c:0.55,dec:1},{s:'Brent',v:71.20,c:-0.90,dec:2},
+    {s:'Bitcoin',v:68240,c:1.24,dec:0},{s:'VIX',v:13.82,c:-2.10,dec:2},
+    {s:'EUR/USD',v:1.0912,c:0.12,dec:4},{s:'USD/ZAR',v:18.047,c:-0.34,dec:3},
+    {s:'DXY',v:104.21,c:0.08,dec:2},{s:'Copper',v:4.618,c:0.71,dec:3}
+  ];
+  function fmtVal(it){var val=it.v.toLocaleString('en-US',{minimumFractionDigits:it.dec,maximumFractionDigits:it.dec});return it.mode==='bp'?val+'%':val;}
+  function chgTxt(it){if(it.mode==='bp'){var r=Math.round(it.c);return (r>=0?'+':'')+r+'bp';}return (it.c>=0?'\u25B2 ':'\u25BC ')+Math.abs(it.c).toFixed(2)+'%';}
+  function chgCol(it){return it.c>=0?'#16A34A':'#DC2626';}
+  function itemHTML(it){return '<div class="tk"><span class="s">'+it.s+'</span><span class="v" data-val data-sym="'+it.s+'">'+fmtVal(it)+
+    '</span><span class="g" data-chg data-sym="'+it.s+'" style="color:'+chgCol(it)+'">'+chgTxt(it)+'</span></div>';}
+  (function(){var one=instruments.map(itemHTML).join('');document.querySelector('[data-ticker-track]').innerHTML=one+one;})();
+  setInterval(function(){
+    var it=instruments[Math.floor(Math.random()*instruments.length)];
+    it.v=it.v*(1+(Math.random()-0.5)*0.0009);
+    it.c += it.mode==='bp' ? (Math.random()-0.5)*1.2 : (Math.random()-0.5)*0.14;
+    var sel='[data-sym="'+it.s+'"]';
+    document.querySelectorAll(sel+'[data-val]').forEach(function(el){el.textContent=fmtVal(it);
+      el.style.background=it.c>=0?'rgba(22,163,74,0.14)':'rgba(220,38,38,0.12)';setTimeout(function(){el.style.background='transparent';},550);});
+    document.querySelectorAll(sel+'[data-chg]').forEach(function(el){el.textContent=chgTxt(it);el.style.color=chgCol(it);});
+  },2600);
+
+  function tick(){document.querySelectorAll('[data-tz]').forEach(function(el){try{
+    el.textContent=new Date().toLocaleTimeString('en-GB',{hour12:false,timeZone:el.getAttribute('data-tz')});}catch(e){}});}
+  tick();setInterval(tick,1000);
+
+  var cur=0,step=328;
+  var cards=Array.prototype.slice.call(document.querySelectorAll('[data-card]'));
+  var dots=Array.prototype.slice.call(document.querySelectorAll('[data-dot]'));
+  var track=document.querySelector('[data-track]');var n=cards.length;
+  function render(){
+    track.style.transform='translateX('+(-(150+cur*step))+'px)';
+    cards.forEach(function(c,i){var a=i===cur;c.style.opacity=a?'1':'0.4';c.style.transform=a?'scale(1)':'scale(0.82)';
+      c.style.filter=a?'none':'blur(2.5px)';c.style.boxShadow=a?'0 20px 44px rgba(15,23,42,0.15)':'0 2px 8px rgba(15,23,42,0.05)';
+      c.style.zIndex=a?'3':'1';c.style.borderColor=a?'#DCE3EC':'#E2E8F0';});
+    dots.forEach(function(d,i){d.classList.toggle('active',i===cur);});
+  }
+  function go(i){cur=(i+n)%n;render();}
+  render();
+  document.querySelector('[data-prev]').addEventListener('click',function(){go(cur-1);});
+  document.querySelector('[data-next]').addEventListener('click',function(){go(cur+1);});
+  dots.forEach(function(d,i){d.addEventListener('click',function(){go(i);});});
+  cards.forEach(function(c,i){c.addEventListener('click',function(){
+    if(i!==cur){go(i);return;}
+    var href=c.getAttribute('data-href');
+    // Sandboxed component iframe: open the Streamlit page in a new tab against the parent origin.
+    try{href=window.top.location.origin+href;}catch(e){}
+    window.open(href,'_blank');
+  });});
+  var carousel=document.querySelector('[data-carousel]');var auto=null;
+  function startAuto(){auto=setInterval(function(){go(cur+1);},6500);}
+  startAuto();
+  carousel.addEventListener('mouseenter',function(){clearInterval(auto);});
+  carousel.addEventListener('mouseleave',function(){clearInterval(auto);startAuto();});
+  window.addEventListener('keydown',function(e){if(e.key==='ArrowLeft')go(cur-1);else if(e.key==='ArrowRight')go(cur+1);});
 </script>
 </body></html>
 """
 
-st.markdown(
-    f'<div class="section-kicker">Explore the dashboards \u00b7 {len(CARDS)} workspaces</div>',
-    unsafe_allow_html=True,
+html = (
+    PAGE.replace("__ACCENT__", ACCENT)
+        .replace("__LOGO__", logo_img)
+        .replace("__CARDS__", cards_html)
+        .replace("__DOTS__", dots_html)
 )
 
-components.html(carousel_html, height=400)
-
-st.markdown(
-    '<div class="carousel-hint">Use the arrows or dots to browse \u00b7 click the centre card to open it in a new tab</div>',
-    unsafe_allow_html=True,
-)
-
-st.markdown(
-    """<div class="home-footer">
-        <span class="brand">Secco Capital</span>
-        <span class="meta"><span>Investment Intelligence Platform</span><span>Confidential</span><span>&copy; 2026</span></span>
-    </div>""",
-    unsafe_allow_html=True,
-)
+components.html(html, height=1180, scrolling=False)
