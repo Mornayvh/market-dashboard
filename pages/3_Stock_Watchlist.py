@@ -181,7 +181,14 @@ def fetch_watchlist_data():
                 continue
 
             hist.index = pd.to_datetime(hist.index).tz_localize(None)
-            close = hist["Close"]
+            close = hist["Close"].dropna()
+            if close.empty:
+                results.append({
+                    "group": group, "name": name, "ticker": ticker, "currency": currency,
+                    "price": None, "chg_1d": None, "chg_1w": None, "chg_ltm": None,
+                    "high_52w": None, "low_52w": None,
+                })
+                continue
             last = float(close.iloc[-1])
 
             # Store history for sparklines
