@@ -187,7 +187,7 @@ PAGE = r"""
   .kicker{display:flex;align-items:center;justify-content:center;gap:11px;font:600 10px 'JetBrains Mono',monospace;letter-spacing:.24em;text-transform:uppercase;color:#94A3B8;margin:14px 0 6px;}
   .kicker i{width:44px;height:1px;background:#E2E8F0;display:block;}
 
-  .carousel{position:relative;width:100%;height:400px;overflow:hidden;}
+  .carousel{position:relative;width:100%;height:600px;overflow:hidden;}
   .track{position:absolute;top:38px;left:50%;display:flex;align-items:flex-start;gap:28px;transition:transform .5s cubic-bezier(.22,.61,.36,1);}
   .card{flex:0 0 300px;width:300px;background:#FFF;border:1px solid #E2E8F0;border-radius:14px;overflow:hidden;cursor:pointer;
     transition:transform .5s cubic-bezier(.22,.61,.36,1),filter .5s ease,opacity .5s ease,box-shadow .25s ease,border-color .2s ease;}
