@@ -72,6 +72,25 @@ st.markdown("""
         font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
         color: #94A3B8; margin-left: 0.4rem;
     }
+
+    /* Hoverable listing note on tickers with an ambiguous / multi-listing story */
+    .ticker-note { position: relative; cursor: help; border-bottom: 1px dotted #94A3B8; }
+    .ticker-note::after {
+        content: 'ⓘ'; font-size: 0.6rem; color: #94A3B8;
+        margin-left: 0.2rem; vertical-align: 0.1em;
+    }
+    .ticker-tip {
+        visibility: hidden; opacity: 0; transition: opacity 0.12s ease;
+        position: absolute; top: 130%; left: 0; z-index: 50;
+        width: 260px; padding: 0.55rem 0.65rem;
+        background: #1E293B; color: #F8FAFC; border-radius: 4px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.22);
+        font-family: 'DM Sans', sans-serif; font-size: 0.68rem;
+        font-weight: 400; line-height: 1.45; letter-spacing: 0;
+        text-align: left; white-space: normal; text-transform: none;
+    }
+    .ticker-note:hover .ticker-tip { visibility: visible; opacity: 1; }
+    .ticker-tip b { font-weight: 600; color: #FFFFFF; }
     .chg-up { color: #16A34A; }
     .chg-down { color: #DC2626; }
     .chg-flat { color: #64748B; }
@@ -150,6 +169,17 @@ WATCHLIST = {
 }
 
 CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "EUR": "€", "CHF": "CHF ", "ZAR": "R", "CNY": "¥"}
+
+# Tickers where the listing venue isn't obvious from the symbol — shown as a
+# hover box on the ticker in the table.
+LISTING_NOTES = {
+    "REINA.AS": (
+        "<b>Euronext Amsterdam</b> &mdash; primary listing, quoted in EUR. "
+        "Reinet Investments S.C.A. is Luxembourg-domiciled but has no LuxSE "
+        "equity line. Secondary listing on the JSE (REI, ZAR); no reliable "
+        "Yahoo feed for that line."
+    ),
+}
 
 # ---------------------------------------------------------------------------
 # Data fetching
@@ -322,8 +352,17 @@ def render_stock_table(df):
         hi = fmt_price(row["high_52w"], row["currency"])
         lo = fmt_price(row["low_52w"], row["currency"])
 
+        note = LISTING_NOTES.get(row["ticker"])
+        if note:
+            ticker_html = (
+                f'<span class="stock-ticker ticker-note">{row["ticker"]}'
+                f'<span class="ticker-tip">{note}</span></span>'
+            )
+        else:
+            ticker_html = f'<span class="stock-ticker">{row["ticker"]}</span>'
+
         rows += f"""<tr>
-            <td>{row["name"]}<span class="stock-ticker">{row["ticker"]}</span></td>
+            <td>{row["name"]}{ticker_html}</td>
             <td>{price}</td>
             <td>{d1}</td>
             <td>{w1}</td>
