@@ -58,7 +58,7 @@ def fetch_quote(ticker: str) -> dict:
     """
     out = {"ticker": ticker, "price": None, "chg_1d": None,
            "chg_1w": None, "chg_1m": None, "chg_ltm": None, "market_cap": None,
-           "currency": None}
+           "currency": None, "country": None, "city": None}
 
     hist = fetch_history(ticker, period="1y")
     if hist is not None and not hist.empty:
@@ -94,6 +94,13 @@ def fetch_quote(ticker: str) -> dict:
         cur = info.get("currency")
         if cur:
             out["currency"] = str(cur)
+        # Yahoo's country/city are the operating HQ, not the country of
+        # incorporation or listing — Amcor plc lists in the US but reports
+        # Zurich, which is the HQ we want to show.
+        for key in ("country", "city"):
+            val = info.get(key)
+            if val:
+                out[key] = str(val)
     except Exception:
         pass
 

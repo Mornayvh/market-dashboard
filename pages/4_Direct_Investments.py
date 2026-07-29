@@ -111,6 +111,11 @@ st.markdown("""
         color: #94A3B8; margin-left: 0.4rem;
     }
     .comp-name-primary { font-weight: 700; }
+    /* HQ country flag; sits before the company name, place name on hover */
+    .comp-flag {
+        margin-right: 0.4rem; font-size: 0.95rem; cursor: help;
+        vertical-align: -0.06em; line-height: 1;
+    }
     .primary-chip {
         display: inline-block; font-family: 'JetBrains Mono', monospace;
         font-size: 0.55rem; font-weight: 700; padding: 1px 6px;

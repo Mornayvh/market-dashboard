@@ -16,6 +16,7 @@ class Comp:
     rationale: str = ""              # one-line "why we watch this comp"
     website: str = ""                # corporate website (https://…)
     currency: str = ""               # ISO code override; "" = take Yahoo's reported currency
+    country: str = ""                # HQ country override for the flag; "" = take Yahoo's
 
 
 @dataclass(frozen=True)

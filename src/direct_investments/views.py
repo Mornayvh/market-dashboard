@@ -46,6 +46,43 @@ def _fmt_pct(val: Optional[float]) -> str:
     return f"{sign}{val:.1f}%"
 
 
+# Country name (as Yahoo reports it) -> ISO 3166-1 alpha-2, for the HQ flag on
+# comps. Covers every country currently present plus likely additions; anything
+# unmapped renders without a flag rather than guessing.
+_COUNTRY_ISO2 = {
+    "United States": "US", "Canada": "CA", "Mexico": "MX", "Brazil": "BR",
+    "United Kingdom": "GB", "Ireland": "IE", "France": "FR", "Germany": "DE",
+    "Netherlands": "NL", "Belgium": "BE", "Luxembourg": "LU", "Switzerland": "CH",
+    "Austria": "AT", "Spain": "ES", "Italy": "IT", "Portugal": "PT",
+    "Finland": "FI", "Sweden": "SE", "Norway": "NO", "Denmark": "DK",
+    "Poland": "PL", "Turkey": "TR", "Israel": "IL", "South Africa": "ZA",
+    "Japan": "JP", "China": "CN", "Hong Kong": "HK", "Taiwan": "TW",
+    "South Korea": "KR", "India": "IN", "Singapore": "SG", "Malaysia": "MY",
+    "Thailand": "TH", "Indonesia": "ID", "Philippines": "PH", "Vietnam": "VN",
+    "Australia": "AU", "New Zealand": "NZ",
+}
+
+
+def _flag(country: str) -> str:
+    """Regional-indicator flag emoji for a country name, or "" if unmapped."""
+    iso2 = _COUNTRY_ISO2.get((country or "").strip())
+    if not iso2:
+        return ""
+    return "".join(chr(0x1F1E6 + ord(ch) - ord("A")) for ch in iso2)
+
+
+def _hq_flag_html(country: str, city: str = "") -> str:
+    """
+    Flag emoji for a company's HQ, carrying the place name as a hover title so
+    the flag is never the only cue. Empty string when the country is unknown.
+    """
+    flag = _flag(country)
+    if not flag:
+        return ""
+    where = f"{city}, {country}" if city else country
+    return f'<span class="comp-flag" title="{html.escape(where, quote=True)}">{flag}</span>'
+
+
 def _currency_label(currency: str, ticker: str = "") -> str:
     """
     ISO-code prefix for a money figure, or "" when a currency label would be wrong.
@@ -133,8 +170,9 @@ def render_comps(holding: Holding):
 
     rationale_by_ticker = {c.ticker: c.rationale for c in holding.comps}
     website_by_ticker = {c.ticker: c.website for c in holding.comps}
-    # A declared currency wins over Yahoo's, for feeds that report it wrongly.
+    # A declared currency/country wins over Yahoo's, for feeds that report it wrongly.
     currency_by_ticker = {c.ticker: getattr(c, "currency", "") for c in holding.comps}
+    country_by_ticker = {c.ticker: getattr(c, "country", "") for c in holding.comps}
 
     rows_html = ""
     for q in quotes:
@@ -150,8 +188,11 @@ def render_comps(holding: Holding):
         else:
             name_html = wrapped
         cur = currency_by_ticker.get(q["ticker"]) or q.get("currency") or ""
+        declared_country = country_by_ticker.get(q["ticker"]) or ""
+        flag = _hq_flag_html(declared_country or (q.get("country") or ""),
+                             "" if declared_country else (q.get("city") or ""))
         cells = [
-            f'<td>{name_html}<span class="stock-ticker">{q["ticker"]}</span></td>',
+            f'<td>{flag}{name_html}<span class="stock-ticker">{q["ticker"]}</span></td>',
             f'<td>{_fmt_price(q["price"], cur, q["ticker"])}</td>',
         ]
         for key in ("chg_1d", "chg_1w", "chg_1m", "chg_ltm"):
