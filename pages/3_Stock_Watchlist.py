@@ -352,17 +352,18 @@ def render_stock_table(df):
         hi = fmt_price(row["high_52w"], row["currency"])
         lo = fmt_price(row["low_52w"], row["currency"])
 
+        # Name and ticker together are the hover target, so pointing at either
+        # the company name or the symbol opens the listing note.
+        cell = f'{row["name"]}<span class="stock-ticker">{row["ticker"]}</span>'
         note = LISTING_NOTES.get(row["ticker"])
         if note:
-            ticker_html = (
-                f'<span class="stock-ticker ticker-note">{row["ticker"]}'
+            cell = (
+                f'<span class="ticker-note">{cell}'
                 f'<span class="ticker-tip">{note}</span></span>'
             )
-        else:
-            ticker_html = f'<span class="stock-ticker">{row["ticker"]}</span>'
 
         rows += f"""<tr>
-            <td>{row["name"]}{ticker_html}</td>
+            <td>{cell}</td>
             <td>{price}</td>
             <td>{d1}</td>
             <td>{w1}</td>
