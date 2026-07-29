@@ -151,6 +151,10 @@ NOVOLEX = Holding(
         Sparkline("Yum Brands",                  "YUM",
                   "KFC, Taco Bell, Pizza Hut — international QSR mix.",
                   website="https://www.yum.com/"),
+        Sparkline("Domino's Pizza",              "DPZ",
+                  "Master franchisor, near-all delivery/carryout — cleanest read on "
+                  "takeout volume and corrugated/fibre packaging demand.",
+                  website="https://www.dominos.com/"),
         Sparkline("Chipotle",                    "CMG",
                   "Fast-casual leader; bowl/bag packaging signal.",
                   website="https://www.chipotle.com/"),
