@@ -5,3 +5,6 @@ __pycache__/
 # Generated PDF exports (dated dashboard/watchlist snapshots)
 market_dashboard_*.pdf
 stock_watchlist_*.pdf
+
+# Editor crash/temp artifacts (e.g. ".!32567!app.py")
+.!*!*
