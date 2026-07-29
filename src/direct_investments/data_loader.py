@@ -35,6 +35,21 @@ def fetch_history(ticker: str, period: str = "1y") -> Optional[pd.DataFrame]:
         return None
 
 
+@st.cache_data(ttl=86400, show_spinner=False)  # 24h — a listing's currency doesn't move
+def fetch_currency(ticker: str) -> Optional[str]:
+    """
+    Quote currency as reported by Yahoo (e.g. "USD", "EUR", "GBp" for LSE pence).
+    Returns None when unknown, so callers can fall back to an unlabelled number
+    rather than assert a currency that may be wrong.
+    """
+    try:
+        cur = (yf.Ticker(ticker).info or {}).get("currency")
+        return str(cur) if cur else None
+    except Exception as e:
+        logger.warning(f"YF currency fetch failed for {ticker}: {e}")
+        return None
+
+
 @st.cache_data(ttl=900, show_spinner=False)
 def fetch_quote(ticker: str) -> dict:
     """
@@ -42,7 +57,8 @@ def fetch_quote(ticker: str) -> dict:
     Returns {} if all fetches fail.
     """
     out = {"ticker": ticker, "price": None, "chg_1d": None,
-           "chg_1w": None, "chg_1m": None, "chg_ltm": None, "market_cap": None}
+           "chg_1w": None, "chg_1m": None, "chg_ltm": None, "market_cap": None,
+           "currency": None}
 
     hist = fetch_history(ticker, period="1y")
     if hist is not None and not hist.empty:
@@ -73,6 +89,11 @@ def fetch_quote(ticker: str) -> dict:
         mc = info.get("marketCap")
         if mc:
             out["market_cap"] = float(mc)
+        # Yahoo reports marketCap in the listing currency, so the label has to
+        # travel with it — otherwise a EUR/SEK/THB cap reads as USD.
+        cur = info.get("currency")
+        if cur:
+            out["currency"] = str(cur)
     except Exception:
         pass
 

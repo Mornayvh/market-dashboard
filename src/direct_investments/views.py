@@ -46,22 +46,40 @@ def _fmt_pct(val: Optional[float]) -> str:
     return f"{sign}{val:.1f}%"
 
 
-def _fmt_market_cap(val: Optional[float]) -> str:
+def _currency_label(currency: str, ticker: str = "") -> str:
+    """
+    ISO-code prefix for a money figure, or "" when a currency label would be wrong.
+
+    ISO codes rather than glyphs deliberately: these tables mix up to seven
+    currencies, and SEK/NOK/DKK all render as "kr" while SGD/AUD/CAD/USD all
+    render as "$" — a glyph is ambiguous exactly where it matters.
+
+    Index tickers ("^JKSE", "^STI") are quoted in points, not money, even though
+    Yahoo reports a currency for them, so they get no label.
+    """
+    if not currency or ticker.startswith("^"):
+        return ""
+    return f"{currency} "
+
+
+def _fmt_market_cap(val: Optional[float], currency: str = "", ticker: str = "") -> str:
     if val is None or pd.isna(val) or val == 0:
         return "—"
+    cur = _currency_label(currency, ticker)
     if val >= 1e12:
-        return f"${val/1e12:.2f}T"
+        return f"{cur}{val/1e12:.2f}T"
     if val >= 1e9:
-        return f"${val/1e9:.1f}B"
-    return f"${val/1e6:.0f}M"
+        return f"{cur}{val/1e9:.1f}B"
+    return f"{cur}{val/1e6:.0f}M"
 
 
-def _fmt_price(val: Optional[float]) -> str:
+def _fmt_price(val: Optional[float], currency: str = "", ticker: str = "") -> str:
     if val is None or pd.isna(val):
         return "—"
+    cur = _currency_label(currency, ticker)
     if val >= 1000:
-        return f"{val:,.2f}"
-    return f"{val:.2f}"
+        return f"{cur}{val:,.2f}"
+    return f"{cur}{val:.2f}"
 
 
 def _tooltip_wrap(text: str, tooltip: str) -> str:
@@ -115,6 +133,8 @@ def render_comps(holding: Holding):
 
     rationale_by_ticker = {c.ticker: c.rationale for c in holding.comps}
     website_by_ticker = {c.ticker: c.website for c in holding.comps}
+    # A declared currency wins over Yahoo's, for feeds that report it wrongly.
+    currency_by_ticker = {c.ticker: getattr(c, "currency", "") for c in holding.comps}
 
     rows_html = ""
     for q in quotes:
@@ -129,15 +149,16 @@ def render_comps(holding: Holding):
             name_html = f'<span class="comp-name-primary">{wrapped}</span>{chip}'
         else:
             name_html = wrapped
+        cur = currency_by_ticker.get(q["ticker"]) or q.get("currency") or ""
         cells = [
             f'<td>{name_html}<span class="stock-ticker">{q["ticker"]}</span></td>',
-            f'<td>{_fmt_price(q["price"])}</td>',
+            f'<td>{_fmt_price(q["price"], cur, q["ticker"])}</td>',
         ]
         for key in ("chg_1d", "chg_1w", "chg_1m", "chg_ltm"):
             v = q[key]
             color = COLORS["green"] if (v is not None and v > 0) else COLORS["red"] if (v is not None and v < 0) else COLORS["text_secondary"]
             cells.append(f'<td style="color:{color}">{_fmt_pct(v)}</td>')
-        cells.append(f'<td>{_fmt_market_cap(q["market_cap"])}</td>')
+        cells.append(f'<td>{_fmt_market_cap(q["market_cap"], cur, q["ticker"])}</td>')
         rows_html += "<tr>" + "".join(cells) + "</tr>"
 
     st.markdown(
@@ -260,9 +281,14 @@ def render_sparkline_grid(title: str, sparklines: list[Sparkline], days: int = 2
             last = float(df["Close"].iloc[-1])
             ltm_pct = (last / first - 1) * 100 if first else None
             color = COLORS["green"] if ltm_pct is not None and ltm_pct >= 0 else COLORS["red"]
+            # Skip the currency lookup for indices — quoted in points, so the
+            # label is discarded anyway and the extra .info call is wasted.
+            cur = getattr(sp, "currency", "")
+            if not cur and not sp.ticker.startswith("^"):
+                cur = data_loader.fetch_currency(sp.ticker) or ""
             metric_html = (
                 f'<div class="spark-metric">'
-                f'<span class="spark-price">{_fmt_price(last)}</span> '
+                f'<span class="spark-price">{_fmt_price(last, cur, sp.ticker)}</span> '
                 f'<span style="color:{color}">{_fmt_pct(ltm_pct)} LTM</span>'
                 f'</div>'
             )

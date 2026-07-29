@@ -15,6 +15,7 @@ class Comp:
     is_primary: bool = False
     rationale: str = ""              # one-line "why we watch this comp"
     website: str = ""                # corporate website (https://…)
+    currency: str = ""               # ISO code override; "" = take Yahoo's reported currency
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,7 @@ class Sparkline:
     website: str = ""                # corporate site when the name is an operating company
     holdings_ticker: str = ""        # fund/ETF to pull top-10 holdings from (for an index,
                                      # its tracking ETF; for an ETF, itself). "" = no holdings box.
+    currency: str = ""               # ISO code override; "" = take Yahoo's reported currency
 
 
 @dataclass(frozen=True)
