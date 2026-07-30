@@ -40,6 +40,10 @@ ROW_ALT = colors.HexColor("#F8FAFC")
 GREEN = colors.HexColor("#16A34A")
 RED = colors.HexColor("#DC2626")
 
+# Calendar-day span a 1y fetch must cover before LTM/52-week figures are shown.
+# Keep in sync with pages/3_Stock_Watchlist.py FULL_YEAR_MIN_DAYS.
+FULL_YEAR_MIN_DAYS = 300
+
 # Keep in sync with pages/3_Stock_Watchlist.py WATCHLIST
 WATCHLIST = {
     "Core Holdings": [
@@ -73,6 +77,7 @@ WATCHLIST = {
     "China Tech": [
         ("Alibaba", "BABA", "USD"),
         ("BYD", "002594.SZ", "CNY"),
+        ("CXMT", "688825.SS", "CNY"),
         ("Tencent", "TCEHY", "USD"),
     ],
     "Financials": [
@@ -138,9 +143,19 @@ def fetch_one(ticker: str):
         if not month_data.empty:
             chg_1m = (last / float(month_data.iloc[-1]) - 1) * 100
 
-        chg_ltm = (last / float(close.iloc[0]) - 1) * 100 if len(close) >= 2 else None
+        # LTM and 52-week figures need roughly a year of history; a recent
+        # listing would otherwise report its first days as a 12-month move.
+        span_days = (close.index[-1] - close.index[0]).days if len(close) >= 2 else 0
+        has_full_year = span_days >= FULL_YEAR_MIN_DAYS
 
-        return last, chg_1d, chg_1m, chg_ltm, float(close.max()), float(close.min())
+        chg_ltm = None
+        if len(close) >= 2 and has_full_year:
+            chg_ltm = (last / float(close.iloc[0]) - 1) * 100
+
+        hi = float(close.max()) if has_full_year else None
+        lo = float(close.min()) if has_full_year else None
+
+        return last, chg_1d, chg_1m, chg_ltm, hi, lo
     except Exception as e:
         logger.warning("Fetch failed for %s: %s", ticker, e)
         return (None,) * 6

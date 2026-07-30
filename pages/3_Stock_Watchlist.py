@@ -153,6 +153,7 @@ WATCHLIST = {
     "China Tech": [
         ("Alibaba", "BABA", "USD"),
         ("BYD", "002594.SZ", "CNY"),
+        ("CXMT", "688825.SS", "CNY"),
         ("Tencent", "TCEHY", "USD"),
     ],
     "Financials": [
@@ -174,13 +175,17 @@ WATCHLIST = {
 
 CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "EUR": "€", "CHF": "CHF ", "ZAR": "R", "CNY": "¥"}
 
-# Tickers that carry no meaningful public market capitalisation. Yahoo returns a
-# figure for these, but it isn't a listed-equity market cap, so we show "—" with
-# the reason on hover rather than a number that invites comparison.
-MARKET_CAP_INELIGIBLE = {
-    "SPCX": "SpaceX is a private company — no public market capitalisation. "
-            "Yahoo's figure is not a listed-equity market cap.",
-}
+# Calendar-day span a 1y fetch must cover before LTM and 52-week figures are
+# reported. Below this the series is a recent listing, not a year of trading.
+# 300 rather than 365 so exchange holidays and short weeks don't trip it.
+FULL_YEAR_MIN_DAYS = 300
+
+# Tickers that carry no meaningful public market capitalisation — proxy vehicles,
+# funds, or pre-listing entities. Yahoo may still return a figure, so these show
+# "—" with the reason on hover rather than a number that invites comparison.
+# Currently empty: every name on the watchlist is a listed equity. SPCX was
+# briefly listed here in error — SpaceX IPO'd on Nasdaq on 12 June 2026.
+MARKET_CAP_INELIGIBLE: dict[str, str] = {}
 
 # Tickers where the listing venue isn't obvious from the symbol — shown as a
 # hover box on the ticker in the table.
@@ -265,14 +270,19 @@ def fetch_watchlist_data():
             if not month_data.empty:
                 chg_1m = (last / float(month_data.iloc[-1]) - 1) * 100
 
-            # LTM change
+            # LTM and 52-week figures are only meaningful once there is roughly a
+            # year of history. A recent listing (e.g. CXMT, listed 27 Jul 2026)
+            # otherwise reports its first few days as a 12-month move and a
+            # 52-week range, which the data does not support — show "—" instead.
+            span_days = (close.index[-1] - close.index[0]).days if len(close) >= 2 else 0
+            has_full_year = span_days >= FULL_YEAR_MIN_DAYS
+
             chg_ltm = None
-            if len(close) >= 2:
+            if len(close) >= 2 and has_full_year:
                 chg_ltm = (last / float(close.iloc[0]) - 1) * 100
 
-            # 52-week high/low
-            high_52w = float(close.max())
-            low_52w = float(close.min())
+            high_52w = float(close.max()) if has_full_year else None
+            low_52w = float(close.min()) if has_full_year else None
 
             results.append({
                 "group": group, "name": name, "ticker": ticker, "currency": currency,
