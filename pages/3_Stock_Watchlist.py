@@ -3,6 +3,8 @@ Stock Watchlist — Secco Capital Holdings Tracker
 Live price data for core, connected, and global holdings.
 """
 
+import html
+
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -91,6 +93,8 @@ st.markdown("""
     }
     .ticker-note:hover .ticker-tip { visibility: visible; opacity: 1; }
     .ticker-tip b { font-weight: 600; color: #FFFFFF; }
+    /* "—" in Mkt Cap where no public market cap exists; reason on hover */
+    .mcap-na { cursor: help; border-bottom: 1px dotted #CBD5E1; color: #94A3B8; }
     .chg-up { color: #16A34A; }
     .chg-down { color: #DC2626; }
     .chg-flat { color: #64748B; }
@@ -170,6 +174,14 @@ WATCHLIST = {
 
 CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "EUR": "€", "CHF": "CHF ", "ZAR": "R", "CNY": "¥"}
 
+# Tickers that carry no meaningful public market capitalisation. Yahoo returns a
+# figure for these, but it isn't a listed-equity market cap, so we show "—" with
+# the reason on hover rather than a number that invites comparison.
+MARKET_CAP_INELIGIBLE = {
+    "SPCX": "SpaceX is a private company — no public market capitalisation. "
+            "Yahoo's figure is not a listed-equity market cap.",
+}
+
 # Tickers where the listing venue isn't obvious from the symbol — shown as a
 # hover box on the ticker in the table.
 LISTING_NOTES = {
@@ -184,6 +196,23 @@ LISTING_NOTES = {
 # ---------------------------------------------------------------------------
 # Data fetching
 # ---------------------------------------------------------------------------
+
+@st.cache_data(ttl=3600)  # 1h — a market cap doesn't need the 5-min price cadence
+def fetch_market_cap(ticker: str):
+    """
+    Market capitalisation as reported by Yahoo, or None when unavailable.
+
+    Reported in the listing's *major* unit even where the price is quoted in a
+    minor one: for BATS.L and the JSE lines, price x shares / marketCap comes to
+    exactly 100, i.e. price is in pence/cents while the cap is in GBP/ZAR. So
+    the cap is labelled with the declared currency, not the price's unit.
+    """
+    try:
+        mc = (yf.Ticker(ticker).info or {}).get("marketCap")
+        return float(mc) if mc else None
+    except Exception:
+        return None
+
 
 @st.cache_data(ttl=300)
 def fetch_watchlist_data():
@@ -206,7 +235,7 @@ def fetch_watchlist_data():
                 results.append({
                     "group": group, "name": name, "ticker": ticker, "currency": currency,
                     "price": None, "chg_1d": None, "chg_1m": None, "chg_ltm": None,
-                    "high_52w": None, "low_52w": None,
+                    "high_52w": None, "low_52w": None, "market_cap": None,
                 })
                 continue
 
@@ -216,7 +245,7 @@ def fetch_watchlist_data():
                 results.append({
                     "group": group, "name": name, "ticker": ticker, "currency": currency,
                     "price": None, "chg_1d": None, "chg_1m": None, "chg_ltm": None,
-                    "high_52w": None, "low_52w": None,
+                    "high_52w": None, "low_52w": None, "market_cap": None,
                 })
                 continue
             last = float(close.iloc[-1])
@@ -249,12 +278,13 @@ def fetch_watchlist_data():
                 "group": group, "name": name, "ticker": ticker, "currency": currency,
                 "price": last, "chg_1d": chg_1d, "chg_1m": chg_1m, "chg_ltm": chg_ltm,
                 "high_52w": high_52w, "low_52w": low_52w,
+                "market_cap": fetch_market_cap(ticker),
             })
         except Exception:
             results.append({
                 "group": group, "name": name, "ticker": ticker, "currency": currency,
                 "price": None, "chg_1d": None, "chg_1m": None, "chg_ltm": None,
-                "high_52w": None, "low_52w": None,
+                "high_52w": None, "low_52w": None, "market_cap": None,
             })
 
     return pd.DataFrame(results), histories, datetime.now()
@@ -272,6 +302,26 @@ def fmt_price(val, currency):
     elif val >= 100:
         return f"{sym}{val:,.1f}"
     return f"{sym}{val:,.2f}"
+
+def fmt_market_cap(val, currency, ticker):
+    """
+    Market cap as "ISO 1.23T/B/M". ISO codes rather than the price column's
+    symbols because six currencies appear here and the cap sits in the major
+    unit while some prices sit in the minor one — a bare symbol would conflate
+    the two. Ineligible tickers render "—" with the reason on hover.
+    """
+    reason = MARKET_CAP_INELIGIBLE.get(ticker)
+    if reason:
+        esc = html.escape(reason, quote=True)
+        return f'<span class="mcap-na" title="{esc}">—</span>'
+    if val is None or pd.isna(val) or val == 0:
+        return "—"
+    cur = f"{currency} " if currency else ""
+    if val >= 1e12:
+        return f"{cur}{val/1e12:.2f}T"
+    if val >= 1e9:
+        return f"{cur}{val/1e9:.1f}B"
+    return f"{cur}{val/1e6:.0f}M"
 
 def fmt_chg(val):
     if val is None or pd.isna(val):
@@ -351,6 +401,7 @@ def render_stock_table(df):
         ltm = fmt_chg(row["chg_ltm"])
         hi = fmt_price(row["high_52w"], row["currency"])
         lo = fmt_price(row["low_52w"], row["currency"])
+        mcap = fmt_market_cap(row.get("market_cap"), row["currency"], row["ticker"])
 
         # Name and ticker together are the hover target, so pointing at either
         # the company name or the symbol opens the listing note.
@@ -370,11 +421,12 @@ def render_stock_table(df):
             <td>{ltm}</td>
             <td>{hi}</td>
             <td>{lo}</td>
+            <td>{mcap}</td>
         </tr>"""
 
     st.markdown(f"""<table class="stock-table">
         <thead><tr>
-            <th>Stock</th><th>Price</th><th>1D</th><th>1M</th><th>LTM</th><th>52W High</th><th>52W Low</th>
+            <th>Stock</th><th>Price</th><th>1D</th><th>1M</th><th>LTM</th><th>52W High</th><th>52W Low</th><th>Mkt Cap</th>
         </tr></thead>
         <tbody>{rows}</tbody>
     </table>""", unsafe_allow_html=True)
