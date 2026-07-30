@@ -120,7 +120,7 @@ def chg_color(val):
 
 
 def fetch_one(ticker: str):
-    """Return (price, chg_1d, chg_1w, chg_ltm, high_52w, low_52w) or all-None on failure."""
+    """Return (price, chg_1d, chg_1m, chg_ltm, high_52w, low_52w) or all-None on failure."""
     try:
         hist = yf.Ticker(ticker).history(period="1y", auto_adjust=True)
         if hist is None or hist.empty or "Close" not in hist.columns:
@@ -132,23 +132,23 @@ def fetch_one(ticker: str):
 
         chg_1d = (last / float(close.iloc[-2]) - 1) * 100 if len(close) >= 2 else None
 
-        chg_1w = None
-        week_ago = datetime.now() - timedelta(days=7)
-        week_data = close[close.index <= week_ago]
-        if not week_data.empty:
-            chg_1w = (last / float(week_data.iloc[-1]) - 1) * 100
+        chg_1m = None
+        month_ago = datetime.now() - timedelta(days=30)
+        month_data = close[close.index <= month_ago]
+        if not month_data.empty:
+            chg_1m = (last / float(month_data.iloc[-1]) - 1) * 100
 
         chg_ltm = (last / float(close.iloc[0]) - 1) * 100 if len(close) >= 2 else None
 
-        return last, chg_1d, chg_1w, chg_ltm, float(close.max()), float(close.min())
+        return last, chg_1d, chg_1m, chg_ltm, float(close.max()), float(close.min())
     except Exception as e:
         logger.warning("Fetch failed for %s: %s", ticker, e)
         return (None,) * 6
 
 
 def build_group_table(rows):
-    """rows: list of (name, ticker, currency, price, c1d, c1w, cltm, hi, lo)."""
-    header = ["Stock", "Price", "1D", "1W", "LTM", "52W High", "52W Low"]
+    """rows: list of (name, ticker, currency, price, c1d, c1m, cltm, hi, lo)."""
+    header = ["Stock", "Price", "1D", "1M", "LTM", "52W High", "52W Low"]
     data = [header]
 
     style = TableStyle([
@@ -176,18 +176,18 @@ def build_group_table(rows):
         "stockname", fontName="Helvetica", fontSize=9, leading=11, textColor=NAVY,
     )
 
-    for i, (name, ticker, currency, price, c1d, c1w, cltm, hi, lo) in enumerate(rows, start=1):
+    for i, (name, ticker, currency, price, c1d, c1m, cltm, hi, lo) in enumerate(rows, start=1):
         label = Paragraph(
             f'{name} <font size=6.5 color="#94A3B8">{ticker}</font>', label_style,
         )
         data.append([
             label,
             fmt_price(price, currency),
-            fmt_chg(c1d), fmt_chg(c1w), fmt_chg(cltm),
+            fmt_chg(c1d), fmt_chg(c1m), fmt_chg(cltm),
             fmt_price(hi, currency), fmt_price(lo, currency),
         ])
         style.add("TEXTCOLOR", (2, i), (2, i), chg_color(c1d))
-        style.add("TEXTCOLOR", (3, i), (3, i), chg_color(c1w))
+        style.add("TEXTCOLOR", (3, i), (3, i), chg_color(c1m))
         style.add("TEXTCOLOR", (4, i), (4, i), chg_color(cltm))
 
     table = Table(

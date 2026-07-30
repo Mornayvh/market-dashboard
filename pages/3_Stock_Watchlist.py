@@ -205,7 +205,7 @@ def fetch_watchlist_data():
             if hist is None or hist.empty or "Close" not in hist.columns:
                 results.append({
                     "group": group, "name": name, "ticker": ticker, "currency": currency,
-                    "price": None, "chg_1d": None, "chg_1w": None, "chg_ltm": None,
+                    "price": None, "chg_1d": None, "chg_1m": None, "chg_ltm": None,
                     "high_52w": None, "low_52w": None,
                 })
                 continue
@@ -215,7 +215,7 @@ def fetch_watchlist_data():
             if close.empty:
                 results.append({
                     "group": group, "name": name, "ticker": ticker, "currency": currency,
-                    "price": None, "chg_1d": None, "chg_1w": None, "chg_ltm": None,
+                    "price": None, "chg_1d": None, "chg_1m": None, "chg_ltm": None,
                     "high_52w": None, "low_52w": None,
                 })
                 continue
@@ -229,12 +229,12 @@ def fetch_watchlist_data():
             if len(close) >= 2:
                 chg_1d = (last / float(close.iloc[-2]) - 1) * 100
 
-            # 1W change
-            chg_1w = None
-            week_ago = datetime.now() - timedelta(days=7)
-            week_data = close[close.index <= week_ago]
-            if not week_data.empty:
-                chg_1w = (last / float(week_data.iloc[-1]) - 1) * 100
+            # 1M change
+            chg_1m = None
+            month_ago = datetime.now() - timedelta(days=30)
+            month_data = close[close.index <= month_ago]
+            if not month_data.empty:
+                chg_1m = (last / float(month_data.iloc[-1]) - 1) * 100
 
             # LTM change
             chg_ltm = None
@@ -247,13 +247,13 @@ def fetch_watchlist_data():
 
             results.append({
                 "group": group, "name": name, "ticker": ticker, "currency": currency,
-                "price": last, "chg_1d": chg_1d, "chg_1w": chg_1w, "chg_ltm": chg_ltm,
+                "price": last, "chg_1d": chg_1d, "chg_1m": chg_1m, "chg_ltm": chg_ltm,
                 "high_52w": high_52w, "low_52w": low_52w,
             })
         except Exception:
             results.append({
                 "group": group, "name": name, "ticker": ticker, "currency": currency,
-                "price": None, "chg_1d": None, "chg_1w": None, "chg_ltm": None,
+                "price": None, "chg_1d": None, "chg_1m": None, "chg_ltm": None,
                 "high_52w": None, "low_52w": None,
             })
 
@@ -347,7 +347,7 @@ def render_stock_table(df):
     for _, row in df.iterrows():
         price = fmt_price(row["price"], row["currency"])
         d1 = fmt_chg(row["chg_1d"])
-        w1 = fmt_chg(row["chg_1w"])
+        m1 = fmt_chg(row["chg_1m"])
         ltm = fmt_chg(row["chg_ltm"])
         hi = fmt_price(row["high_52w"], row["currency"])
         lo = fmt_price(row["low_52w"], row["currency"])
@@ -366,7 +366,7 @@ def render_stock_table(df):
             <td>{cell}</td>
             <td>{price}</td>
             <td>{d1}</td>
-            <td>{w1}</td>
+            <td>{m1}</td>
             <td>{ltm}</td>
             <td>{hi}</td>
             <td>{lo}</td>
@@ -374,7 +374,7 @@ def render_stock_table(df):
 
     st.markdown(f"""<table class="stock-table">
         <thead><tr>
-            <th>Stock</th><th>Price</th><th>1D</th><th>1W</th><th>LTM</th><th>52W High</th><th>52W Low</th>
+            <th>Stock</th><th>Price</th><th>1D</th><th>1M</th><th>LTM</th><th>52W High</th><th>52W Low</th>
         </tr></thead>
         <tbody>{rows}</tbody>
     </table>""", unsafe_allow_html=True)
