@@ -139,7 +139,7 @@ st.markdown("""
         padding: 0.55rem 0.75rem; border-radius: 4px;
         font-family: 'DM Sans', sans-serif; font-size: 0.72rem; font-weight: 400;
         line-height: 1.4; letter-spacing: normal; text-transform: none;
-        white-space: normal; width: 280px;
+        white-space: normal; width: 340px;
         z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.18);
         opacity: 0; visibility: hidden; transform: translateY(4px);
         transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
@@ -250,18 +250,20 @@ supplier_tickers = getattr(holding, "supplier_tickers", ()) or ()
 if supplier_tickers:
     render_sparkline_grid("Data Center Power", list(supplier_tickers))
 
-# 4. Macro — commodities (yfinance) + macro FRED indicators, one consolidated section
+# 4. Input-cost FRED PPI series (e.g. resin / recycled materials for Novolex).
+# Sits above the macro block: input costs hit the P&L directly, so they read
+# first, with the broader supply-chain backdrop underneath.
+fred_inputs = getattr(holding, "fred_inputs", ()) or ()
+if fred_inputs:
+    render_fred_indicators("Input Costs", list(fred_inputs))
+
+# 4b. Macro — commodities (yfinance) + macro FRED indicators, one consolidated section
 if holding.commodities or holding.fred_series:
     section_header(getattr(holding, "macro_title", "Macro"))
     if holding.commodities:
         render_sparkline_grid(None, list(holding.commodities))
     if holding.fred_series:
         render_fred_indicators(None, list(holding.fred_series))
-
-# 4b. Input-cost FRED PPI series (e.g. resin / recycled materials for Novolex)
-fred_inputs = getattr(holding, "fred_inputs", ()) or ()
-if fred_inputs:
-    render_fred_indicators("Input Costs", list(fred_inputs))
 
 # 6. Google Trends sentiment
 if holding.trends_queries:

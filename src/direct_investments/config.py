@@ -132,34 +132,78 @@ NOVOLEX = Holding(
     ),
     sparklines=(
         Sparkline("Consumer Discretionary", "^SP500-25",
-                  "Restaurant traffic and dining demand — Novolex's largest end-market. S&P 500 Consumer Discretionary index (no ETF tracking error).",
+                  "Float-adjusted market-cap-weighted index of the S&P 500's consumer "
+                  "discretionary constituents (restaurants, retail, leisure) — an index "
+                  "level, not a price. Read it as the market's forward view of "
+                  "eating-out and discretionary retail volume, Novolex's largest "
+                  "end-market. Sustained weakness signals fewer takeaway occasions and "
+                  "so fewer packaging units, which hits Novolex on volume before price.",
                   holdings_ticker="XLY"),
         Sparkline("Consumer Staples",       "^SP500-30",
-                  "CPG buyers (food, household products) that drive Novolex packaging volumes. S&P 500 Consumer Staples index.",
+                  "Float-adjusted market-cap-weighted S&P 500 staples index — packaged "
+                  "food, beverage and household-products makers, i.e. Novolex's CPG "
+                  "buyers. Staples volumes are defensive, so this line usually holds up "
+                  "when discretionary falls; if it rolls over too, the weakness is "
+                  "broad-based demand rather than trading-down, and Novolex loses the "
+                  "staples volume that normally cushions a consumer downturn.",
                   holdings_ticker="XLP"),
     ),
     commodities=(
         Sparkline("Brent",        "BZ=F",
-                  "Crude benchmark; sets the cost floor for resin and polymer feedstocks."),
+                  "Front-month ICE Brent crude futures, USD per barrel — the marginal "
+                  "price of the light sweet crude barrel, set daily by exchange trading. "
+                  "Crude sets the naphtha cost that feeds polyethylene and polypropylene, "
+                  "so Brent is the upstream floor under Novolex's resin bill. A sustained "
+                  "rise compresses gross margin until price rises are passed through, "
+                  "which typically lags one to two quarters on contracted volume.",
+                  currency="USD"),
         Sparkline("Henry Hub NG", "NG=F",
-                  "Natural gas; key petrochemical input and a major US-specific cost variable."),
+                  "Front-month NYMEX natural gas futures, USD per million BTU, priced at "
+                  "the Henry Hub, Louisiana. US crackers run on gas-derived ethane rather "
+                  "than naphtha, so this is the more direct US resin-cost driver of the "
+                  "two. Cheap US gas is a structural cost advantage for domestic "
+                  "converters; a spike erodes it and raises both resin and plant energy "
+                  "cost at once, hitting Novolex's cost base from two directions.",
+                  currency="USD"),
     ),
     extra_tickers=(
         Sparkline("McDonald's",                  "MCD",
-                  "Global QSR bellwether; broadest read on QSR traffic and packaging volume.",
+                  "Share price of the largest global QSR operator, ~40,000 outlets. "
+                  "Moves on same-store sales and traffic guidance, so it is a sentiment "
+                  "read on restaurant footfall rather than a packaging price. Falling "
+                  "traffic guidance across the QSR set is the earliest public signal that "
+                  "Novolex's food-service volume is about to soften; the equity turns "
+                  "roughly a quarter before converter order books do.",
                   website="https://www.mcdonalds.com/"),
         Sparkline("Restaurant Brands Intl",      "QSR",
-                  "Burger King, Tim Hortons, Popeyes, Firehouse Subs — pure QSR play.",
+                  "Share price of the Burger King / Tim Hortons / Popeyes / Firehouse "
+                  "group — a franchised multi-brand QSR operator, so the equity tracks "
+                  "system-wide sales and net restaurant growth. Unit growth matters more "
+                  "than price here: each net new outlet is incremental recurring packaging "
+                  "demand, so a stalling store-opening programme caps Novolex's volume "
+                  "growth even if traffic per store holds.",
                   website="https://www.rbi.com/"),
         Sparkline("Yum Brands",                  "YUM",
-                  "KFC, Taco Bell, Pizza Hut — international QSR mix.",
+                  "Share price of the KFC / Taco Bell / Pizza Hut group, weighted heavily "
+                  "to international markets. Useful as the ex-US leg of the QSR read: "
+                  "divergence between this and the US-centric names tells you whether a "
+                  "demand shift is domestic or global, which matters because Novolex's "
+                  "exposure is predominantly North American.",
                   website="https://www.yum.com/"),
         Sparkline("Domino's Pizza",              "DPZ",
-                  "Master franchisor, near-all delivery/carryout — cleanest read on "
-                  "takeout volume and corrugated/fibre packaging demand.",
+                  "Share price of the master franchisor, ~21,000 stores with a near-total "
+                  "delivery and carryout mix. Because almost every order leaves the store "
+                  "in packaging, this is the closest listed proxy for takeaway packaging "
+                  "units — and it is corrugated and fibre rather than plastic, so it also "
+                  "reads on the substitution side of the thesis alongside the recyclable "
+                  "paper PPI.",
                   website="https://www.dominos.com/"),
         Sparkline("Chipotle",                    "CMG",
-                  "Fast-casual leader; bowl/bag packaging signal.",
+                  "Share price of the largest US fast-casual operator. Fast-casual uses "
+                  "markedly more packaging per order than traditional QSR — bowls, lids, "
+                  "bags — so this line is the read on packaging intensity per transaction "
+                  "rather than transaction count. Share gains by fast-casual raise "
+                  "Novolex's units per restaurant visit even with flat overall footfall.",
                   website="https://www.chipotle.com/"),
     ),
     # No clean QSR/restaurant index trades a usable series on Yahoo (Dow Jones US
@@ -172,30 +216,104 @@ NOVOLEX = Holding(
         # MANEMP (Manufacturing employees) and IPMAN (Industrial Production: Manufacturing)
         # are the closest free proxies. INDPRO is a broader fallback.
         FredSeries("US Manufacturing IP", "IPMAN",   "",
-                   caption="Industrial production for manufacturing — demand-side gauge for industrial-packaging customers."),
+                   caption="Federal Reserve index of real output at US manufacturing "
+                           "plants, monthly, built from physical output and production-hour "
+                           "data rather than revenue — so it is a volume measure, not a "
+                           "price one. It tracks how much product Novolex's industrial and "
+                           "CPG customers are actually making, and therefore how many "
+                           "containers and films they need to pack it in."),
         FredSeries("Consumer Sentiment",  "UMCSENT", "",
-                   caption="University of Michigan sentiment — leading indicator for eating-out and CPG spending."),
+                   caption="University of Michigan index from a monthly household survey "
+                           "on personal finances and buying conditions — an attitude "
+                           "measure, so it leads spending rather than recording it. It is "
+                           "the earliest of the three demand series here: sentiment turns, "
+                           "then eating-out frequency, then Novolex's food-service order "
+                           "volume, typically over one to two quarters."),
         FredSeries("Restaurant Employment", "CES7072200001", "",
-                   caption="Food services & drinking places employment — leading demand indicator for QSR packaging volume."),
+                   caption="BLS payroll count for food services and drinking places, "
+                           "monthly, from the establishment survey. Operators hire against "
+                           "expected covers, so headcount is a committed, cash-backed "
+                           "signal of expected traffic — harder evidence than sentiment. "
+                           "It is the best free proxy for the served-meal volume that "
+                           "drives Novolex's food-service packaging units."),
     ),
     fred_inputs=(
         FredSeries("Plastic Resins (PPI)", "WPU066", "",
-                   caption="PPI for plastic resins and materials — virgin-resin headline input cost."),
+                   caption="BLS producer price index for plastic resins and materials — "
+                           "prices received by US resin producers at the factory gate, "
+                           "monthly, before freight and converter margin. This is the "
+                           "single largest line in Novolex's cost of goods. It moves ahead "
+                           "of the reported P&L because resin is bought on contract, so a "
+                           "step up here flags margin compression one to two quarters out "
+                           "unless pass-through clauses catch it; watch the gap between "
+                           "this and Brent for margin capture by the crackers."),
         FredSeries("Recyclable Paper (PPI)", "WPU0912", "",
-                   caption="PPI for recyclable paper — fibre input cost; cross-check on paper-vs-plastic substitution."),
+                   caption="BLS producer price index for recyclable paper — the wastepaper "
+                           "and recovered-fibre feedstock behind moulded-fibre and "
+                           "paper-based packaging, monthly. Read it against the resin PPI "
+                           "rather than alone: the spread between the two is the economics "
+                           "of the plastic-to-fibre substitution that regulation is "
+                           "pushing Novolex towards. Fibre cheapening relative to resin "
+                           "makes the switch margin-accretive; the reverse makes "
+                           "compliance costly."),
     ),
     trends_queries=(
         TrendsQuery("Eating out interest",  ("eating out",),
-                    caption="Search interest as a proxy for restaurant demand; correlates with food-service packaging volume."),
+                    caption="Google search volume for the term, normalised 0-100 against "
+                            "its own 12-month peak — a relative index, not a count, so "
+                            "levels are not comparable between terms. Reads on intent to "
+                            "dine out ahead of the transaction, making it the earliest "
+                            "demand signal on this page for Novolex's food-service volume."),
         TrendsQuery("Restaurant inflation", ("restaurant prices",),
-                    caption="Consumer awareness of menu prices; rising trend may signal restaurant-traffic risk."),
+                    caption="Search interest in menu pricing, normalised 0-100. Rising "
+                            "interest indicates price sensitivity, which precedes "
+                            "trading down or eating at home. Both reduce served meals and "
+                            "so reduce food-service packaging units — this is a risk "
+                            "signal where the others are demand signals."),
         TrendsQuery("Food delivery",        ("food delivery",),
-                    caption="Off-premise demand proxy; drives single-use takeout packaging volume."),
+                    caption="Search interest in delivery, normalised 0-100. The most "
+                            "margin-relevant term here: delivery and takeaway consume far "
+                            "more packaging per meal than dine-in, so a shift towards "
+                            "off-premise raises Novolex's units per restaurant visit even "
+                            "with flat total covers."),
         TrendsQuery("Drive thru",           ("drive thru",),
-                    caption="Drive-thru search interest — narrow proxy for QSR-specific traffic vs broader restaurant demand."),
+                    caption="Search interest in drive-thru, normalised 0-100. Narrower "
+                            "than the delivery term and specific to QSR rather than "
+                            "restaurants generally — useful for separating a QSR-specific "
+                            "move from a broad dining one, since Novolex's exposure is "
+                            "weighted to quick-service."),
         TrendsQuery("DoorDash",             ("DoorDash",),
-                    caption="Delivery-app brand sentiment; correlates with takeout-packaging consumption.",
+                    caption="Brand-name search interest, normalised 0-100. A branded proxy "
+                            "for aggregator-led delivery volume; brand terms are noisier "
+                            "than generic ones because marketing campaigns move them, so "
+                            "treat divergence from the generic delivery term as a "
+                            "marketing artefact before reading it as demand.",
                     website="https://www.doordash.com/"),
+        # Regulatory-risk terms. Single-use plastic restrictions are the principal
+        # structural threat to Novolex's plastics book and the driver of the
+        # fibre-substitution case, so public salience is worth tracking alongside
+        # demand. Unverified: Google Trends is currently unavailable (see
+        # data_loader.fetch_trends), so these have not been checked for volume and
+        # may return a flat or empty series when the feed is restored.
+        TrendsQuery("Plastic ban",          ("plastic ban",),
+                    caption="Search interest in plastic bans, normalised 0-100. A "
+                            "salience measure, not a legislative tracker — it registers "
+                            "public attention, which typically precedes state and "
+                            "municipal action. Sustained elevation is the leading "
+                            "indicator for Novolex's largest structural risk: regulatory "
+                            "displacement of its single-use plastics volume."),
+        TrendsQuery("Single-use plastic",   ("single use plastic",),
+                    caption="Search interest in single-use plastic, normalised 0-100. The "
+                            "term regulation is actually written against, so it is the "
+                            "closer match to legislative language than the generic ban "
+                            "term. Read the two together: attention rising on both is a "
+                            "stronger signal of impending restriction than either alone."),
+        TrendsQuery("Plastic packaging ban", ("plastic packaging ban",),
+                    caption="Search interest in packaging-specific bans, normalised "
+                            "0-100. Narrowest and most directly relevant of the three "
+                            "regulatory terms, since it targets packaging rather than "
+                            "bags or straws. Likely to be low-volume and therefore noisy "
+                            "— treat direction over quarters, not week-to-week moves."),
     ),
     static_caption="ICIS/Platts spot resin tickers remain subscription-only — FRED PPI series above are the free monthly proxy.",
     website="https://www.novolex.com/",
@@ -231,66 +349,157 @@ KELVION = Holding(
     ),
     sparklines=(
         Sparkline("S&P 500 Industrials", "^SP500-20",
-                  "S&P 500 Industrials sector index — pure market signal, no ETF tracking error.",
+                  "Float-adjusted market-cap-weighted index of the S&P 500's industrial "
+                  "constituents — an index level, so no fund fees or tracking error. This "
+                  "is the general capital-goods cycle Kelvion sells into outside data "
+                  "centres. It sets the baseline: if this is rising and the AI-specific "
+                  "lines below are flat, demand is broad industrial replacement rather "
+                  "than the DC thesis playing out.",
                   holdings_ticker="XLI"),
         Sparkline("PHLX Semiconductor",  "^SOX",
-                  "Established US chip-stocks index (Philadelphia Semiconductor); AI capex cycle driver for DC cooling demand.",
+                  "Modified market-cap-weighted index of US-listed semiconductor "
+                  "designers and equipment makers, in points. Chip equities lead the AI "
+                  "capex cycle because orders are placed before racks are installed and "
+                  "long before cooling is commissioned — so this line turns roughly two "
+                  "to four quarters ahead of Kelvion's heat-exchanger order intake. Treat "
+                  "it as the earliest signal on the board, and the noisiest.",
                   holdings_ticker="SOXX"),
         Sparkline("S&P 500 Utilities", "^SP500-55",
-                  "Power-utility sector index — the generation/grid names that supply data-centre load; clean index, no ETF tracking error.",
+                  "Float-adjusted cap-weighted S&P 500 utilities index — the generators "
+                  "and grid operators that must supply data-centre load. Relevant as a "
+                  "constraint rather than a demand signal: DC projects stall on power "
+                  "availability, not on cooling capacity. Utility strength signals "
+                  "generation capex being funded, which is what unblocks the DC pipeline "
+                  "that Kelvion's order book ultimately depends on.",
                   holdings_ticker="XLU"),
         Sparkline("Global Infrastructure", "IGF",
-                  "Global infra capex cycle proxy for large project pipeline. ETF — no clean Yahoo index alternative.",
+                  "iShares Global Infrastructure ETF — a fund price, so it carries fees "
+                  "and tracking error; used because no clean global infra index trades on "
+                  "Yahoo. Proxies the large-project capex cycle worldwide. Kelvion's "
+                  "revenue is project-linked with long lead times, so this reads on the "
+                  "multi-year pipeline and financing conditions for big builds rather "
+                  "than near-term shipments.",
                   holdings_ticker="IGF"),
     ),
     extra_tickers=(
         Sparkline("Nvidia",    "NVDA",
-                  "AI compute leader; DC buildout demand starts with GPU shipments.",
+                  "Share price of the dominant AI accelerator vendor. Moves on data-centre "
+                  "revenue and guidance, which is the closest public proxy for how much "
+                  "compute is actually being installed. Rack power density scales with GPU "
+                  "shipments, and cooling requirement scales with power density — so this "
+                  "is the front of the chain that ends in Kelvion's addressable heat load, "
+                  "with several quarters of lag.",
                   website="https://www.nvidia.com/"),
         Sparkline("CoreWeave", "CRWV",
-                  "Pure-play GPU-cloud capex flowing directly into DC cooling demand.",
+                  "Share price of a pure-play GPU cloud operator. Unlike the hyperscalers, "
+                  "essentially all its capex is data-centre buildout, so the equity is an "
+                  "undiluted read on new DC capacity being financed and commissioned. Its "
+                  "cost of capital matters directly: these builds are debt-funded, so "
+                  "share-price weakness tightens financing and defers the projects Kelvion "
+                  "would equip.",
                   website="https://www.coreweave.com/"),
         Sparkline("Nebius",    "NBIS",
-                  "European GPU cloud; useful for EMEA DC-buildout signal.",
+                  "Share price of a European GPU-cloud operator. Carried specifically for "
+                  "the EMEA leg — Kelvion is European, and European DC buildout runs on "
+                  "different power, permitting and regulatory constraints from the US. "
+                  "Divergence between this and CoreWeave tells you whether a slowdown is "
+                  "global or confined to Kelvion's home region.",
                   website="https://www.nebius.com/"),
         Sparkline("Cerebras",  "CBRS",
-                  "Wafer-scale AI chip designer; IPO'd May 2026. Alternative AI-compute build read alongside Nvidia.",
+                  "Share price of a wafer-scale AI chip designer, listed 14 May 2026 — so "
+                  "the series is short and has no meaningful long-run history yet. Read "
+                  "alongside Nvidia as a check on whether AI compute demand is broadening "
+                  "beyond one vendor. Architecture matters here: wafer-scale parts have "
+                  "different power and cooling profiles, which shifts the mix of heat "
+                  "exchanger Kelvion would supply.",
                   website="https://www.cerebras.ai/"),
         # No data-centre index trades a usable series on Yahoo (the Dow Jones US
         # sub-indices return a single stale point), so this data-centre REIT fund
         # is the closest pure data-centre read available.
         Sparkline("Data Center REITs", "DTCR",
-                  "Global X Data Center & Digital Infrastructure ETF — closest pure data-centre read; no clean Yahoo DC index exists."),
+                  "Global X Data Center & Digital Infrastructure ETF — a fund price "
+                  "tracking listed DC landlords and digital-infrastructure owners, so it "
+                  "carries fees and tracking error. Used because no clean DC index trades "
+                  "on Yahoo. Being REITs, it is rate-sensitive as well as demand-"
+                  "sensitive: a fall may signal higher discount rates rather than weaker "
+                  "DC demand, so check it against the GPU-cloud names before concluding "
+                  "the buildout is slowing."),
     ),
     supplier_tickers=(
         Sparkline("Vistra",        "VST",
-                  "Independent power producer; major DC PPA counterparty (Microsoft, Amazon).",
+                  "Share price of an independent power producer and a major counterparty "
+                  "on data-centre power purchase agreements. Read it as contracted power "
+                  "supply being secured: PPAs are signed early in a DC project, so "
+                  "strength here indicates projects clearing their binding power "
+                  "constraint — the step that precedes the cooling specification Kelvion "
+                  "bids into.",
                   website="https://www.vistracorp.com/"),
         Sparkline("Constellation", "CEG",
-                  "Nuclear-heavy utility; Three Mile Island restart deal with Microsoft anchors DC supply.",
+                  "Share price of a nuclear-heavy US utility, the archetype for firm "
+                  "24/7 carbon-free DC supply. Nuclear-backed PPAs signal the highest-"
+                  "conviction, longest-dated DC commitments, since they are contracted "
+                  "over decades. That duration is what supports Kelvion's multi-year "
+                  "order pipeline rather than a single build cycle.",
                   website="https://www.constellationenergy.com/"),
         Sparkline("Talen Energy",  "TLN",
-                  "Nuclear/coal producer; Susquehanna PPA powering AWS's Cumulus DC complex.",
+                  "Share price of a nuclear and coal generator supplying dedicated DC "
+                  "load. A second read on the same firm-power mechanism as Constellation; "
+                  "carried so the signal does not rest on one counterparty. Divergence "
+                  "between the two is usually company-specific rather than a change in "
+                  "the DC power thesis.",
                   website="https://www.talenenergy.com/"),
         Sparkline("GE Vernova",    "GEV",
-                  "Gas turbines & grid equipment; supplies the generation capacity behind new DC sites.",
+                  "Share price of a gas-turbine and grid-equipment maker. The closest "
+                  "structural analogue to Kelvion on this board: long-cycle capital "
+                  "equipment sold into the same DC buildout, with comparable lead times "
+                  "and backlog dynamics. Its order intake and pricing power are the best "
+                  "listed read on what Kelvion should be able to achieve on its own "
+                  "backlog and margin.",
                   website="https://www.gevernova.com/"),
     ),
     fred_series=(
         FredSeries("Real GDP", "GDPC1", "",
-                   caption="Headline US real GDP — broad demand baseline. Quarterly series."),
+                   caption="US real gross domestic product from the BEA, quarterly, in "
+                           "chained dollars — inflation stripped out, so moves are real "
+                           "volume. The broadest and slowest signal here: it confirms the "
+                           "demand backdrop after the fact rather than leading it. Use it "
+                           "as context for the two monthly series below, not as a trigger."),
         FredSeries("Industrial Production", "INDPRO", "",
-                   caption="Monthly US industrial output — cleaner read on Kelvion's industrial-customer demand than GDP."),
+                   caption="Federal Reserve index of real output across US manufacturing, "
+                           "mining and utilities, monthly. More useful than GDP for "
+                           "Kelvion because heat exchangers are sold into physical "
+                           "process industries, and this measures physical output "
+                           "directly. It also arrives monthly rather than quarterly, so "
+                           "it turns well before GDP confirms."),
         FredSeries("Capacity Utilization", "TCU", "%",
-                   caption="How hard US plants are running — leading indicator of replacement / expansion capex for cooling kit."),
+                   caption="Output as a percentage of sustainable capacity, monthly from "
+                           "the Federal Reserve. The most decision-relevant of the three: "
+                           "plants running near capacity must add lines to grow, and new "
+                           "lines need new heat exchangers. High and rising utilisation "
+                           "is what converts industrial demand into Kelvion capex orders; "
+                           "a fall means customers can absorb demand without buying kit."),
     ),
     trends_queries=(
         TrendsQuery("DC protest",    ("data center protest",),
-                    caption="Local opposition signal — permitting and siting risk for new DCs."),
+                    caption="Google search volume for the term, normalised 0-100 against "
+                            "its own 12-month peak — a relative index, not a count, so "
+                            "levels are not comparable between terms. Local opposition is "
+                            "the main non-technical reason DC projects slip, and a delayed "
+                            "project defers Kelvion's order rather than cancelling it."),
         TrendsQuery("DC moratorium", ("data center moratorium",),
-                    caption="Municipal action against DCs; quantifies the regulatory/political headwind."),
+                    caption="Search interest in DC moratoria, normalised 0-100. Harder "
+                            "than the protest term: a moratorium is formal municipal "
+                            "action, so this registers opposition that has already "
+                            "converted into policy. Sustained elevation points to sites "
+                            "being blocked outright, which removes addressable demand "
+                            "rather than delaying it."),
         TrendsQuery("DC water use",  ("data center water use",),
-                    caption="Public concern over DC cooling water use; can shift cooling-tech specification."),
+                    caption="Search interest in DC water consumption, normalised 0-100. "
+                            "The one term here that can help rather than hurt: pressure on "
+                            "water use pushes operators from evaporative cooling towards "
+                            "closed-loop and dry systems, which is the heat-exchanger-"
+                            "intensive specification Kelvion sells into. Read it as mix "
+                            "shift, not demand loss."),
     ),
     capex_charts=(
         CapexChart(
@@ -355,20 +564,47 @@ REAL_CHEMISTRY = Holding(
         # Dow Jones US Pharmaceuticals / Biotechnology indices return only a single
         # stale point), so the sector ETFs are retained as the cleanest proxy.
         Sparkline("Pharmaceuticals", "IHE",
-                  "iShares U.S. Pharmaceuticals ETF — pharma-specific demand baseline; no clean Yahoo pharma index exists.",
+                  "iShares U.S. Pharmaceuticals ETF — a fund price tracking large-cap US "
+                  "pharma, so it carries fees and tracking error; used because no clean "
+                  "pharma index trades on Yahoo. These are Real Chemistry's paying "
+                  "clients. Read it for marketing-budget capacity: pharma commercial "
+                  "spend is funded from product revenue, so this is the demand pool the "
+                  "agency bills against, and it moves with patent cycles more than with "
+                  "the broader market.",
                   holdings_ticker="IHE"),
         Sparkline("Health Insurers", "IHF",
-                  "US healthcare providers & payors ETF; reads on payor-side budget environment. No clean Yahoo sub-sector index.",
+                  "iShares U.S. Healthcare Providers ETF — payors and provider groups, "
+                  "a fund price rather than an index. Relevant as the counterweight to "
+                  "pharma: payor pressure on drug pricing compresses the margins that "
+                  "fund promotional budgets. Payor strength alongside pharma weakness is "
+                  "the configuration that squeezes agency spend hardest, so read the two "
+                  "lines against each other rather than separately.",
                   holdings_ticker="IHF"),
         Sparkline("Biotech",         "XBI",
-                  "SPDR biotech ETF — cleanest read on early-stage biotech funding; no clean Yahoo biotech index exists.",
+                  "SPDR S&P Biotech ETF — equal-weighted rather than cap-weighted, so it "
+                  "reflects small and mid-cap biotech rather than being dominated by a "
+                  "few large names. That makes it the cleanest read on early-stage "
+                  "funding conditions. Emerging biotechs are the new-logo pipeline for "
+                  "agency work: they commission launch campaigns only when financing is "
+                  "open, so this is the most rate-sensitive and most forward-looking of "
+                  "the three lines.",
                   holdings_ticker="XBI"),
     ),
     trends_queries=(
         TrendsQuery("GLP-1 interest",   ("GLP-1",),
-                    caption="Search demand for the obesity-drug class; proxy for branded pharma launch marketing."),
+                    caption="Search volume for the drug class, normalised 0-100 against "
+                            "its own 12-month peak — a relative index, not a count. Proxies "
+                            "consumer attention to the highest-spend therapeutic category "
+                            "in the market. Launch and DTC campaign budgets follow public "
+                            "attention, and those campaigns are the work Real Chemistry "
+                            "bills for."),
         TrendsQuery("Ozempic interest", ("Ozempic",),
-                    caption="Specific GLP-1 launch demand; bellwether for high-spend campaigns Real Chemistry services."),
+                    caption="Brand-level search interest, normalised 0-100. Narrower than "
+                            "the class term and therefore a sharper read on a single "
+                            "manufacturer's promotional push. Brand terms move on campaign "
+                            "flighting, so a divergence from the class term usually "
+                            "indicates marketing spend being switched on or off — which is "
+                            "the agency revenue signal."),
     ),
     static_blocks=(
         StaticBlock(
@@ -437,22 +673,52 @@ SAP_FIONEER = Holding(
     ),
     sparklines=(
         Sparkline("S&P 500 Financials", "^SP500-40",
-                  "S&P 500 Financials index — Fioneer's customer base (banks, insurers, capital markets); their earnings health drives core-systems IT budgets. No ETF tracking error.",
+                  "Float-adjusted cap-weighted index of the S&P 500's financial "
+                  "constituents — banks, insurers, capital markets — quoted in points, so "
+                  "no fund fees or tracking error. This is Fioneer's entire customer base "
+                  "in one line. Core-banking replacement is discretionary, multi-year and "
+                  "board-approved, so it is funded out of customer profitability: sector "
+                  "earnings weakness defers projects rather than cancelling them, which "
+                  "shows up as a lengthening sales cycle before it shows up in revenue.",
                   holdings_ticker="XLF"),
         Sparkline("KBW Bank Index", "^BKX",
-                  "KBW Nasdaq Bank Index — large US banks, the core buyers of banking-platform software.",
+                  "Modified cap-weighted index of large US money-centre and regional "
+                  "banks, in points. Narrower than the financials sector above and more "
+                  "rate-sensitive, since bank earnings turn on net interest margin. Banks "
+                  "are the core buyers of banking-platform software, so this is the "
+                  "sharper read of the two — but note the exposure mismatch: Fioneer's "
+                  "book is weighted to Europe, so treat this as a directional read on "
+                  "bank IT budgets rather than a direct one.",
                   holdings_ticker="KBWB"),
         Sparkline("US Insurance (IAK)", "IAK",
-                  "iShares U.S. Insurance ETF — insurers, the demand side for Fioneer's insurance platform.",
+                  "iShares U.S. Insurance ETF — a fund price covering property-casualty "
+                  "and life insurers, with fees and tracking error. Insurance is the "
+                  "second Fioneer platform and runs on a different cycle from banking: "
+                  "insurer IT spend follows underwriting profitability and hard-market "
+                  "pricing, not interest rates. Divergence from the bank index tells you "
+                  "which of the two product lines is likely to carry the year.",
                   holdings_ticker="IAK"),
     ),
     trends_queries=(
         TrendsQuery("Core banking software", ("core banking software",),
-                    caption="Search interest in core-banking modernisation — demand proxy for Fioneer's platform."),
+                    caption="Search volume for the term, normalised 0-100 against its own "
+                            "12-month peak — a relative index, not a count. The most "
+                            "directly relevant term here: core-banking replacement is a "
+                            "researched, committee-driven purchase, so search interest "
+                            "reflects buyers early in an evaluation cycle that runs 12-24 "
+                            "months before contract."),
         TrendsQuery("Digital banking", ("digital banking",),
-                    caption="Broad digitisation interest across retail/commercial banking."),
+                    caption="Search interest in digital banking, normalised 0-100. Much "
+                            "broader than the core-banking term and includes consumer "
+                            "searches for their own bank apps, so it is the noisiest line "
+                            "here. Use it as background on digitisation salience rather "
+                            "than as a procurement signal."),
         TrendsQuery("Insurtech", ("insurtech",),
-                    caption="Insurance-technology interest — Fioneer's insurance-platform side."),
+                    caption="Search interest in insurtech, normalised 0-100, covering the "
+                            "insurance-platform half of the business. Insurance IT "
+                            "modernisation runs on a separate cycle from banking, so this "
+                            "line is the check on whether the two product lines face the "
+                            "same demand conditions or diverging ones."),
     ),
     website="https://www.sapfioneer.com/",
 )
@@ -492,14 +758,36 @@ ASIA_RESTAURANTS = Holding(
     ),
     sparklines=(
         Sparkline("ASEAN equities (ASEA)", "ASEA",
-                  "Global X FTSE Southeast Asia ETF — regional ASEAN equity & consumption backdrop. No SE-Asia restaurant index exists on Yahoo.",
+                  "Global X FTSE Southeast Asia ETF — a fund price tracking a "
+                  "cap-weighted basket of large ASEAN listings, so it carries tracking "
+                  "error and fund fees unlike a raw index. Used because no SE-Asia "
+                  "restaurant index trades on Yahoo. Read it as the regional risk "
+                  "appetite and consumption backdrop: it sets the discount rate and exit "
+                  "multiple environment for a private ASEAN dining asset more than it "
+                  "predicts covers served.",
                   holdings_ticker="ASEA"),
         Sparkline("Straits Times (SG)", "^STI",
-                  "Singapore market index — Singapore consumer/tourism backdrop."),
+                  "Cap-weighted index of the largest Singapore Exchange listings, quoted "
+                  "in index points. Singapore is the region's highest-spend dining market "
+                  "and its most tourism-levered, so this is the read on premium covers "
+                  "and inbound visitor spend. It matters for mix rather than volume: "
+                  "Singapore weakness hits average ticket and margin harder than it hits "
+                  "transaction count."),
         Sparkline("SET (Thailand)", "^SET.BK",
-                  "Thai market index — key market for the comp set; tourism-sensitive."),
+                  "Cap-weighted index of common shares listed on the Stock Exchange of "
+                  "Thailand, in points. Thailand is the largest single market in the comp "
+                  "set and the most tourism-sensitive of the three, so this line is the "
+                  "cleanest read on whether a demand move is inbound-visitor driven or "
+                  "domestic. Tourism-led softness tends to be sharper but shorter than "
+                  "domestic consumer weakness."),
         Sparkline("Jakarta Composite (ID)", "^JKSE",
-                  "Indonesia market index — large, fast-growing SE-Asia consumer market."),
+                  "Cap-weighted index of all shares listed on the Indonesia Stock "
+                  "Exchange, in points. Indonesia is the largest population and the "
+                  "structural growth leg of the thesis, so this is the long-duration "
+                  "signal rather than the cyclical one. Read it for whether the "
+                  "middle-class formation underpinning unit-expansion plans is still "
+                  "being funded — it drives the store-opening runway, not this quarter's "
+                  "covers."),
     ),
     website="",
 )

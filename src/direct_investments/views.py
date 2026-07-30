@@ -413,7 +413,15 @@ def render_trends(title: str, queries: list[TrendsQuery], note: str = ""):
     st.markdown(f'<div class="tooltip-chip-row">{chips}</div>', unsafe_allow_html=True)
 
     if not series_frames:
-        st.caption("Trends data unavailable — pytrends rate-limited or not installed.")
+        st.caption(
+            "Search-interest data unavailable. Google returns HTTP 429 on the Trends "
+            "API endpoint that `pytrends` uses; the library was archived in April 2025 "
+            "and its session bootstrap no longer obtains the token Google now requires. "
+            "The maintained fork `trendspy` acquires a token but is blocked at the same "
+            "step. Restoring this section needs a paid Trends provider (SerpApi, "
+            "DataForSEO, Glimpse) or a different proxy series — the chart is not "
+            "recoverable by retrying."
+        )
         return
 
     combined = pd.concat(series_frames, axis=1).ffill()
