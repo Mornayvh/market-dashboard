@@ -753,6 +753,22 @@ ASIA_RESTAURANTS = Holding(
              website="https://www.kimly.com.sg/"),
         Comp("Fast Food Indonesia", "FAST.JK",
              rationale="KFC Indonesia operator; Indonesian QSR demand and consumer recovery."),
+        # ASX-listed and Australia-domiciled, so the flag reads AU, but the Asian
+        # franchise rights are the reason it is here. Note the structural mismatch
+        # against the rest of this set: DMP is a master franchisor earning
+        # royalties, not an operator booking restaurant revenue, so its earnings
+        # track store count and system sales rather than covers served.
+        Comp("Domino's Pizza Enterprises", "DMP.AX",
+             rationale="ASX-listed master franchisor holding exclusive Domino's rights "
+                       "for Japan, Singapore, Malaysia and Taiwan, with a stated target "
+                       "of 3,000 Asian stores by 2033 — the only listed pure play on "
+                       "Asian QSR unit expansion in this set. Read it for store-opening "
+                       "momentum rather than same-store traffic: royalties scale with "
+                       "network size, so a stalled rollout caps earnings even if "
+                       "existing stores trade well. Franchisor economics also make it "
+                       "structurally higher-margin and less labour-cost sensitive than "
+                       "the operators above, so divergence is often model, not market.",
+             website="https://www.dominospizzaenterprises.com/"),
     ),
     sparklines=(
         Sparkline("ASEAN equities (ASEA)", "ASEA",
