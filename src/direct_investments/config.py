@@ -380,6 +380,18 @@ KELVION = Holding(
                   "multi-year pipeline and financing conditions for big builds rather "
                   "than near-term shipments.",
                   holdings_ticker="IGF"),
+        # No data-centre index trades a usable series on Yahoo (the Dow Jones US
+        # sub-indices return a single stale point), so this data-centre REIT fund
+        # is the closest pure data-centre read available.
+        Sparkline("Data Center REITs", "DTCR",
+                  "Global X Data Center & Digital Infrastructure ETF — a fund price "
+                  "tracking listed DC landlords and digital-infrastructure owners, so it "
+                  "carries fees and tracking error. Used because no clean DC index trades "
+                  "on Yahoo. Being REITs, it is rate-sensitive as well as demand-"
+                  "sensitive: a fall may signal higher discount rates rather than weaker "
+                  "DC demand, so check it against the GPU-cloud names before concluding "
+                  "the buildout is slowing.",
+                  holdings_ticker="DTCR"),
     ),
     extra_tickers=(
         Sparkline("Nvidia",    "NVDA",
@@ -413,17 +425,6 @@ KELVION = Holding(
                   "different power and cooling profiles, which shifts the mix of heat "
                   "exchanger Kelvion would supply.",
                   website="https://www.cerebras.ai/"),
-        # No data-centre index trades a usable series on Yahoo (the Dow Jones US
-        # sub-indices return a single stale point), so this data-centre REIT fund
-        # is the closest pure data-centre read available.
-        Sparkline("Data Center REITs", "DTCR",
-                  "Global X Data Center & Digital Infrastructure ETF — a fund price "
-                  "tracking listed DC landlords and digital-infrastructure owners, so it "
-                  "carries fees and tracking error. Used because no clean DC index trades "
-                  "on Yahoo. Being REITs, it is rate-sensitive as well as demand-"
-                  "sensitive: a fall may signal higher discount rates rather than weaker "
-                  "DC demand, so check it against the GPU-cloud names before concluding "
-                  "the buildout is slowing."),
     ),
     supplier_tickers=(
         Sparkline("Vistra",        "VST",
@@ -546,9 +547,6 @@ REAL_CHEMISTRY = Holding(
         Comp("IQVIA",             "IQV",    is_primary=True,
              rationale="Largest healthcare services & real-world data peer; primary read on pharma marketing and analytics spend.",
              website="https://www.iqvia.com/"),
-        Comp("Definitive Health", "DH",
-             rationale="Healthcare commercial intelligence; tracks pharma R&D and commercial budget cycles.",
-             website="https://www.definitivehc.com/"),
         Comp("Doximity",          "DOCS",
              rationale="Physician-engagement platform; direct read on HCP-marketing demand.",
              website="https://www.doximity.com/"),

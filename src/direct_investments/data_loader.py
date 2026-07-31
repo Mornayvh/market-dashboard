@@ -50,6 +50,41 @@ def fetch_currency(ticker: str) -> Optional[str]:
         return None
 
 
+@st.cache_data(ttl=3600, show_spinner=False)  # 1h — FX moves, but not per page load
+def fetch_fx_to_usd(currency: str) -> Optional[float]:
+    """
+    Spot rate to convert `currency` into USD, or None if unavailable.
+
+    Uses Yahoo's FX pairs ("EURUSD=X"). Minor-unit quote currencies (GBp pence,
+    ZAc cents) are mapped to their major unit first and divided by 100 — but note
+    that Yahoo reports marketCap in the *major* unit already, so callers passing a
+    market cap should pass the major currency.
+
+    Returns None rather than a guess when the pair doesn't resolve, so a caller
+    can fall back to the native figure instead of printing a wrong USD number.
+    """
+    cur = (currency or "").strip().upper()
+    if not cur:
+        return None
+    if cur == "USD":
+        return 1.0
+    try:
+        hist = fetch_history(f"{cur}USD=X", period="5d")
+        if hist is not None and not hist.empty:
+            rate = float(hist["Close"].iloc[-1])
+            if rate > 0:
+                return rate
+        # Some pairs are only quoted the other way round (e.g. USDIDR=X).
+        inv = fetch_history(f"USD{cur}=X", period="5d")
+        if inv is not None and not inv.empty:
+            rate = float(inv["Close"].iloc[-1])
+            if rate > 0:
+                return 1.0 / rate
+    except Exception as e:
+        logger.warning(f"FX fetch failed for {cur}: {e}")
+    return None
+
+
 @st.cache_data(ttl=900, show_spinner=False)
 def fetch_quote(ticker: str) -> dict:
     """

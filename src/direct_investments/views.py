@@ -99,15 +99,51 @@ def _currency_label(currency: str, ticker: str = "") -> str:
     return f"{currency} "
 
 
+def _scale_money(val: float, prefix: str = "") -> str:
+    if val >= 1e12:
+        return f"{prefix}{val/1e12:.2f}T"
+    if val >= 1e9:
+        return f"{prefix}{val/1e9:.1f}B"
+    return f"{prefix}{val/1e6:.0f}M"
+
+
 def _fmt_market_cap(val: Optional[float], currency: str = "", ticker: str = "") -> str:
+    """
+    Market cap converted to USD so the comps column is directly comparable.
+
+    Yahoo reports marketCap in the listing currency, which makes a mixed-currency
+    comp set unrankable by eye. Convert at spot and carry the native figure and
+    the rate used in a hover title, since the conversion is an assumption the
+    reader should be able to see. Falls back to the native currency, clearly
+    labelled, when the FX pair doesn't resolve — never a wrong USD number.
+    """
     if val is None or pd.isna(val) or val == 0:
         return "—"
-    cur = _currency_label(currency, ticker)
-    if val >= 1e12:
-        return f"{cur}{val/1e12:.2f}T"
-    if val >= 1e9:
-        return f"{cur}{val/1e9:.1f}B"
-    return f"{cur}{val/1e6:.0f}M"
+
+    cur = (currency or "").strip().upper()
+    if not cur or ticker.startswith("^"):
+        return _scale_money(val)
+    if cur == "USD":
+        return _scale_money(val, "USD ")
+
+    rate = data_loader.fetch_fx_to_usd(cur)
+    if not rate:
+        native = _scale_money(val, f"{cur} ")
+        tip = html.escape(
+            f"FX rate for {cur}/USD unavailable, so this is the native figure, not USD.",
+            quote=True)
+        return f'<span class="has-tooltip" data-tooltip="{tip}" title="{tip}">{native}</span>'
+
+    usd = _scale_money(val * rate, "USD ")
+    # Significant figures, not fixed decimals: IDR/USD is ~5.5e-05, which a
+    # 4-decimal format flattens to a misleading "0.0001".
+    rate_str = f"{rate:,.4f}" if rate >= 0.01 else f"{rate:.4g}"
+    tip = html.escape(
+        f"{_scale_money(val, cur + ' ')} converted at spot {rate_str} {cur}/USD. "
+        "Yahoo reports market cap in the listing currency; converted here so the "
+        "comp set is directly comparable.",
+        quote=True)
+    return f'<span class="has-tooltip" data-tooltip="{tip}" title="{tip}">{usd}</span>'
 
 
 def _fmt_price(val: Optional[float], currency: str = "", ticker: str = "") -> str:
