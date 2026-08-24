@@ -79,6 +79,7 @@ WATCHLIST = {
         ("BYD", "002594.SZ", "CNY"),
         ("CXMT", "688825.SS", "CNY"),
         ("Tencent", "TCEHY", "USD"),
+        ("Unitree", "688836.SS", "CNY"),
     ],
     "Financials": [
         ("JP Morgan", "JPM", "USD"),
