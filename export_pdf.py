@@ -41,7 +41,7 @@ ROW_ALT = colors.HexColor("#F8FAFC")
 GREEN = colors.HexColor("#16A34A")
 RED = colors.HexColor("#DC2626")
 
-# Order mirrors morning_email.py
+# Reading order for the brief: risk assets first, then the rates/credit backdrop.
 SECTION_ORDER = ["Equities", "Rates", "Currency", "Credit", "Commodities", "Sentiment", "Volatility"]
 SECTION_LABELS = {
     "Rates": "Rates",
