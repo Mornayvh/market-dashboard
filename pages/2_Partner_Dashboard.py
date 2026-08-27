@@ -9,6 +9,8 @@ import plotly.graph_objects as go
 from pathlib import Path
 from collections import Counter
 
+from src.theme import apply_theme, palette, plotly_layout
+
 st.set_page_config(
     page_title="Partner Dashboard | Secco Capital",
     page_icon="◼",
@@ -16,56 +18,42 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# Publishes the --tk-* palette the stylesheet below reads from. Must run before
+# any chart is built.
+apply_theme()
+
 # ---------------------------------------------------------------------------
-# CSS
+# CSS — house style, driven by the active theme's --tk-* variables
 # ---------------------------------------------------------------------------
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
 
-    .stApp { background-color: #F8FAFC; color: #1E293B; }
+    .stApp { background-color: var(--tk-app-bg); color: var(--tk-text); }
     .block-container { padding-top: 2rem; padding-bottom: 1rem; max-width: 100%; }
 
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
     .stDeployButton { display: none; }
-    header[data-testid="stHeader"] { background: #F8FAFC; }
+    header[data-testid="stHeader"] { background: var(--tk-app-bg); }
 
     .port-header {
         display: flex; justify-content: space-between; align-items: center;
-        padding: 0.75rem 0 1.25rem 0; border-bottom: 1px solid #E2E8F0; margin-bottom: 1.5rem;
+        padding: 0.75rem 0 1.25rem 0; border-bottom: 1px solid var(--tk-border); margin-bottom: 1.5rem;
     }
     .port-title {
         font-family: 'DM Sans', sans-serif; font-size: 1.4rem;
-        font-weight: 700; color: #1E293B; letter-spacing: -0.02em;
+        font-weight: 700; color: var(--tk-text); letter-spacing: -0.02em;
     }
     .port-subtitle {
-        font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: #64748B; margin-top: 2px;
+        font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--tk-text-muted); margin-top: 2px;
     }
 
     .section-header {
         font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
-        color: #64748B; text-transform: uppercase; letter-spacing: 0.12em;
-        padding: 0.6rem 0 0.4rem 0; border-bottom: 1px solid #E2E8F0; margin-bottom: 0.6rem;
-    }
-
-    .stat-card {
-        background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px;
-        padding: 1rem 1.2rem; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-        min-height: 110px;
-    }
-    .stat-label {
-        font-family: 'DM Sans', sans-serif; font-size: 0.7rem; font-weight: 500;
-        color: #64748B; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.3rem;
-    }
-    .stat-value {
-        font-family: 'JetBrains Mono', monospace; font-size: 1.4rem;
-        font-weight: 700; color: #1E293B; line-height: 1.2;
-        white-space: nowrap;
-    }
-    .stat-sub {
-        font-family: 'DM Sans', sans-serif; font-size: 0.72rem; color: #64748B; margin-top: 0.2rem;
+        color: var(--tk-text-muted); text-transform: uppercase; letter-spacing: 0.12em;
+        padding: 0.6rem 0 0.4rem 0; border-bottom: 1px solid var(--tk-border); margin-bottom: 0.6rem;
     }
 
     .data-table {
@@ -74,31 +62,31 @@ st.markdown("""
     }
     .data-table th {
         font-family: 'DM Sans', sans-serif; font-size: 0.63rem; font-weight: 600;
-        color: #64748B; text-transform: uppercase; letter-spacing: 0.08em;
-        padding: 0.5rem 0.5rem; border-bottom: 1px solid #E2E8F0; text-align: left;
+        color: var(--tk-text-muted); text-transform: uppercase; letter-spacing: 0.08em;
+        padding: 0.5rem 0.5rem; border-bottom: 1px solid var(--tk-border); text-align: left;
     }
     .data-table td {
-        padding: 0.5rem 0.5rem; border-bottom: 1px solid #F1F5F9; color: #1E293B;
+        padding: 0.5rem 0.5rem; border-bottom: 1px solid var(--tk-border-soft); color: var(--tk-text);
     }
-    .data-table tr:hover { background: #F1F5F9; }
+    .data-table tr:hover { background: var(--tk-surface-alt); }
 
     .tag {
-        display: inline-block; background: #F1F5F9; border: 1px solid #E2E8F0;
+        display: inline-block; background: var(--tk-tag-bg); border: 1px solid var(--tk-tag-border);
         border-radius: 4px; padding: 2px 8px; margin: 1px 2px;
-        font-family: 'DM Sans', sans-serif; font-size: 0.68rem; color: #334155;
+        font-family: 'DM Sans', sans-serif; font-size: 0.68rem; color: var(--tk-tag-text);
     }
-    .tag-invested { background: #DCFCE7; border-color: #BBF7D0; color: #166534; }
-    .tag-pipeline { background: #FEF3C7; border-color: #FDE68A; color: #92400E; }
+    .tag-invested { background: var(--tk-tag-pos-bg); border-color: var(--tk-tag-pos-border); color: var(--tk-tag-pos-text); }
+    .tag-pipeline { background: var(--tk-tag-warn-bg); border-color: var(--tk-tag-warn-border); color: var(--tk-tag-warn-text); }
 
     .bar-row {
         display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem;
     }
     .bar-label {
-        font-family: 'DM Sans', sans-serif; font-size: 0.75rem; color: #1E293B;
+        font-family: 'DM Sans', sans-serif; font-size: 0.75rem; color: var(--tk-text);
         width: 140px; text-align: right; flex-shrink: 0;
     }
     .bar-track {
-        flex: 1; height: 22px; background: #F1F5F9; border-radius: 4px; overflow: hidden;
+        flex: 1; height: 22px; background: var(--tk-surface-alt); border-radius: 4px; overflow: hidden;
     }
     .bar-fill {
         height: 100%; border-radius: 4px; display: flex; align-items: center;
@@ -106,22 +94,20 @@ st.markdown("""
     }
     .bar-count {
         font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
-        color: #FFFFFF; font-weight: 600;
+        color: var(--tk-on-accent); font-weight: 600;
     }
 
     .stButton > button {
-        background: #FFFFFF; color: #1E293B; border: 1px solid #CBD5E1;
+        background: var(--tk-surface); color: var(--tk-text); border: 1px solid var(--tk-border-strong);
         font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
         border-radius: 4px; padding: 0.4rem 1.2rem;
     }
-    .stButton > button:hover { background: #F1F5F9; border-color: #4F7FD6; color: #1E293B; }
+    .stButton > button:hover { background: var(--tk-surface-alt); border-color: var(--tk-accent); color: var(--tk-text); }
     /* ── Mobile responsive ── */
     @media (max-width: 768px) {
         .block-container { padding-left: 0.5rem; padding-right: 0.5rem; max-width: 100%; }
         .port-header { flex-direction: column; gap: 0.5rem; align-items: flex-start; }
         .port-title { font-size: 1.1rem; }
-        .stat-card { padding: 0.7rem 0.8rem; min-height: 80px; }
-        .stat-value { font-size: 1.1rem; }
         .data-table { font-size: 0.65rem; }
         .data-table th { font-size: 0.55rem; padding: 0.3rem; }
         .data-table td { padding: 0.3rem; }
@@ -240,10 +226,6 @@ pipeline = portfolio[portfolio["invested"] == "Not Invested"]
 def section_header(text):
     st.markdown(f'<div class="section-header">{text}</div>', unsafe_allow_html=True)
 
-def stat_card(label, value, sub=""):
-    sub_html = f'<div class="stat-sub">{sub}</div>' if sub else ""
-    st.markdown(f'<div class="stat-card"><div class="stat-label">{label}</div><div class="stat-value">{value}</div>{sub_html}</div>', unsafe_allow_html=True)
-
 def count_items(df, col):
     c = Counter()
     for items in df[col]:
@@ -251,7 +233,7 @@ def count_items(df, col):
             c[item] += 1
     return c
 
-def render_bar_chart(counts, color="#4F7FD6"):
+def render_bar_chart(counts, color=None):
     if not counts or len(counts) == 0:
         st.caption("No data available")
         return
@@ -262,25 +244,27 @@ def render_bar_chart(counts, color="#4F7FD6"):
     labels = list(reversed([k for k, v in items]))
     values = list(reversed([v for k, v in items]))
 
+    p = palette()
+    color = color or p["accent"]
+
     fig = go.Figure()
     fig.add_trace(go.Bar(
         y=labels, x=values, orientation="h",
         marker_color=color,
         text=values, textposition="outside",
-        textfont=dict(size=11, color="#1E293B"),
+        textfont=dict(size=11, color=p["text"]),
         hoverinfo="skip",
     ))
     fig.update_layout(
         height=max(120, 32 * len(labels)),
         margin=dict(l=10, r=40, t=5, b=5),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
         xaxis=dict(visible=False),
         yaxis=dict(
-            tickfont=dict(size=12, color="#1E293B", family="DM Sans, sans-serif"),
+            tickfont=dict(size=12, color=p["text"], family="DM Sans, sans-serif"),
         ),
         showlegend=False,
         bargap=0.3,
+        **plotly_layout(),
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -310,6 +294,19 @@ REGION_TO_COUNTRIES = {
     "Global with exclusions": [],  # No specific countries to shade
 }
 
+def geo_style():
+    """Landmass / ocean / border colours for the choropleth, per active theme."""
+    p = palette()
+    return dict(
+        showcoastlines=True, coastlinecolor=p["map-line"],
+        showland=True, landcolor=p["map-land"],
+        showocean=True, oceancolor=p["map-ocean"],
+        showcountries=True, countrycolor=p["map-frame"],
+        showframe=True, framecolor=p["map-frame"], framewidth=1,
+        projection_type="equirectangular",
+    )
+
+
 def build_world_map(df):
     """Build a Plotly choropleth map showing geographic exposures."""
     geo_counts = count_items(df, "geographies")
@@ -327,18 +324,12 @@ def build_world_map(df):
 
     if not country_counts:
         fig = go.Figure()
-        fig.update_geos(
-            showcoastlines=True, coastlinecolor="#CBD5E1",
-            showland=True, landcolor="#F1F5F9",
-            showocean=True, oceancolor="#EFF6FF",
-            showcountries=True, countrycolor="#E2E8F0",
-            showframe=True, framecolor="#E2E8F0", framewidth=1,
-            projection_type="equirectangular",
-        )
+        fig.update_geos(**geo_style())
         fig.update_layout(
             height=500, margin=dict(l=0, r=0, t=0, b=0),
-            paper_bgcolor="rgba(0,0,0,0)", geo=dict(bgcolor="rgba(0,0,0,0)"),
+            geo=dict(bgcolor="rgba(0,0,0,0)"),
             dragmode=False,
+            **plotly_layout(),
         )
         return fig
 
@@ -353,33 +344,22 @@ def build_world_map(df):
         z=values,
         text=hover,
         hovertemplate="%{text}<extra></extra>",
-        colorscale=[
-            [0, "#DBEAFE"],
-            [0.33, "#93C5FD"],
-            [0.66, "#3B82F6"],
-            [1, "#1E3A8A"],
-        ],
+        colorscale=[[stop, c] for stop, c in
+                    zip([0, 0.33, 0.66, 1], palette()["choropleth"])],
         showscale=False,
-        marker_line_color="#CBD5E1",
+        marker_line_color=palette()["map-line"],
         marker_line_width=0.5,
     ))
 
-    fig.update_geos(
-        showcoastlines=True, coastlinecolor="#CBD5E1",
-        showland=True, landcolor="#F1F5F9",
-        showocean=True, oceancolor="#EFF6FF",
-        showcountries=True, countrycolor="#E2E8F0",
-        showframe=True, framecolor="#E2E8F0", framewidth=1,
-        projection_type="equirectangular",
-    )
+    fig.update_geos(**geo_style())
 
     fig.update_layout(
         height=500,
         margin=dict(l=0, r=0, t=0, b=0),
-        paper_bgcolor="rgba(0,0,0,0)",
         geo=dict(bgcolor="rgba(0,0,0,0)"),
         showlegend=False,
         dragmode=False,
+        **plotly_layout(),
     )
     return fig
 
@@ -405,24 +385,24 @@ left, right = st.columns([1, 1], gap="large")
 with left:
     section_header("Geography Allocation")
     geo_invested = count_items(invested, "geographies")
-    render_bar_chart(geo_invested, color="#4F7FD6")
+    render_bar_chart(geo_invested, color=palette()["partner_bars"]["geo"])
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     section_header("Asset Class / Strategy")
     ac_invested = count_items(invested, "asset_classes")
-    render_bar_chart(ac_invested, color="#7C3AED")
+    render_bar_chart(ac_invested, color=palette()["partner_bars"]["asset_class"])
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     section_header("Sector Exposure")
     sec_invested = count_items(invested, "sectors")
-    render_bar_chart(sec_invested, color="#0891B2")
+    render_bar_chart(sec_invested, color=palette()["partner_bars"]["sector"])
 
 with right:
     section_header("Investment Stage")
     stage_invested = count_items(invested, "stages")
-    render_bar_chart(stage_invested, color="#059669")
+    render_bar_chart(stage_invested, color=palette()["partner_bars"]["stage"])
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -434,7 +414,7 @@ with right:
             acs = ", ".join(row["asset_classes"]) if row["asset_classes"] else "\u2014"
             stages = ", ".join(row["stages"]) if row["stages"] else "\u2014"
             sectors = ", ".join(row["sectors"]) if row["sectors"] else "\u2014"
-            st.markdown(f'<div style="background:#FFFFFF; border:1px solid #E2E8F0; border-radius:6px; padding:0.7rem 1rem; margin-bottom:0.5rem; box-shadow:0 1px 2px rgba(0,0,0,0.04);"><div style="font-family:\'DM Sans\',sans-serif; font-size:0.82rem; font-weight:600; color:#1E293B;">{row["partner"]}</div><div style="font-family:\'DM Sans\',sans-serif; font-size:0.7rem; color:#64748B; margin-top:0.3rem;">{geos} · {acs} · {stages}</div><div style="font-family:\'DM Sans\',sans-serif; font-size:0.68rem; color:#94A3B8; margin-top:0.15rem;">{sectors} · {fmt_ticket(row["min_ticket"])} \u2013 {fmt_ticket(row["max_ticket"])}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="background:var(--tk-surface); border:1px solid var(--tk-border); border-radius:6px; padding:0.7rem 1rem; margin-bottom:0.5rem; box-shadow:0 1px 2px rgba(0,0,0,0.04);"><div style="font-family:\'DM Sans\',sans-serif; font-size:0.82rem; font-weight:600; color:var(--tk-text);">{row["partner"]}</div><div style="font-family:\'DM Sans\',sans-serif; font-size:0.7rem; color:var(--tk-text-muted); margin-top:0.3rem;">{geos} · {acs} · {stages}</div><div style="font-family:\'DM Sans\',sans-serif; font-size:0.68rem; color:var(--tk-text-faint); margin-top:0.15rem;">{sectors} · {fmt_ticket(row["min_ticket"])} \u2013 {fmt_ticket(row["max_ticket"])}</div></div>', unsafe_allow_html=True)
     else:
         st.caption("No pipeline investments")
 
@@ -466,4 +446,4 @@ st.markdown(f"""<table class="data-table"><thead><tr><th>Partner</th><th>Status<
 
 # Footer
 st.markdown("---")
-st.markdown('<div style="text-align:center; font-size:0.65rem; color:#94A3B8; font-family:\'DM Sans\',sans-serif;">Partner Dashboard · Secco Capital · Confidential · Not investment advice</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; font-size:0.65rem; color:var(--tk-text-faint); font-family:\'DM Sans\',sans-serif;">Partner Dashboard · Secco Capital · Confidential · Not investment advice</div>', unsafe_allow_html=True)

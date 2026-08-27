@@ -15,6 +15,7 @@ from src.alt_managers.universe import TICKERS, CATEGORIES, GEOS, TILTS
 from src.alt_managers import data as dl
 from src.alt_managers import metrics
 from src.alt_managers import reference_data as ref
+from src.theme import apply_theme, palette as theme_palette, plotly_layout
 
 st.set_page_config(
     page_title="Alt Managers | Secco Capital",
@@ -23,66 +24,71 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Publishes the --tk-* palette the stylesheet below reads from. Must run before
+# PAL is read or any chart is built.
+apply_theme()
+PAL = theme_palette()
+
 # ---------------------------------------------------------------------------
-# CSS — Secco house style
+# CSS — Secco house style, driven by the active theme's --tk-* variables
 # ---------------------------------------------------------------------------
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
-    .stApp { background-color: #F8FAFC; color: #1E293B; }
+    .stApp { background-color: var(--tk-app-bg); color: var(--tk-text); }
     .block-container { padding-top: 2rem; padding-bottom: 1rem; max-width: 1500px; }
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
     .stDeployButton { display: none; }
-    header[data-testid="stHeader"] { background: #F8FAFC; }
+    header[data-testid="stHeader"] { background: var(--tk-app-bg); }
 
     .am-header {
         display: flex; justify-content: space-between; align-items: center;
-        padding: 0.75rem 0 1.25rem 0; border-bottom: 1px solid #E2E8F0; margin-bottom: 1.25rem;
+        padding: 0.75rem 0 1.25rem 0; border-bottom: 1px solid var(--tk-border); margin-bottom: 1.25rem;
     }
-    .am-title { font-family: 'DM Sans', sans-serif; font-size: 1.4rem; font-weight: 700; color: #1E293B; letter-spacing: -0.02em; }
-    .am-subtitle { font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: #64748B; margin-top: 2px; }
-    .am-timestamp { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #64748B; text-align: right; }
+    .am-title { font-family: 'DM Sans', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--tk-text); letter-spacing: -0.02em; }
+    .am-subtitle { font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--tk-text-muted); margin-top: 2px; }
+    .am-timestamp { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--tk-text-muted); text-align: right; }
 
     .section-header {
         font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
-        color: #64748B; text-transform: uppercase; letter-spacing: 0.12em;
-        padding: 1.1rem 0 0.5rem 0; border-bottom: 1px solid #E2E8F0; margin-bottom: 0.8rem;
+        color: var(--tk-text-muted); text-transform: uppercase; letter-spacing: 0.12em;
+        padding: 1.1rem 0 0.5rem 0; border-bottom: 1px solid var(--tk-border); margin-bottom: 0.8rem;
     }
 
     .kpi-card {
-        background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px;
+        background: var(--tk-surface); border: 1px solid var(--tk-border); border-radius: 6px;
         padding: 0.9rem 1.1rem;
     }
     .kpi-label {
         font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 600;
-        color: #94A3B8; text-transform: uppercase; letter-spacing: 0.1em;
+        color: var(--tk-text-faint); text-transform: uppercase; letter-spacing: 0.1em;
     }
-    .kpi-value { font-family: 'DM Sans', sans-serif; font-size: 1.5rem; font-weight: 700; color: #1E293B; margin-top: 0.2rem; }
+    .kpi-value { font-family: 'DM Sans', sans-serif; font-size: 1.5rem; font-weight: 700; color: var(--tk-text); margin-top: 0.2rem; }
 
     .dd-summary {
-        font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: #475569;
+        font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: var(--tk-text-soft);
         line-height: 1.65;
-        background: #FFFFFF; border: 1px solid #E2E8F0; border-left: 3px solid #4F7FD6;
+        background: var(--tk-surface); border: 1px solid var(--tk-border); border-left: 3px solid var(--tk-accent);
         border-radius: 6px; padding: 0.85rem 1rem;
         margin-top: 0.3rem;
     }
     .dd-summary-label {
         font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 600;
-        color: #64748B; text-transform: uppercase; letter-spacing: 0.1em;
+        color: var(--tk-text-muted); text-transform: uppercase; letter-spacing: 0.1em;
         margin-bottom: 0.5rem;
     }
-    .dd-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #64748B; margin: 0.4rem 0; }
-    .metric-line { display: flex; justify-content: space-between; padding: 0.35rem 0; border-bottom: 1px solid #F1F5F9; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; }
-    .metric-line .lbl { color: #64748B; }
-    .metric-line .val { color: #1E293B; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .dd-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--tk-text-muted); margin: 0.4rem 0; }
+    .metric-line { display: flex; justify-content: space-between; padding: 0.35rem 0; border-bottom: 1px solid var(--tk-border-soft); font-family: 'DM Sans', sans-serif; font-size: 0.82rem; }
+    .metric-line .lbl { color: var(--tk-text-muted); }
+    .metric-line .val { color: var(--tk-text); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
 
     .stButton > button {
-        background: #FFFFFF; color: #1E293B; border: 1px solid #CBD5E1;
+        background: var(--tk-surface); color: var(--tk-text); border: 1px solid var(--tk-border-strong);
         font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
         border-radius: 4px; padding: 0.4rem 1.2rem;
     }
-    .stButton > button:hover { background: #F1F5F9; border-color: #4F7FD6; color: #1E293B; }
+    .stButton > button:hover { background: var(--tk-surface-alt); border-color: var(--tk-accent); color: var(--tk-text); }
 
     /* ── Table styling — matches Market Dashboard / Stock Watchlist ── */
     .table-scroll { overflow-x: auto; }
@@ -92,28 +98,30 @@ st.markdown("""
     }
     .data-table th {
         font-family: 'DM Sans', sans-serif; font-size: 0.65rem; font-weight: 600;
-        color: #64748B; text-transform: uppercase; letter-spacing: 0.08em;
-        padding: 0.5rem 0.6rem; border-bottom: 1px solid #E2E8F0; text-align: right;
+        color: var(--tk-text-muted); text-transform: uppercase; letter-spacing: 0.08em;
+        padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--tk-border); text-align: right;
         white-space: nowrap;
     }
     .data-table th:first-child, .data-table th.txt { text-align: left; }
     .data-table td {
-        padding: 0.55rem 0.6rem; border-bottom: 1px solid #F1F5F9;
-        text-align: right; color: #1E293B; white-space: nowrap;
+        padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--tk-border-soft);
+        text-align: right; color: var(--tk-text); white-space: nowrap;
     }
     .data-table td:first-child {
-        text-align: left; color: #1E293B; font-weight: 500;
+        text-align: left; color: var(--tk-text); font-weight: 500;
         font-family: 'DM Sans', sans-serif; font-size: 0.78rem;
     }
-    .data-table td.txt { text-align: left; color: #475569; font-family: 'DM Sans', sans-serif; }
-    .data-table tr:hover { background: #F1F5F9; }
-    .chg-up { color: #16A34A; }
-    .chg-down { color: #DC2626; }
-    .chg-flat { color: #64748B; }
+    .data-table td.txt { text-align: left; color: var(--tk-text-soft); font-family: 'DM Sans', sans-serif; }
+    .data-table tr:hover { background: var(--tk-surface-alt); }
+    .chg-up { color: var(--tk-pos); }
+    .chg-down { color: var(--tk-neg); }
+    .chg-flat { color: var(--tk-text-muted); }
 </style>
 """, unsafe_allow_html=True)
 
-GREEN, RED, ACCENT, BORDER, TEXT2 = "#16A34A", "#DC2626", "#4F7FD6", "#E2E8F0", "#64748B"
+GREEN, RED, ACCENT, BORDER, TEXT2 = (
+    PAL["pos"], PAL["neg"], PAL["accent"], PAL["grid"], PAL["text-muted"]
+)
 
 
 def section_header(text):
@@ -125,12 +133,6 @@ def section_header(text):
 # ---------------------------------------------------------------------------
 def _frac_to_pct(v):
     return v * 100 if v is not None else None
-
-def fmt_dash(v, fmt="{:.1f}"):
-    if v is None or (isinstance(v, float) and pd.isna(v)):
-        return "—"
-    return fmt.format(v)
-
 
 def _is_num(v):
     return isinstance(v, (int, float)) and not (isinstance(v, float) and pd.isna(v))
@@ -190,14 +192,14 @@ def range_bar(low, high, current, mean=None, ccy="", low_lbl="Low", high_lbl="Hi
     fig = go.Figure()
     # range track
     fig.add_shape(type="rect", x0=low, x1=high, y0=0.40, y1=0.60,
-                  fillcolor="#E2E8F0", line=dict(width=0))
+                  fillcolor=PAL["border"], line=dict(width=0))
     # optional analyst mean marker (dotted)
     annotations = []
     if mean is not None:
         fig.add_shape(type="line", x0=mean, x1=mean, y0=0.30, y1=0.70,
-                      line=dict(color="#64748B", width=2, dash="dot"))
+                      line=dict(color=TEXT2, width=2, dash="dot"))
         annotations.append(dict(x=mean, y=0.78, text=f"mean {mean:,.2f}", showarrow=False,
-                                xanchor="center", yanchor="bottom", font=dict(size=9, color="#64748B")))
+                                xanchor="center", yanchor="bottom", font=dict(size=9, color=TEXT2)))
     # current price marker (solid accent)
     fig.add_shape(type="line", x0=current, x1=current, y0=0.22, y1=0.78,
                   line=dict(color=ACCENT, width=3))
@@ -211,7 +213,7 @@ def range_bar(low, high, current, mean=None, ccy="", low_lbl="Low", high_lbl="Hi
     ]
     fig.update_layout(
         height=95, margin=dict(l=8, r=8, t=20, b=22),
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        **plotly_layout(),
         xaxis=dict(visible=False, range=[xmin - pad, xmax + pad]),
         yaxis=dict(visible=False, range=[0, 1]),
         annotations=annotations, showlegend=False,
@@ -375,7 +377,7 @@ with csel2:
 
 if chart_tickers:
     fig = go.Figure()
-    palette = ["#4F7FD6", "#16A34A", "#F59E0B", "#EC4899", "#14B8A6", "#6366F1", "#DC2626", "#0EA5E9"]
+    series_colors = PAL["categorical"]
     stat_rows = []
     for i, tk in enumerate(chart_tickers):
         close = dl.fetch_history(tk, dl.PERIOD_MAP[period])
@@ -386,7 +388,7 @@ if chart_tickers:
         rb = metrics.rebase_to_100(close)
         fig.add_trace(go.Scatter(x=rb.index, y=rb.values, mode="lines",
                                  name=f"{TICKERS[tk]['name']} ({tk})",
-                                 line=dict(color=palette[i % len(palette)], width=1.8)))
+                                 line=dict(color=series_colors[i % len(series_colors)], width=1.8)))
         tot = metrics.total_return(close)
         yrs = max((close.index[-1] - close.index[0]).days / 365.25, 1e-9)
         ann = ((1 + tot / 100) ** (1 / yrs) - 1) * 100 if (tot is not None and (1 + tot / 100) > 0) else None
@@ -400,7 +402,7 @@ if chart_tickers:
         })
     fig.update_layout(
         height=380, margin=dict(l=10, r=20, t=20, b=40),
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        **plotly_layout(),
         xaxis=dict(showgrid=False, tickfont=dict(color=TEXT2, size=10)),
         yaxis=dict(showgrid=True, gridcolor=BORDER, tickfont=dict(color=TEXT2, size=10),
                    title=dict(text="Rebased to 100", font=dict(size=10, color=TEXT2))),
@@ -503,12 +505,12 @@ with right:
         fig2.add_trace(go.Scatter(x=close5.index, y=close5.values, mode="lines", name="Price",
                                   line=dict(color=ACCENT, width=1.6)))
         fig2.add_trace(go.Scatter(x=ma1y.index, y=ma1y.values, mode="lines", name="1y MA",
-                                  line=dict(color="#F59E0B", width=1.1)))
+                                  line=dict(color=PAL["warn"], width=1.1)))
         fig2.add_trace(go.Scatter(x=ma180.index, y=ma180.values, mode="lines", name="180d MA",
-                                  line=dict(color="#94A3B8", width=1.1)))
+                                  line=dict(color=PAL["text-faint"], width=1.1)))
         fig2.update_layout(
             height=420, margin=dict(l=10, r=20, t=20, b=40),
-            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            **plotly_layout(),
             xaxis=dict(showgrid=False, tickfont=dict(color=TEXT2, size=10)),
             yaxis=dict(showgrid=True, gridcolor=BORDER, tickfont=dict(color=TEXT2, size=10),
                        title=dict(text=f"Price ({m['ccy']})", font=dict(size=10, color=TEXT2))),
@@ -528,7 +530,7 @@ with right:
                                     line=dict(color=ACCENT, width=1.6)))
         fig_pe.update_layout(
             height=260, margin=dict(l=10, r=20, t=10, b=30),
-            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            **plotly_layout(),
             xaxis=dict(showgrid=False, tickfont=dict(color=TEXT2, size=10)),
             yaxis=dict(showgrid=True, gridcolor=BORDER, tickfont=dict(color=TEXT2, size=10),
                        title=dict(text="Trailing P/E", font=dict(size=10, color=TEXT2))),
@@ -543,4 +545,4 @@ with right:
                    "or Yahoo for this listing.")
 
 st.markdown("---")
-st.markdown('<div style="text-align:center; font-size:0.65rem; color:#94A3B8; font-family:\'DM Sans\',sans-serif;">Alternative Asset Managers · Secco Capital · Compared as stocks · Not investment advice</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; font-size:0.65rem; color:var(--tk-text-faint); font-family:\'DM Sans\',sans-serif;">Alternative Asset Managers · Secco Capital · Compared as stocks · Not investment advice</div>', unsafe_allow_html=True)

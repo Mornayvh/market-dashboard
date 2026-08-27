@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import yfinance as yf
 
-from src.config import Asset, ASSETS, ASSETS_BY_CATEGORY, CATEGORIES, EQUITY_PE_MAP
+from src.config import Asset, ASSETS, EQUITY_PE_MAP
 
 logger = logging.getLogger(__name__)
 

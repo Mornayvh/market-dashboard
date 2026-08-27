@@ -4,10 +4,15 @@ app.py — Secco Capital Platform Home Page
 Renders the entire front page (topbar + live clock, ticker strip, hero, and the
 dashboard carousel) inside ONE sandboxed components.html iframe. This is required
 because Streamlit's st.markdown sanitiser strips <script> tags, so the live clock,
-ticker updates, and carousel controls can only run from inside a component iframe.
+ticker updates, carousel controls and the theme toggle can only run from inside a
+component iframe.
 
-Drop this file in at market-dashboard/app.py (replacing the existing one).
-It reads logo.png from the same folder, exactly like the current version.
+The iframe is a separate document, so it gets its own copy of the --tk-* palette
+(see src/theme.py); the page below just paints from those variables. The theme
+toggle in the topbar writes the choice to localStorage and reloads the top window
+with ?theme=<choice>, which is what every other page reads.
+
+It reads logo.png from the same folder.
 """
 
 import base64
@@ -16,12 +21,16 @@ from pathlib import Path
 import streamlit as st
 import streamlit.components.v1 as components
 
+from src.theme import apply_theme, css_variables, storage_writer_js
+
 st.set_page_config(
     page_title="Secco Capital",
     page_icon="◼",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+
+THEME = apply_theme()
 
 # ---------------------------------------------------------------------------
 # Load logo -> base64 data URI (must be inlined; the iframe can't read local files)
@@ -38,17 +47,16 @@ for name, mime in [("logo.png", "image/png"), ("logo.svg", "image/svg+xml")]:
 # Dashboard cards — (streamlit page path, title, description, tag, preview SVG)
 # The page paths must match the filenames in pages/ (Streamlit slugifies them).
 # ---------------------------------------------------------------------------
-ACCENT = "#4F7FD6"
 
 CARDS = [
     (
         "/Market_Dashboard", "Market Dashboard", "Macro · Daily",
         "Daily macro snapshot — rates, equities, commodities, credit spreads, FX and volatility in a single glance.",
         '''<svg viewBox="0 0 300 132" width="100%" height="100%" preserveAspectRatio="none">
-             <line x1="0" y1="40" x2="300" y2="40" stroke="#EDF1F5"/><line x1="0" y1="72" x2="300" y2="72" stroke="#EDF1F5"/><line x1="0" y1="104" x2="300" y2="104" stroke="#EDF1F5"/>
+             <line x1="0" y1="40" x2="300" y2="40" stroke="var(--tk-border-soft)"/><line x1="0" y1="72" x2="300" y2="72" stroke="var(--tk-border-soft)"/><line x1="0" y1="104" x2="300" y2="104" stroke="var(--tk-border-soft)"/>
              <path d="M0,100 L37,92 L75,95 L112,80 L150,86 L187,66 L225,72 L262,52 L300,46 L300,132 L0,132 Z" fill="var(--accent)" opacity="0.09"/>
              <polyline points="0,100 37,92 75,95 112,80 150,86 187,66 225,72 262,52 300,46" fill="none" stroke="var(--accent)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
-             <polyline points="0,112 37,108 75,110 112,102 150,105 187,98 225,100 262,92 300,90" fill="none" stroke="#94A3B8" stroke-width="1.4" opacity="0.55"/>
+             <polyline points="0,112 37,108 75,110 112,102 150,105 187,98 225,100 262,92 300,90" fill="none" stroke="var(--tk-text-faint)" stroke-width="1.4" opacity="0.55"/>
            </svg>''',
     ),
     (
@@ -57,30 +65,30 @@ CARDS = [
         '''<svg viewBox="0 0 132 132" width="132" height="132" style="display:block;margin:0 auto;">
              <g transform="rotate(-90 66 66)" fill="none" stroke-width="15">
                <circle cx="66" cy="66" r="38" stroke="var(--accent)" stroke-dasharray="96 143"/>
-               <circle cx="66" cy="66" r="38" stroke="#64748B" stroke-dasharray="60 179" stroke-dashoffset="-96"/>
-               <circle cx="66" cy="66" r="38" stroke="#A9B6C6" stroke-dasharray="48 191" stroke-dashoffset="-156"/>
-               <circle cx="66" cy="66" r="38" stroke="#D3DBE4" stroke-dasharray="35 204" stroke-dashoffset="-204"/>
+               <circle cx="66" cy="66" r="38" stroke="var(--tk-text-muted)" stroke-dasharray="60 179" stroke-dashoffset="-96"/>
+               <circle cx="66" cy="66" r="38" stroke="var(--tk-chart-1)" stroke-dasharray="48 191" stroke-dashoffset="-156"/>
+               <circle cx="66" cy="66" r="38" stroke="var(--tk-chart-3)" stroke-dasharray="35 204" stroke-dashoffset="-204"/>
              </g>
-             <text x="66" y="63" text-anchor="middle" style="font:700 15px 'JetBrains Mono',monospace;fill:#0F172A;">62%</text>
-             <text x="66" y="78" text-anchor="middle" style="font:600 7.5px 'JetBrains Mono',monospace;fill:#94A3B8;letter-spacing:0.1em;">DEPLOYED</text>
+             <text x="66" y="63" text-anchor="middle" style="font:700 15px 'JetBrains Mono',monospace;fill:var(--tk-text-strong);">62%</text>
+             <text x="66" y="78" text-anchor="middle" style="font:600 7.5px 'JetBrains Mono',monospace;fill:var(--tk-text-faint);letter-spacing:0.1em;">DEPLOYED</text>
            </svg>''',
     ),
     (
         "/Stock_Watchlist", "Stock Watchlist", "Live Prices",
         "Live prices for core, connected and global holdings across exchanges and currencies.",
         '''<div style="padding:16px 20px;display:flex;flex-direction:column;justify-content:center;gap:9px;height:100%;">
-             <div class="wl-row"><span>NVDA</span><span style="color:#16A34A;">&#9650; 2.14%</span></div>
-             <div class="wl-row"><span>MSFT</span><span style="color:#16A34A;">&#9650; 0.38%</span></div>
-             <div class="wl-row"><span>ASML</span><span style="color:#DC2626;">&#9660; 1.02%</span></div>
-             <div class="wl-row"><span>NPN.JO</span><span style="color:#16A34A;">&#9650; 0.71%</span></div>
+             <div class="wl-row"><span>NVDA</span><span style="color:var(--tk-pos);">&#9650; 2.14%</span></div>
+             <div class="wl-row"><span>MSFT</span><span style="color:var(--tk-pos);">&#9650; 0.38%</span></div>
+             <div class="wl-row"><span>ASML</span><span style="color:var(--tk-neg);">&#9660; 1.02%</span></div>
+             <div class="wl-row"><span>NPN.JO</span><span style="color:var(--tk-pos);">&#9650; 0.71%</span></div>
            </div>''',
     ),
     (
         "/Direct_Investments", "Direct Investments", "Novolex · Kelvion · Real Chem",
         "Public-market proxy tracker for private holdings — comps, sector ETFs, capex and sentiment.",
         '''<svg viewBox="0 0 300 132" width="100%" height="100%" preserveAspectRatio="none">
-             <polyline points="0,110 37,104 75,106 112,96 150,100 187,90 225,92 262,84 300,80" fill="none" stroke="#C3CDD9" stroke-width="1.4" opacity="0.7"/>
-             <polyline points="0,118 37,116 75,112 112,110 150,106 187,104 225,98 262,96 300,90" fill="none" stroke="#C3CDD9" stroke-width="1.4" opacity="0.5"/>
+             <polyline points="0,110 37,104 75,106 112,96 150,100 187,90 225,92 262,84 300,80" fill="none" stroke="var(--tk-chart-2)" stroke-width="1.4" opacity="0.7"/>
+             <polyline points="0,118 37,116 75,112 112,110 150,106 187,104 225,98 262,96 300,90" fill="none" stroke="var(--tk-chart-2)" stroke-width="1.4" opacity="0.5"/>
              <path d="M0,104 L37,96 L75,88 L112,84 L150,68 L187,58 L225,50 L262,38 L300,30 L300,132 L0,132 Z" fill="var(--accent)" opacity="0.08"/>
              <polyline points="0,104 37,96 75,88 112,84 150,68 187,58 225,50 262,38 300,30" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
              <circle cx="300" cy="30" r="3.4" fill="var(--accent)"/>
@@ -90,11 +98,11 @@ CARDS = [
         "/Alt_Managers", "Alternative Managers", "Blackstone · KKR · Apollo",
         "19 listed alternative managers compared as stocks — valuation, returns and risk, side by side.",
         '''<svg viewBox="0 0 300 132" width="100%" height="100%" preserveAspectRatio="none">
-             <line x1="18" y1="112" x2="282" y2="112" stroke="#E2E8F0"/>
-             <rect x="24" y="72" width="20" height="40" rx="2" fill="#D3DBE4"/><rect x="54" y="57" width="20" height="55" rx="2" fill="#C3CDD9"/>
-             <rect x="84" y="64" width="20" height="48" rx="2" fill="#D3DBE4"/><rect x="114" y="42" width="20" height="70" rx="2" fill="#A9B6C6"/>
-             <rect x="144" y="52" width="20" height="60" rx="2" fill="#C3CDD9"/><rect x="174" y="27" width="20" height="85" rx="2" fill="var(--accent)"/>
-             <rect x="204" y="60" width="20" height="52" rx="2" fill="#C3CDD9"/><rect x="234" y="46" width="20" height="66" rx="2" fill="#D3DBE4"/>
+             <line x1="18" y1="112" x2="282" y2="112" stroke="var(--tk-border)"/>
+             <rect x="24" y="72" width="20" height="40" rx="2" fill="var(--tk-chart-3)"/><rect x="54" y="57" width="20" height="55" rx="2" fill="var(--tk-chart-2)"/>
+             <rect x="84" y="64" width="20" height="48" rx="2" fill="var(--tk-chart-3)"/><rect x="114" y="42" width="20" height="70" rx="2" fill="var(--tk-chart-1)"/>
+             <rect x="144" y="52" width="20" height="60" rx="2" fill="var(--tk-chart-2)"/><rect x="174" y="27" width="20" height="85" rx="2" fill="var(--accent)"/>
+             <rect x="204" y="60" width="20" height="52" rx="2" fill="var(--tk-chart-2)"/><rect x="234" y="46" width="20" height="66" rx="2" fill="var(--tk-chart-3)"/>
            </svg>''',
     ),
 ]
@@ -107,7 +115,7 @@ for href, title, desc, tag, preview in CARDS:
         <div class="card-body">
           <div class="card-title">{title}</div>
           <div class="card-tag" style="margin-top:9px;">{tag}</div>
-          <div class="card-foot" style="display:block;margin-top:13px;padding-top:13px;border-top:1px solid #F1F5F9;">
+          <div class="card-foot" style="display:block;margin-top:13px;padding-top:13px;border-top:1px solid var(--tk-border-soft);">
             <p class="card-desc" style="margin:0;">{desc}</p>
             <div style="text-align:right;margin-top:2px;"><span class="card-open">Open &#8594;</span></div>
           </div>
@@ -121,6 +129,14 @@ dots_html = "".join(
 
 logo_img = f'<img src="{logo_uri}" alt="Secco Capital" class="logo"/>' if logo_uri else ""
 
+# Theme toggle — the platform's only theme control. aria-pressed doubles as the
+# active-segment style hook.
+toggle_html = "".join(
+    f'<button class="tt" data-set-theme="{key}" aria-pressed="{str(THEME == key).lower()}"'
+    f' title="{label} theme">{glyph}<span>{label}</span></button>'
+    for key, label, glyph in [("light", "Light", "&#9788;"), ("dark", "Dark", "&#9789;")]
+)
+
 # ---------------------------------------------------------------------------
 # Hide Streamlit chrome on the home page
 # ---------------------------------------------------------------------------
@@ -130,7 +146,7 @@ st.markdown(
       .block-container { padding: 0 !important; max-width: 100% !important; }
       #MainMenu, footer, .stDeployButton { visibility: hidden; }
       header[data-testid="stHeader"] { background: transparent; }
-      .stApp { background: #FFFFFF; }
+      .stApp { background: var(--tk-app-bg); }
       iframe { border: none !important; }
     </style>
     """,
@@ -147,72 +163,84 @@ PAGE = r"""
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;} html,body{margin:0;padding:0;}
-  :root{--accent:__ACCENT__;}
-  body{font-family:'DM Sans',system-ui,sans-serif;color:#1E293B;
-    background:radial-gradient(1200px 520px at 50% -180px, rgba(79,127,214,0.10), rgba(79,127,214,0) 70%), linear-gradient(180deg,#FFFFFF 0%,#F8FAFC 55%,#F1F5F9 100%);}
+  /* The iframe is its own document, so it needs its own copy of the palette. */
+  :root{__VARS__ --accent:var(--tk-accent);}
+  body{font-family:'DM Sans',system-ui,sans-serif;color:var(--tk-text);
+    background:var(--tk-home-bg);}
   @keyframes marquee{from{transform:translateX(0);}to{transform:translateX(-50%);}}
   @keyframes livepulse{0%{transform:scale(1);opacity:1;}70%{transform:scale(2.6);opacity:0;}100%{opacity:0;}}
 
-  .bar{width:100%;border-bottom:1px solid #E9EDF2;background:rgba(255,255,255,0.72);backdrop-filter:blur(8px);}
+  .bar{width:100%;border-bottom:1px solid var(--tk-border);background:var(--tk-home-bar-bg);backdrop-filter:blur(8px);}
   .bar-in{max-width:1180px;margin:0 auto;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;gap:24px;}
   .brand{display:flex;align-items:center;gap:14px;}
-  .logo{height:30px;width:auto;display:block;}
-  .divider{width:1px;height:22px;background:#E2E8F0;}
-  .platform{font:600 10px 'JetBrains Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:#94A3B8;}
+  .logo{height:30px;width:auto;display:block;filter:var(--tk-logo-filter);}
+  .divider{width:1px;height:22px;background:var(--tk-border);}
+  .platform{font:600 10px 'JetBrains Mono',monospace;letter-spacing:.22em;text-transform:uppercase;color:var(--tk-text-faint);}
   .clocks{display:flex;align-items:center;gap:20px;}
   .clock{text-align:right;}
-  .clock .t{font:600 13px 'JetBrains Mono',monospace;color:#0F172A;letter-spacing:.02em;}
-  .clock .c{font:600 9px 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#94A3B8;margin-top:2px;}
-  .vd{width:1px;height:26px;background:#E2E8F0;}
-  .live{display:flex;align-items:center;gap:7px;padding:6px 12px;border:1px solid #E2E8F0;border-radius:999px;background:#FFF;}
+  .clock .t{font:600 13px 'JetBrains Mono',monospace;color:var(--tk-text-strong);letter-spacing:.02em;}
+  .clock .c{font:600 9px 'JetBrains Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--tk-text-faint);margin-top:2px;}
+  .vd{width:1px;height:26px;background:var(--tk-border);}
+  .live{display:flex;align-items:center;gap:7px;padding:6px 12px;border:1px solid var(--tk-border);border-radius:999px;background:var(--tk-surface);}
   .live .ring{position:relative;display:inline-flex;width:7px;height:7px;}
-  .live .ring b{position:absolute;inset:0;border-radius:50%;background:#16A34A;animation:livepulse 2.2s ease-out infinite;}
-  .live .ring i{position:relative;width:7px;height:7px;border-radius:50%;background:#16A34A;}
-  .live span{font:700 10px 'JetBrains Mono',monospace;letter-spacing:.16em;color:#15803D;}
+  .live .ring b{position:absolute;inset:0;border-radius:50%;background:var(--tk-pos);animation:livepulse 2.2s ease-out infinite;}
+  .live .ring i{position:relative;width:7px;height:7px;border-radius:50%;background:var(--tk-pos);}
+  .live span{font:700 10px 'JetBrains Mono',monospace;letter-spacing:.16em;color:var(--tk-pos-strong);}
 
-  .ticker{width:100%;border-bottom:1px solid #E9EDF2;background:linear-gradient(180deg,#FFF,#FBFCFE);overflow:hidden;}
+  /* Theme toggle — segmented pill, sized to sit alongside the LIVE badge. */
+  .theme-toggle{display:inline-flex;align-items:center;gap:2px;padding:3px;border:1px solid var(--tk-border);
+    border-radius:999px;background:var(--tk-surface);}
+  .tt{display:inline-flex;align-items:center;gap:6px;border:none;background:transparent;cursor:pointer;
+    border-radius:999px;padding:5px 11px;color:var(--tk-text-faint);
+    font:700 9.5px 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;
+    transition:background .18s ease,color .18s ease;}
+  .tt:hover{color:var(--tk-text-muted);}
+  .tt[aria-pressed="true"]{background:var(--tk-accent);color:var(--tk-on-accent);}
+  .tt[aria-pressed="true"]:hover{color:var(--tk-on-accent);}
+
+  .ticker{width:100%;border-bottom:1px solid var(--tk-border);background:var(--tk-home-ticker-bg);overflow:hidden;}
   .ticker-track{display:inline-flex;align-items:center;height:46px;animation:marquee 48s linear infinite;will-change:transform;}
   .ticker:hover .ticker-track{animation-play-state:paused;}
-  .tk{display:flex;align-items:baseline;gap:9px;padding:0 22px;border-right:1px solid #EDF1F5;white-space:nowrap;}
-  .tk .s{font:600 11px 'JetBrains Mono',monospace;letter-spacing:.03em;color:#64748B;}
-  .tk .v{font:600 12.5px 'JetBrains Mono',monospace;color:#0F172A;transition:background .4s ease;padding:1px 3px;border-radius:3px;}
+  .tk{display:flex;align-items:baseline;gap:9px;padding:0 22px;border-right:1px solid var(--tk-border-soft);white-space:nowrap;}
+  .tk .s{font:600 11px 'JetBrains Mono',monospace;letter-spacing:.03em;color:var(--tk-text-muted);}
+  .tk .v{font:600 12.5px 'JetBrains Mono',monospace;color:var(--tk-text-strong);transition:background .4s ease;padding:1px 3px;border-radius:3px;}
   .tk .g{font:600 11px 'JetBrains Mono',monospace;}
 
   .hero{max-width:1100px;margin:0 auto;padding:72px 32px 34px;text-align:center;display:flex;flex-direction:column;align-items:center;}
-  .eyebrow{display:flex;align-items:center;gap:12px;font:600 10.5px 'JetBrains Mono',monospace;letter-spacing:.26em;text-transform:uppercase;color:#94A3B8;margin-bottom:26px;}
-  .eyebrow i{width:28px;height:1px;background:#CBD5E1;display:block;}
-  .hero h1{font-weight:600;font-size:clamp(2.5rem,5.4vw,4.1rem);line-height:1.04;letter-spacing:-.035em;color:#0F172A;margin:0;max-width:16ch;text-wrap:balance;}
-  .hero p{font-size:1.1rem;line-height:1.6;color:#64748B;max-width:600px;margin:22px auto 0;text-wrap:pretty;}
+  .eyebrow{display:flex;align-items:center;gap:12px;font:600 10.5px 'JetBrains Mono',monospace;letter-spacing:.26em;text-transform:uppercase;color:var(--tk-text-faint);margin-bottom:26px;}
+  .eyebrow i{width:28px;height:1px;background:var(--tk-border-strong);display:block;}
+  .hero h1{font-weight:600;font-size:clamp(2.5rem,5.4vw,4.1rem);line-height:1.04;letter-spacing:-.035em;color:var(--tk-text-strong);margin:0;max-width:16ch;text-wrap:balance;}
+  .hero p{font-size:1.1rem;line-height:1.6;color:var(--tk-text-muted);max-width:600px;margin:22px auto 0;text-wrap:pretty;}
 
-  .kicker{display:flex;align-items:center;justify-content:center;gap:11px;font:600 10px 'JetBrains Mono',monospace;letter-spacing:.24em;text-transform:uppercase;color:#94A3B8;margin:14px 0 6px;}
-  .kicker i{width:44px;height:1px;background:#E2E8F0;display:block;}
+  .kicker{display:flex;align-items:center;justify-content:center;gap:11px;font:600 10px 'JetBrains Mono',monospace;letter-spacing:.24em;text-transform:uppercase;color:var(--tk-text-faint);margin:14px 0 6px;}
+  .kicker i{width:44px;height:1px;background:var(--tk-border);display:block;}
 
   .carousel{position:relative;width:100%;height:700px;overflow:hidden;}
   .track{position:absolute;top:38px;left:50%;display:flex;align-items:flex-start;gap:28px;transition:transform .5s cubic-bezier(.22,.61,.36,1);}
-  .card{flex:0 0 300px;width:300px;background:#FFF;border:1px solid #E2E8F0;border-radius:14px;overflow:hidden;cursor:pointer;
+  .card{flex:0 0 300px;width:300px;background:var(--tk-surface);border:1px solid var(--tk-border);border-radius:14px;overflow:hidden;cursor:pointer;
     transition:transform .5s cubic-bezier(.22,.61,.36,1),filter .5s ease,opacity .5s ease,box-shadow .25s ease,border-color .2s ease;}
-  .card-preview{height:132px;background:#F8FAFC;border-bottom:1px solid #EEF2F6;position:relative;display:flex;align-items:center;justify-content:center;}
+  .card-preview{height:132px;background:var(--tk-surface-sunken);border-bottom:1px solid var(--tk-border);position:relative;display:flex;align-items:center;justify-content:center;}
   .card-body{padding:20px 22px 22px;}
-  .card-title{font-size:1.12rem;font-weight:600;color:#0F172A;letter-spacing:-.01em;}
-  .card-desc{font-size:.82rem;line-height:1.55;color:#64748B;margin:8px 0 0;min-height:63px;}
-  .card-foot{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid #F1F5F9;}
-  .card-tag{font:600 9px 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:#94A3B8;}
+  .card-title{font-size:1.12rem;font-weight:600;color:var(--tk-text-strong);letter-spacing:-.01em;}
+  .card-desc{font-size:.82rem;line-height:1.55;color:var(--tk-text-muted);margin:8px 0 0;min-height:63px;}
+  .card-foot{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--tk-border-soft);}
+  .card-tag{font:600 9px 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--tk-text-faint);}
   .card-open{font:600 12px 'DM Sans',sans-serif;color:var(--accent);}
-  .wl-row{display:flex;align-items:center;justify-content:space-between;font:600 11px 'JetBrains Mono',monospace;color:#475569;}
+  .wl-row{display:flex;align-items:center;justify-content:space-between;font:600 11px 'JetBrains Mono',monospace;color:var(--tk-text-soft);}
 
-  .arrow{position:absolute;top:196px;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:#FFF;border:1px solid #E2E8F0;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;color:#475569;font-size:20px;line-height:1;box-shadow:0 2px 10px rgba(15,23,42,.10);z-index:7;transition:all .2s ease;}
-  .arrow:hover{border-color:var(--accent);color:var(--accent);box-shadow:0 4px 16px rgba(79,127,214,.24);}
+  .arrow{position:absolute;top:196px;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:var(--tk-surface);border:1px solid var(--tk-border);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;color:var(--tk-text-soft);font-size:20px;line-height:1;box-shadow:0 2px 10px var(--tk-shadow-md);z-index:7;transition:all .2s ease;}
+  .arrow:hover{border-color:var(--accent);color:var(--accent);box-shadow:0 4px 16px var(--tk-accent-glow);}
   .arrow.l{left:calc(50% - 208px);} .arrow.r{left:calc(50% + 164px);}
   .dots{position:absolute;bottom:6px;left:0;right:0;display:flex;gap:8px;justify-content:center;z-index:7;}
-  .dot{width:8px;height:8px;border-radius:4px;border:none;padding:0;background:#CBD5E1;cursor:pointer;transition:all .25s ease;}
+  .dot{width:8px;height:8px;border-radius:4px;border:none;padding:0;background:var(--tk-border-strong);cursor:pointer;transition:all .25s ease;}
   .dot.active{width:22px;background:var(--accent);}
-  .hint{text-align:center;font-size:.78rem;color:#94A3B8;margin-top:2px;}
+  .hint{text-align:center;font-size:.78rem;color:var(--tk-text-faint);margin-top:2px;}
 
   .foot{max-width:1180px;margin:56px auto 0;padding:20px 32px 30px;}
-  .foot-in{border-top:1px solid #E9EDF2;padding-top:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
-  .foot-brand{font:700 11px 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:#475569;}
-  .foot-meta{display:flex;gap:24px;font-size:.74rem;color:#94A3B8;}
+  .foot-in{border-top:1px solid var(--tk-border);padding-top:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+  .foot-brand{font:700 11px 'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--tk-text-soft);}
+  .foot-meta{display:flex;gap:24px;font-size:.74rem;color:var(--tk-text-faint);}
 </style></head>
 <body>
   <div class="bar"><div class="bar-in">
@@ -225,6 +253,7 @@ PAGE = r"""
         <span class="vd"></span>
         <div class="clock"><div class="t" data-tz="Africa/Johannesburg">--:--:--</div><div class="c">Johannesburg</div></div>
       </div>
+      <div class="theme-toggle" role="group" aria-label="Theme">__TOGGLE__</div>
       <div class="live"><span class="ring"><b></b><i></i></span><span>LIVE</span></div>
     </div>
   </div></div>
@@ -253,6 +282,15 @@ PAGE = r"""
   </div></div>
 
 <script>
+  var THEME = "__THEME__";
+__THEME_JS__
+  document.querySelectorAll('[data-set-theme]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var t = b.getAttribute('data-set-theme');
+      if (t !== THEME) seccoSetTheme(t);
+    });
+  });
+
   var instruments = [
     {s:'S&P 500',v:6120.34,c:0.42,dec:2},{s:'Nasdaq 100',v:22480.9,c:0.61,dec:1},
     {s:'Russell 2000',v:2310.55,c:-0.18,dec:2},{s:'US 10Y',v:4.283,c:2,dec:3,mode:'bp'},
@@ -262,8 +300,8 @@ PAGE = r"""
     {s:'DXY',v:104.21,c:0.08,dec:2},{s:'Copper',v:4.618,c:0.71,dec:3}
   ];
   function fmtVal(it){var val=it.v.toLocaleString('en-US',{minimumFractionDigits:it.dec,maximumFractionDigits:it.dec});return it.mode==='bp'?val+'%':val;}
-  function chgTxt(it){if(it.mode==='bp'){var r=Math.round(it.c);return (r>=0?'+':'')+r+'bp';}return (it.c>=0?'\u25B2 ':'\u25BC ')+Math.abs(it.c).toFixed(2)+'%';}
-  function chgCol(it){return it.c>=0?'#16A34A':'#DC2626';}
+  function chgTxt(it){if(it.mode==='bp'){var r=Math.round(it.c);return (r>=0?'+':'')+r+'bp';}return (it.c>=0?'▲ ':'▼ ')+Math.abs(it.c).toFixed(2)+'%';}
+  function chgCol(it){return it.c>=0?'var(--tk-pos)':'var(--tk-neg)';}
   function itemHTML(it){return '<div class="tk"><span class="s">'+it.s+'</span><span class="v" data-val data-sym="'+it.s+'">'+fmtVal(it)+
     '</span><span class="g" data-chg data-sym="'+it.s+'" style="color:'+chgCol(it)+'">'+chgTxt(it)+'</span></div>';}
   (function(){var one=instruments.map(itemHTML).join('');document.querySelector('[data-ticker-track]').innerHTML=one+one;})();
@@ -273,7 +311,7 @@ PAGE = r"""
     it.c += it.mode==='bp' ? (Math.random()-0.5)*1.2 : (Math.random()-0.5)*0.14;
     var sel='[data-sym="'+it.s+'"]';
     document.querySelectorAll(sel+'[data-val]').forEach(function(el){el.textContent=fmtVal(it);
-      el.style.background=it.c>=0?'rgba(22,163,74,0.14)':'rgba(220,38,38,0.12)';setTimeout(function(){el.style.background='transparent';},550);});
+      el.style.background=it.c>=0?'var(--tk-flash-pos)':'var(--tk-flash-neg)';setTimeout(function(){el.style.background='transparent';},550);});
     document.querySelectorAll(sel+'[data-chg]').forEach(function(el){el.textContent=chgTxt(it);el.style.color=chgCol(it);});
   },2600);
 
@@ -288,8 +326,8 @@ PAGE = r"""
   function render(){
     track.style.transform='translateX('+(-(150+cur*step))+'px)';
     cards.forEach(function(c,i){var a=i===cur;c.style.opacity=a?'1':'0.4';c.style.transform=a?'scale(1)':'scale(0.82)';
-      c.style.filter=a?'none':'blur(2.5px)';c.style.boxShadow=a?'0 20px 44px rgba(15,23,42,0.15)':'0 2px 8px rgba(15,23,42,0.05)';
-      c.style.zIndex=a?'3':'1';c.style.borderColor=a?'#DCE3EC':'#E2E8F0';});
+      c.style.filter=a?'none':'blur(2.5px)';c.style.boxShadow=a?'0 20px 44px var(--tk-shadow-lg)':'0 2px 8px var(--tk-shadow-sm)';
+      c.style.zIndex=a?'3':'1';c.style.borderColor=a?'var(--tk-border-strong)':'var(--tk-border)';});
     dots.forEach(function(d,i){d.classList.toggle('active',i===cur);});
   }
   function go(i){cur=(i+n)%n;render();}
@@ -300,9 +338,11 @@ PAGE = r"""
   cards.forEach(function(c,i){c.addEventListener('click',function(){
     if(i!==cur){go(i);return;}
     var href=c.getAttribute('data-href');
-    // Sandboxed component iframe: open the Streamlit page in a new tab against the parent origin.
+    // Sandboxed component iframe: open the Streamlit page in a new tab against the
+    // parent origin. The new tab is a fresh session, so carry the theme on the URL
+    // rather than relying on the localStorage bridge to correct it after load.
     try{href=window.top.location.origin+href;}catch(e){}
-    window.open(href,'_blank');
+    window.open(href+'?theme='+THEME,'_blank');
   });});
   var carousel=document.querySelector('[data-carousel]');var auto=null;
   function startAuto(){auto=setInterval(function(){go(cur+1);},6500);}
@@ -315,7 +355,10 @@ PAGE = r"""
 """
 
 html = (
-    PAGE.replace("__ACCENT__", ACCENT)
+    PAGE.replace("__VARS__", css_variables(THEME))
+        .replace("__THEME__", THEME)
+        .replace("__THEME_JS__", storage_writer_js())
+        .replace("__TOGGLE__", toggle_html)
         .replace("__LOGO__", logo_img)
         .replace("__CARDS__", cards_html)
         .replace("__DOTS__", dots_html)

@@ -142,36 +142,6 @@ def fetch_quote(ticker: str) -> dict:
     return out
 
 
-@st.cache_data(ttl=900, show_spinner=False)
-def fetch_30d_avg_volume(ticker: str) -> Optional[float]:
-    """Return 30-day average dollar volume (price * volume). Used for ETF liquidity ranking."""
-    try:
-        t = yf.Ticker(ticker)
-        df = t.history(period="3mo", auto_adjust=True)
-        if df is None or df.empty:
-            return None
-        recent = df.tail(30)
-        if recent.empty or "Volume" not in recent.columns:
-            return None
-        return float((recent["Close"] * recent["Volume"]).mean())
-    except Exception as e:
-        logger.warning(f"Volume fetch failed for {ticker}: {e}")
-        return None
-
-
-def pick_most_liquid(candidates: list[str]) -> tuple[str, dict[str, Optional[float]]]:
-    """
-    Return (chosen_ticker, all_volumes) — the ETF with the highest 30-day avg dollar
-    volume from the candidate list. Falls back to candidates[0] if all fetches fail.
-    """
-    volumes = {tk: fetch_30d_avg_volume(tk) for tk in candidates}
-    ranked = [tk for tk, v in volumes.items() if v is not None]
-    if not ranked:
-        return candidates[0], volumes
-    chosen = max(ranked, key=lambda tk: volumes[tk] or 0)
-    return chosen, volumes
-
-
 # ---------------------------------------------------------------------------
 # Fund / ETF top holdings (used to show index constituents via a tracking ETF)
 # ---------------------------------------------------------------------------

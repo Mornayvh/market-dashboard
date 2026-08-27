@@ -7,7 +7,8 @@ from datetime import datetime
 
 import streamlit as st
 
-from src.direct_investments.config import HOLDINGS, HOLDING_ORDER, get_holding
+from src.direct_investments.config import HOLDING_ORDER, get_holding
+from src.theme import apply_theme
 from src.direct_investments.views import (
     render_holding_header, render_comps, render_sparkline_grid,
     render_fred_indicators, render_trends, render_static_block,
@@ -21,53 +22,57 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Publishes the --tk-* palette the stylesheet below reads from. Must run before
+# any chart is built.
+apply_theme()
+
 # ---------------------------------------------------------------------------
-# CSS — match existing dashboards
+# CSS — match existing dashboards, driven by the active theme's --tk-* variables
 # ---------------------------------------------------------------------------
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
 
-    .stApp { background-color: #F8FAFC; color: #1E293B; }
+    .stApp { background-color: var(--tk-app-bg); color: var(--tk-text); }
     .block-container { padding-top: 2rem; padding-bottom: 1rem; max-width: 1400px; }
 
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
     .stDeployButton { display: none; }
-    header[data-testid="stHeader"] { background: #F8FAFC; }
+    header[data-testid="stHeader"] { background: var(--tk-app-bg); }
 
     .di-header {
         display: flex; justify-content: space-between; align-items: center;
-        padding: 0.75rem 0 1.25rem 0; border-bottom: 1px solid #E2E8F0; margin-bottom: 1.5rem;
+        padding: 0.75rem 0 1.25rem 0; border-bottom: 1px solid var(--tk-border); margin-bottom: 1.5rem;
     }
     .di-title {
         font-family: 'DM Sans', sans-serif; font-size: 1.4rem;
-        font-weight: 700; color: #1E293B; letter-spacing: -0.02em;
+        font-weight: 700; color: var(--tk-text); letter-spacing: -0.02em;
     }
     .di-subtitle {
-        font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: #64748B; margin-top: 2px;
+        font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--tk-text-muted); margin-top: 2px;
     }
     .di-timestamp {
-        font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #64748B; text-align: right;
+        font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--tk-text-muted); text-align: right;
     }
 
     .section-header {
         font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
-        color: #64748B; text-transform: uppercase; letter-spacing: 0.12em;
-        padding: 1.1rem 0 0.5rem 0; border-bottom: 1px solid #E2E8F0; margin-bottom: 0.8rem;
+        color: var(--tk-text-muted); text-transform: uppercase; letter-spacing: 0.12em;
+        padding: 1.1rem 0 0.5rem 0; border-bottom: 1px solid var(--tk-border); margin-bottom: 0.8rem;
     }
 
     .holding-header {
-        background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px;
+        background: var(--tk-surface); border: 1px solid var(--tk-border); border-radius: 6px;
         padding: 1rem 1.25rem; margin-bottom: 1rem;
     }
     .holding-name {
         font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-weight: 700;
-        color: #1E293B; letter-spacing: -0.01em;
+        color: var(--tk-text); letter-spacing: -0.01em;
     }
     .holding-desc {
-        font-family: 'DM Sans', sans-serif; font-size: 0.85rem; color: #475569;
+        font-family: 'DM Sans', sans-serif; font-size: 0.85rem; color: var(--tk-text-soft);
         margin-top: 0.25rem;
     }
     .holding-callouts {
@@ -76,14 +81,14 @@ st.markdown("""
     .callout-thesis, .callout-risk {
         font-family: 'DM Sans', sans-serif; font-size: 0.78rem;
         padding: 0.5rem 0.75rem; border-radius: 4px; flex: 1; min-width: 240px;
-        border: 1px solid #E2E8F0;
+        border: 1px solid var(--tk-border);
     }
-    .callout-thesis { background: rgba(22,163,74,0.05); }
-    .callout-risk   { background: rgba(220,38,38,0.04); }
+    .callout-thesis { background: var(--tk-callout-pos-bg); }
+    .callout-risk   { background: var(--tk-callout-neg-bg); }
     .callout-label {
         display: block; font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
         font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;
-        color: #64748B; margin-bottom: 0.25rem;
+        color: var(--tk-text-muted); margin-bottom: 0.25rem;
     }
 
     .data-table {
@@ -92,23 +97,23 @@ st.markdown("""
     }
     .data-table th {
         font-family: 'DM Sans', sans-serif; font-size: 0.63rem; font-weight: 600;
-        color: #64748B; text-transform: uppercase; letter-spacing: 0.08em;
-        padding: 0.5rem 0.6rem; border-bottom: 1px solid #E2E8F0; text-align: right;
+        color: var(--tk-text-muted); text-transform: uppercase; letter-spacing: 0.08em;
+        padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--tk-border); text-align: right;
     }
     .data-table th:first-child { text-align: left; }
     .data-table td {
-        padding: 0.5rem 0.6rem; border-bottom: 1px solid #F1F5F9;
-        color: #1E293B; text-align: right;
+        padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--tk-border-soft);
+        color: var(--tk-text); text-align: right;
     }
     .data-table td:first-child {
         text-align: left; font-family: 'DM Sans', sans-serif;
         font-weight: 500; font-size: 0.82rem;
     }
-    .data-table tr:hover { background: #F1F5F9; }
+    .data-table tr:hover { background: var(--tk-surface-alt); }
 
     .stock-ticker {
         font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
-        color: #94A3B8; margin-left: 0.4rem;
+        color: var(--tk-text-faint); margin-left: 0.4rem;
     }
     .comp-name-primary { font-weight: 700; }
     /* HQ country flag; sits before the company name, place name on hover */
@@ -119,28 +124,28 @@ st.markdown("""
     .primary-chip {
         display: inline-block; font-family: 'JetBrains Mono', monospace;
         font-size: 0.55rem; font-weight: 700; padding: 1px 6px;
-        background: #4F7FD6; color: white; border-radius: 3px; margin-left: 6px;
+        background: var(--tk-accent); color: var(--tk-on-accent); border-radius: 3px; margin-left: 6px;
         letter-spacing: 0.05em;
     }
     .comp-link { color: inherit; text-decoration: none; }
-    .comp-link:hover { color: #4F7FD6; text-decoration: underline; }
+    .comp-link:hover { color: var(--tk-accent); text-decoration: underline; }
 
     /* Hoverable tooltip on indicator/comp names */
     .has-tooltip {
         position: relative;
         cursor: help;
-        border-bottom: 1px dotted #94A3B8;
+        border-bottom: 1px dotted var(--tk-text-faint);
     }
     .has-tooltip::after {
         content: attr(data-tooltip);
         position: absolute;
         bottom: calc(100% + 6px); left: 0;
-        background: #1E293B; color: #F8FAFC;
+        background: var(--tk-tooltip-bg); color: var(--tk-tooltip-text);
         padding: 0.55rem 0.75rem; border-radius: 4px;
         font-family: 'DM Sans', sans-serif; font-size: 0.72rem; font-weight: 400;
         line-height: 1.4; letter-spacing: normal; text-transform: none;
         white-space: normal; width: 340px;
-        z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+        z-index: 1000; box-shadow: 0 4px 12px var(--tk-shadow-md);
         opacity: 0; visibility: hidden; transform: translateY(4px);
         transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
         pointer-events: none;
@@ -155,14 +160,14 @@ st.markdown("""
     }
     .tooltip-chip {
         font-family: 'DM Sans', sans-serif; font-size: 0.72rem; font-weight: 500;
-        color: #1E293B; background: #F1F5F9; border: 1px solid #E2E8F0;
+        color: var(--tk-text); background: var(--tk-surface-alt); border: 1px solid var(--tk-border);
         padding: 0.25rem 0.6rem; border-radius: 999px;
     }
     /* (i) info icon explaining the search-interest chart — reuses .has-tooltip */
     .info-icon {
         display: inline-flex; align-items: center; justify-content: center;
         width: 17px; height: 17px; border-radius: 50%;
-        background: #4F7FD6; color: #FFFFFF;
+        background: var(--tk-accent); color: var(--tk-on-accent);
         font-family: 'DM Sans', sans-serif; font-size: 0.66rem; font-weight: 700;
         font-style: italic; line-height: 1; cursor: help;
         border: none; border-bottom: none; flex: 0 0 auto;
@@ -173,20 +178,20 @@ st.markdown("""
         display: flex; justify-content: space-between; align-items: baseline;
         font-family: 'DM Sans', sans-serif;
     }
-    .spark-name { font-size: 0.82rem; font-weight: 600; color: #1E293B; }
-    .spark-ticker { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: #94A3B8; }
+    .spark-name { font-size: 0.82rem; font-weight: 600; color: var(--tk-text); }
+    .spark-ticker { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--tk-text-faint); }
     .spark-metric {
         font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
-        color: #475569; margin-top: 2px;
+        color: var(--tk-text-soft); margin-top: 2px;
     }
-    .spark-price { color: #1E293B; font-weight: 600; }
+    .spark-price { color: var(--tk-text); font-weight: 600; }
 
     .stButton > button {
-        background: #FFFFFF; color: #1E293B; border: 1px solid #CBD5E1;
+        background: var(--tk-surface); color: var(--tk-text); border: 1px solid var(--tk-border-strong);
         font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
         border-radius: 4px; padding: 0.4rem 1.2rem;
     }
-    .stButton > button:hover { background: #F1F5F9; border-color: #4F7FD6; color: #1E293B; }
+    .stButton > button:hover { background: var(--tk-surface-alt); border-color: var(--tk-accent); color: var(--tk-text); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -292,7 +297,7 @@ if holding.static_caption:
 # Footer
 st.markdown("---")
 st.markdown(
-    '<div style="text-align:center; font-size:0.65rem; color:#94A3B8; '
+    '<div style="text-align:center; font-size:0.65rem; color:var(--tk-text-faint); '
     'font-family:\'DM Sans\',sans-serif;">'
     'Direct Investments · Secco Capital · Confidential · Not investment advice'
     '</div>',

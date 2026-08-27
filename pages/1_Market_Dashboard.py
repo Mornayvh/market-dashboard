@@ -10,12 +10,12 @@ from datetime import datetime
 import streamlit as st
 import pandas as pd
 
-from src.config import ASSETS, ASSETS_BY_CATEGORY, CATEGORIES, Asset, EQUITY_PE_MAP
+from src.config import ASSETS
 from src.data_ingest import fetch_all_data
 from src.data_process import process_all, get_category_df, compute_vix_average, fetch_equity_pe
-from src.commentary import generate_commentary
+from src.theme import apply_theme
 from src.viz_helpers import (
-    COLORS, fmt_value, fmt_change, change_color,
+    fmt_value, fmt_change, change_color,
     make_sparkline, make_vix_sparkline, make_ltm_bar_chart,
 )
 
@@ -32,8 +32,13 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# Publishes the --tk-* palette the stylesheet below reads from, and points
+# viz_helpers.COLORS at the same palette so the charts follow. Must run before
+# any chart is built.
+apply_theme()
+
 # ---------------------------------------------------------------------------
-# Custom CSS — dark institutional theme
+# Custom CSS — house style, driven by the active theme's --tk-* variables
 # ---------------------------------------------------------------------------
 
 st.markdown("""
@@ -42,8 +47,8 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
 
     .stApp {
-        background-color: #F8FAFC;
-        color: #1E293B;
+        background-color: var(--tk-app-bg);
+        color: var(--tk-text);
     }
 
     /* Remove default padding */
@@ -59,7 +64,7 @@ st.markdown("""
         justify-content: space-between;
         align-items: center;
         padding: 0.75rem 0 1.25rem 0;
-        border-bottom: 1px solid #E2E8F0;
+        border-bottom: 1px solid var(--tk-border);
         margin-bottom: 1.5rem;
     }
     .dashboard-header-left {
@@ -70,24 +75,27 @@ st.markdown("""
     .dashboard-logo {
         height: 36px;
         width: auto;
+        /* The wordmark is a single flat slate; on a dark ground it has to be
+           inverted to stay legible. No-op in the light theme. */
+        filter: var(--tk-logo-filter);
     }
     .dashboard-title {
         font-family: 'DM Sans', sans-serif;
         font-size: 1.4rem;
         font-weight: 700;
-        color: #1E293B;
+        color: var(--tk-text);
         letter-spacing: -0.02em;
     }
     .dashboard-subtitle {
         font-family: 'DM Sans', sans-serif;
         font-size: 0.8rem;
-        color: #64748B;
+        color: var(--tk-text-muted);
         margin-top: 2px;
     }
     .dashboard-timestamp {
         font-family: 'JetBrains Mono', monospace;
         font-size: 0.72rem;
-        color: #64748B;
+        color: var(--tk-text-muted);
         text-align: right;
     }
 
@@ -96,28 +104,28 @@ st.markdown("""
         font-family: 'JetBrains Mono', monospace;
         font-size: 0.7rem;
         font-weight: 600;
-        color: #64748B;
+        color: var(--tk-text-muted);
         text-transform: uppercase;
         letter-spacing: 0.12em;
         padding: 0.6rem 0 0.4rem 0;
-        border-bottom: 1px solid #E2E8F0;
+        border-bottom: 1px solid var(--tk-border);
         margin-bottom: 0.6rem;
     }
 
     /* ── Metric card ── */
     .metric-card {
-        background: #FFFFFF;
-        border: 1px solid #E2E8F0;
+        background: var(--tk-surface);
+        border: 1px solid var(--tk-border);
         border-radius: 6px;
         padding: 0.75rem 0.9rem;
         margin-bottom: 0.5rem;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        box-shadow: 0 1px 2px var(--tk-shadow-sm);
     }
     .metric-name {
         font-family: 'DM Sans', sans-serif;
         font-size: 0.72rem;
         font-weight: 500;
-        color: #64748B;
+        color: var(--tk-text-muted);
         margin-bottom: 0.25rem;
         text-transform: uppercase;
         letter-spacing: 0.04em;
@@ -126,7 +134,7 @@ st.markdown("""
         font-family: 'JetBrains Mono', monospace;
         font-size: 1.3rem;
         font-weight: 700;
-        color: #1E293B;
+        color: var(--tk-text);
         line-height: 1.2;
     }
     .metric-changes {
@@ -139,7 +147,7 @@ st.markdown("""
         font-size: 0.68rem;
     }
     .metric-change-label {
-        color: #64748B;
+        color: var(--tk-text-muted);
         margin-right: 0.25rem;
     }
 
@@ -154,40 +162,40 @@ st.markdown("""
         font-family: 'DM Sans', sans-serif;
         font-size: 0.65rem;
         font-weight: 600;
-        color: #64748B;
+        color: var(--tk-text-muted);
         text-transform: uppercase;
         letter-spacing: 0.08em;
         padding: 0.5rem 0.6rem;
-        border-bottom: 1px solid #E2E8F0;
+        border-bottom: 1px solid var(--tk-border);
         text-align: right;
     }
     .data-table th:first-child { text-align: left; }
     .data-table td {
         padding: 0.55rem 0.6rem;
-        border-bottom: 1px solid #F1F5F9;
+        border-bottom: 1px solid var(--tk-border-soft);
         text-align: right;
-        color: #1E293B;
+        color: var(--tk-text);
     }
     .data-table td:first-child {
         text-align: left;
-        color: #1E293B;
+        color: var(--tk-text);
         font-weight: 500;
         font-family: 'DM Sans', sans-serif;
         font-size: 0.78rem;
     }
-    .data-table tr:hover { background: #F1F5F9; }
+    .data-table tr:hover { background: var(--tk-surface-alt); }
 
     /* ── Hide Streamlit defaults ── */
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
     .stDeployButton { display: none; }
-    header[data-testid="stHeader"] { background: #F8FAFC; }
+    header[data-testid="stHeader"] { background: var(--tk-app-bg); }
 
     /* Button styling */
     .stButton > button {
-        background: #FFFFFF;
-        color: #1E293B;
-        border: 1px solid #CBD5E1;
+        background: var(--tk-surface);
+        color: var(--tk-text);
+        border: 1px solid var(--tk-border-strong);
         font-family: 'DM Sans', sans-serif;
         font-size: 0.78rem;
         font-weight: 600;
@@ -195,9 +203,9 @@ st.markdown("""
         padding: 0.4rem 1.2rem;
     }
     .stButton > button:hover {
-        background: #F1F5F9;
-        border-color: #4F7FD6;
-        color: #1E293B;
+        background: var(--tk-surface-alt);
+        border-color: var(--tk-accent);
+        color: var(--tk-text);
     }
 
     /* Plotly chart backgrounds */
@@ -213,46 +221,10 @@ st.markdown("""
         position: relative;
         top: -1px;
     }
-    .status-live { background: #16A34A; }
-    .status-stale { background: #F59E0B; }
-    .status-error { background: #DC2626; }
+    .status-live { background: var(--tk-pos); }
+    .status-stale { background: var(--tk-warn); }
+    .status-error { background: var(--tk-neg); }
 
-    /* ── Commentary panel ── */
-    .commentary-panel {
-        background: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        border-radius: 6px;
-        padding: 1.1rem 1.2rem;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-    }
-    .commentary-label {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.65rem;
-        font-weight: 600;
-        color: #64748B;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        margin-bottom: 0.7rem;
-        padding-bottom: 0.4rem;
-        border-bottom: 1px solid #E2E8F0;
-    }
-    .commentary-text {
-        font-family: 'DM Sans', sans-serif;
-        font-size: 0.82rem;
-        color: #334155;
-        line-height: 1.65;
-    }
-    .commentary-text p {
-        margin-bottom: 0.65rem;
-    }
-    .commentary-footer {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.6rem;
-        color: #94A3B8;
-        margin-top: 0.7rem;
-        padding-top: 0.5rem;
-        border-top: 1px solid #E2E8F0;
-    }
     /* ── Mobile responsive ── */
     @media (max-width: 768px) {
         .block-container { padding-left: 0.5rem; padding-right: 0.5rem; max-width: 100%; }
@@ -282,12 +254,6 @@ def load_data():
     vix_avg = compute_vix_average(raw)
     equity_pe = fetch_equity_pe()
     return raw, metrics, vix_avg, equity_pe, datetime.now()
-
-
-@st.cache_data(ttl=300, show_spinner=False)
-def load_commentary(_metrics_df_hash: str, metrics_df: pd.DataFrame):
-    """Generate commentary from current data. Cached separately."""
-    return generate_commentary(metrics_df)
 
 # ---------------------------------------------------------------------------
 # Rendering helpers
@@ -422,38 +388,9 @@ def render_volatility_table(metrics_df: pd.DataFrame, vix_avg: float | None):
     if vix_avg is not None:
         rows_html += f'<tr><td>1Y Average</td><td>{vix_avg:.1f}</td><td>\u2014</td><td>\u2014</td><td>\u2014</td></tr>'
 
-    html = f"""<table class="data-table"><thead><tr><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:left; font-family:'DM Sans',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">Asset</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:right; font-family:'DM Sans',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">Last</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:right; font-family:'DM Sans',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">1D (%)</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:right; font-family:'DM Sans',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">1W (%)</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:right; font-family:'DM Sans',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">LTM (%)</th></tr></thead><tbody>{rows_html}</tbody></table>"""
+    html = f"""<table class="data-table"><thead><tr><th style="padding:0.5rem 0.6rem; border-bottom:1px solid var(--tk-border); text-align:left; font-family:'DM Sans',sans-serif; font-size:0.65rem; font-weight:600; color:var(--tk-text-muted); text-transform:uppercase; letter-spacing:0.08em;">Asset</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid var(--tk-border); text-align:right; font-family:'DM Sans',sans-serif; font-size:0.65rem; font-weight:600; color:var(--tk-text-muted); text-transform:uppercase; letter-spacing:0.08em;">Last</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid var(--tk-border); text-align:right; font-family:'DM Sans',sans-serif; font-size:0.65rem; font-weight:600; color:var(--tk-text-muted); text-transform:uppercase; letter-spacing:0.08em;">1D (%)</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid var(--tk-border); text-align:right; font-family:'DM Sans',sans-serif; font-size:0.65rem; font-weight:600; color:var(--tk-text-muted); text-transform:uppercase; letter-spacing:0.08em;">1W (%)</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid var(--tk-border); text-align:right; font-family:'DM Sans',sans-serif; font-size:0.65rem; font-weight:600; color:var(--tk-text-muted); text-transform:uppercase; letter-spacing:0.08em;">LTM (%)</th></tr></thead><tbody>{rows_html}</tbody></table>"""
     st.markdown(html, unsafe_allow_html=True)
 
-
-def render_commentary(metrics_df: pd.DataFrame, timestamp: datetime):
-    """Render the commentary panel."""
-    import hashlib
-    import os
-    # Create a hash of the metrics to use as cache key
-    metrics_hash = hashlib.md5(metrics_df.to_json().encode()).hexdigest()
-
-    commentary = load_commentary(metrics_hash, metrics_df)
-
-    if commentary:
-        # Convert plain paragraphs to HTML
-        paragraphs = [p.strip() for p in commentary.split("\n\n") if p.strip()]
-        html_paragraphs = "".join(f"<p>{p}</p>" for p in paragraphs)
-
-        # Determine source label
-        is_ai = bool(os.environ.get("ANTHROPIC_API_KEY"))
-        if not is_ai:
-            try:
-                is_ai = bool(st.secrets.get("general", {}).get("ANTHROPIC_API_KEY"))
-            except Exception:
-                pass
-        source = "AI-assisted" if is_ai else "Analyst notes"
-        from src.commentary import COMMENTARY
-        date_str = COMMENTARY.get("date", "")
-
-        st.markdown(f"""<div class="commentary-panel"><div class="commentary-label">Morning Commentary</div><div class="commentary-text">{html_paragraphs}</div><div class="commentary-footer">{date_str} · {source} · Not investment advice</div></div>""", unsafe_allow_html=True)
-    else:
-        st.markdown("""<div class="commentary-panel"><div class="commentary-label">Morning Commentary</div><div class="commentary-text"><p style="color:#94A3B8; font-style:italic;">No commentary available. Edit src/commentary.py to add notes, or set ANTHROPIC_API_KEY for auto-generated commentary.</p></div></div>""", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
 # Main layout
@@ -527,8 +464,8 @@ def main():
             for name, data in equity_pe.items():
                 cur = f"{data['current']:.1f}x" if data.get("current") is not None else "\u2014"
                 avg = f"{data['avg_5y']:.1f}x" if data.get("avg_5y") is not None else "\u2014"
-                pe_rows += f'<tr><td style="padding:0.55rem 0.6rem; border-bottom:1px solid #F1F5F9; text-align:left; color:#1E293B; font-weight:500; font-family:\'DM Sans\',sans-serif; font-size:0.78rem;">{name}</td><td style="padding:0.55rem 0.6rem; border-bottom:1px solid #F1F5F9; text-align:right; font-family:\'JetBrains Mono\',monospace; font-size:0.76rem; color:#1E293B;">{cur}</td><td style="padding:0.55rem 0.6rem; border-bottom:1px solid #F1F5F9; text-align:right; font-family:\'JetBrains Mono\',monospace; font-size:0.76rem; color:#64748B;">{avg}</td></tr>'
-            st.markdown(f'<div class="section-header" style="margin-top:12px;">Equity Multiples</div><table class="data-table"><thead><tr><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:left; font-family:\'DM Sans\',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">Index</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:right; font-family:\'DM Sans\',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">Trailing P/E</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid #E2E8F0; text-align:right; font-family:\'DM Sans\',sans-serif; font-size:0.65rem; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:0.08em;">5Y Avg</th></tr></thead><tbody>{pe_rows}</tbody></table>', unsafe_allow_html=True)
+                pe_rows += f'<tr><td style="padding:0.55rem 0.6rem; border-bottom:1px solid var(--tk-border-soft); text-align:left; color:var(--tk-text); font-weight:500; font-family:\'DM Sans\',sans-serif; font-size:0.78rem;">{name}</td><td style="padding:0.55rem 0.6rem; border-bottom:1px solid var(--tk-border-soft); text-align:right; font-family:\'JetBrains Mono\',monospace; font-size:0.76rem; color:var(--tk-text);">{cur}</td><td style="padding:0.55rem 0.6rem; border-bottom:1px solid var(--tk-border-soft); text-align:right; font-family:\'JetBrains Mono\',monospace; font-size:0.76rem; color:var(--tk-text-muted);">{avg}</td></tr>'
+            st.markdown(f'<div class="section-header" style="margin-top:12px;">Equity Multiples</div><table class="data-table"><thead><tr><th style="padding:0.5rem 0.6rem; border-bottom:1px solid var(--tk-border); text-align:left; font-family:\'DM Sans\',sans-serif; font-size:0.65rem; font-weight:600; color:var(--tk-text-muted); text-transform:uppercase; letter-spacing:0.08em;">Index</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid var(--tk-border); text-align:right; font-family:\'DM Sans\',sans-serif; font-size:0.65rem; font-weight:600; color:var(--tk-text-muted); text-transform:uppercase; letter-spacing:0.08em;">Trailing P/E</th><th style="padding:0.5rem 0.6rem; border-bottom:1px solid var(--tk-border); text-align:right; font-family:\'DM Sans\',sans-serif; font-size:0.65rem; font-weight:600; color:var(--tk-text-muted); text-transform:uppercase; letter-spacing:0.08em;">5Y Avg</th></tr></thead><tbody>{pe_rows}</tbody></table>', unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
 
@@ -580,7 +517,7 @@ def main():
     # ── Footer ──
     st.markdown("---")
     st.markdown(
-        '<div style="text-align:center; font-size:0.65rem; color:#94A3B8; font-family: \'DM Sans\', sans-serif;">'
+        '<div style="text-align:center; font-size:0.65rem; color:var(--tk-text-faint); font-family: \'DM Sans\', sans-serif;">'
         'Market Dashboard v1.0 — Data from Yahoo Finance & FRED — Not investment advice'
         '</div>',
         unsafe_allow_html=True,

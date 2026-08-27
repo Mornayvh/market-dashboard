@@ -4,7 +4,7 @@ Per-holding tickers, ETF candidates, FRED IDs, Google Trends queries,
 and static-data file references. Single source of truth.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 

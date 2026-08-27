@@ -13,6 +13,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+from src.theme import palette, plotly_layout
 from src.viz_helpers import COLORS, make_sparkline
 from src.direct_investments import data_loader, static_loader
 from src.direct_investments.config import (
@@ -20,9 +21,19 @@ from src.direct_investments.config import (
 )
 
 # Navy palette for column/bar charts — shades of navy blue with enough lightness
-# spread between adjacent steps to stay legible in grouped bars. Dark → light.
-NAVY_PALETTE = ["#0A2A4A", "#15528A", "#2E7BC4", "#5BA0DA", "#93C0EA", "#C7DEF4"]
-NAVY_BAR = "#15528A"   # single-series bar fill
+# spread between adjacent steps to stay legible in grouped bars. Read per call
+# rather than bound at import, so a theme switch takes effect: the light theme
+# runs dark → light, the dark theme reverses it so bars stay bright on a dark
+# card.
+
+
+def navy_palette() -> list[str]:
+    return palette()["navy_scale"]
+
+
+def navy_bar() -> str:
+    """Single-series bar fill."""
+    return palette()["navy_bar"]
 
 
 # ---------------------------------------------------------------------------
@@ -258,7 +269,7 @@ def render_comps(holding: Holding):
 
     fig = go.Figure()
     # Distinct muted palette for non-primary lines; primary uses the accent blue.
-    palette = ["#94A3B8", "#6366F1", "#F59E0B", "#14B8A6", "#EC4899"]
+    series_colors = palette()["muted_series"]
     palette_idx = 0
     for tk in rebased.columns:
         is_primary = (tk == primary)
@@ -266,7 +277,7 @@ def render_comps(holding: Holding):
         if is_primary:
             color = COLORS["accent"]
         else:
-            color = palette[palette_idx % len(palette)]
+            color = series_colors[palette_idx % len(series_colors)]
             palette_idx += 1
         fig.add_trace(go.Scatter(
             x=rebased.index,
@@ -280,8 +291,7 @@ def render_comps(holding: Holding):
     fig.update_layout(
         height=360,
         margin=dict(l=10, r=20, t=20, b=90),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
+        **plotly_layout(),
         xaxis=dict(showgrid=False, tickfont=dict(color=COLORS["text_secondary"], size=10)),
         yaxis=dict(
             showgrid=True, gridcolor=COLORS["border"], zeroline=False,
@@ -462,16 +472,16 @@ def render_trends(title: str, queries: list[TrendsQuery], note: str = ""):
 
     combined = pd.concat(series_frames, axis=1).ffill()
     fig = go.Figure()
-    palette = [COLORS["accent"], "#16A34A", "#DC2626", "#F59E0B"]
+    series_colors = palette()["categorical"][:4]
     for i, col in enumerate(combined.columns):
         fig.add_trace(go.Scatter(
             x=combined.index, y=combined[col],
-            mode="lines", line=dict(color=palette[i % len(palette)], width=1.6),
+            mode="lines", line=dict(color=series_colors[i % len(series_colors)], width=1.6),
             name=col, hovertemplate="%{y}<extra>%{fullData.name}</extra>",
         ))
     fig.update_layout(
         height=220, margin=dict(l=10, r=20, t=10, b=10),
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        **plotly_layout(),
         xaxis=dict(showgrid=False, tickfont=dict(color=COLORS["text_secondary"], size=10)),
         yaxis=dict(
             showgrid=True, gridcolor=COLORS["border"],
@@ -514,11 +524,11 @@ def render_static_block(block: StaticBlock):
             sub = df[df["company"] == comp]
             fig.add_trace(go.Bar(
                 x=sub["period"], y=sub["value"], name=comp,
-                marker_color=NAVY_PALETTE[i % len(NAVY_PALETTE)],
+                marker_color=navy_palette()[i % len(navy_palette())],
             ))
         fig.update_layout(
             height=320, margin=dict(l=10, r=20, t=10, b=10),
-            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            **plotly_layout(),
             barmode="group", bargap=0.2,
             xaxis=dict(tickfont=dict(color=COLORS["text_secondary"], size=10)),
             yaxis=dict(
@@ -546,7 +556,7 @@ def render_static_block(block: StaticBlock):
                 return
             df, meta = df_s, meta_s
             x_vals, y_vals = df["period"], df["value"]
-        fig = go.Figure(go.Bar(x=x_vals, y=y_vals, marker_color=NAVY_BAR, name=block.title))
+        fig = go.Figure(go.Bar(x=x_vals, y=y_vals, marker_color=navy_bar(), name=block.title))
         if block.show_trend and len(x_vals) >= 2:
             try:
                 x_num = np.arange(len(x_vals), dtype=float)
@@ -562,7 +572,7 @@ def render_static_block(block: StaticBlock):
                 pass
         fig.update_layout(
             height=280, margin=dict(l=10, r=20, t=10, b=10),
-            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            **plotly_layout(),
             xaxis=dict(tickfont=dict(color=COLORS["text_secondary"], size=10)),
             yaxis=dict(
                 showgrid=True, gridcolor=COLORS["border"],
@@ -612,7 +622,7 @@ def render_static_block(block: StaticBlock):
                 pass
         fig.update_layout(
             height=280, margin=dict(l=10, r=20, t=10, b=10),
-            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            **plotly_layout(),
             showlegend=False,
             xaxis=dict(tickfont=dict(color=COLORS["text_secondary"], size=10)),
             yaxis=dict(
@@ -655,12 +665,12 @@ def render_ad_groups(groups: list):
             sub = df[df["company"] == comp].set_index("year").reindex(years)
             fig.add_trace(go.Bar(
                 x=[str(y) for y in years], y=sub["value"], name=comp,
-                marker_color=NAVY_PALETTE[i % len(NAVY_PALETTE)],
+                marker_color=navy_palette()[i % len(navy_palette())],
                 hovertemplate=comp + " %{x}: $%{y:.2f}B<extra></extra>",
             ))
         fig.update_layout(
             height=320, margin=dict(l=10, r=20, t=10, b=10),
-            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            **plotly_layout(),
             barmode="group", bargap=0.2,
             xaxis=dict(tickfont=dict(color=COLORS["text_secondary"], size=10)),
             yaxis=dict(
@@ -720,12 +730,12 @@ def render_capex_chart(chart):
         sub = df[df["company"] == comp].set_index("period").reindex(quarters)
         fig.add_trace(go.Bar(
             x=quarters, y=sub["value"], name=comp,
-            marker_color=NAVY_PALETTE[i % len(NAVY_PALETTE)],
+            marker_color=navy_palette()[i % len(navy_palette())],
             hovertemplate=comp + " %{x}: $%{y:.2f}B<extra></extra>",
         ))
     fig.update_layout(
         height=320, margin=dict(l=10, r=20, t=10, b=10),
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        **plotly_layout(),
         barmode="group", bargap=0.2,
         xaxis=dict(tickfont=dict(color=COLORS["text_secondary"], size=10)),
         yaxis=dict(

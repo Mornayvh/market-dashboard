@@ -10,6 +10,8 @@ import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
 
+from src.theme import apply_theme, palette
+
 st.set_page_config(
     page_title="Stock Watchlist | Secco Capital",
     page_icon="◼",
@@ -17,38 +19,42 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# Publishes the --tk-* palette the stylesheet below reads from. Must run before
+# any chart is built.
+apply_theme()
+
 # ---------------------------------------------------------------------------
-# CSS
+# CSS — house style, driven by the active theme's --tk-* variables
 # ---------------------------------------------------------------------------
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
 
-    .stApp { background-color: #F8FAFC; color: #1E293B; }
+    .stApp { background-color: var(--tk-app-bg); color: var(--tk-text); }
     .block-container { padding-top: 2rem; padding-bottom: 1rem; max-width: 1400px; }
 
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
     .stDeployButton { display: none; }
-    header[data-testid="stHeader"] { background: #F8FAFC; }
+    header[data-testid="stHeader"] { background: var(--tk-app-bg); }
 
     .watch-header {
         display: flex; justify-content: space-between; align-items: center;
-        padding: 0.75rem 0 1.25rem 0; border-bottom: 1px solid #E2E8F0; margin-bottom: 1.5rem;
+        padding: 0.75rem 0 1.25rem 0; border-bottom: 1px solid var(--tk-border); margin-bottom: 1.5rem;
     }
     .watch-title {
         font-family: 'DM Sans', sans-serif; font-size: 1.4rem;
-        font-weight: 700; color: #1E293B; letter-spacing: -0.02em;
+        font-weight: 700; color: var(--tk-text); letter-spacing: -0.02em;
     }
     .watch-subtitle {
-        font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: #64748B; margin-top: 2px;
+        font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--tk-text-muted); margin-top: 2px;
     }
 
     .section-header {
         font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
-        color: #64748B; text-transform: uppercase; letter-spacing: 0.12em;
-        padding: 0.6rem 0 0.4rem 0; border-bottom: 1px solid #E2E8F0; margin-bottom: 0.6rem;
+        color: var(--tk-text-muted); text-transform: uppercase; letter-spacing: 0.12em;
+        padding: 0.6rem 0 0.4rem 0; border-bottom: 1px solid var(--tk-border); margin-bottom: 0.6rem;
     }
 
     .stock-table {
@@ -57,54 +63,54 @@ st.markdown("""
     }
     .stock-table th {
         font-family: 'DM Sans', sans-serif; font-size: 0.63rem; font-weight: 600;
-        color: #64748B; text-transform: uppercase; letter-spacing: 0.08em;
-        padding: 0.5rem 0.6rem; border-bottom: 1px solid #E2E8F0; text-align: right;
+        color: var(--tk-text-muted); text-transform: uppercase; letter-spacing: 0.08em;
+        padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--tk-border); text-align: right;
     }
     .stock-table th:first-child { text-align: left; }
     .stock-table td {
-        padding: 0.5rem 0.6rem; border-bottom: 1px solid #F1F5F9;
-        color: #1E293B; text-align: right;
+        padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--tk-border-soft);
+        color: var(--tk-text); text-align: right;
     }
     .stock-table td:first-child {
         text-align: left; font-family: 'DM Sans', sans-serif;
         font-weight: 500; font-size: 0.78rem;
     }
-    .stock-table tr:hover { background: #F1F5F9; }
+    .stock-table tr:hover { background: var(--tk-surface-alt); }
     .stock-ticker {
         font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
-        color: #94A3B8; margin-left: 0.4rem;
+        color: var(--tk-text-faint); margin-left: 0.4rem;
     }
 
     /* Hoverable listing note on tickers with an ambiguous / multi-listing story */
-    .ticker-note { position: relative; cursor: help; border-bottom: 1px dotted #94A3B8; }
+    .ticker-note { position: relative; cursor: help; border-bottom: 1px dotted var(--tk-text-faint); }
     .ticker-note::after {
-        content: 'ⓘ'; font-size: 0.6rem; color: #94A3B8;
+        content: 'ⓘ'; font-size: 0.6rem; color: var(--tk-text-faint);
         margin-left: 0.2rem; vertical-align: 0.1em;
     }
     .ticker-tip {
         visibility: hidden; opacity: 0; transition: opacity 0.12s ease;
         position: absolute; top: 130%; left: 0; z-index: 50;
         width: 260px; padding: 0.55rem 0.65rem;
-        background: #1E293B; color: #F8FAFC; border-radius: 4px;
-        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.22);
+        background: var(--tk-tooltip-bg); color: var(--tk-tooltip-text); border-radius: 4px;
+        box-shadow: 0 4px 14px var(--tk-shadow-lg);
         font-family: 'DM Sans', sans-serif; font-size: 0.68rem;
         font-weight: 400; line-height: 1.45; letter-spacing: 0;
         text-align: left; white-space: normal; text-transform: none;
     }
     .ticker-note:hover .ticker-tip { visibility: visible; opacity: 1; }
-    .ticker-tip b { font-weight: 600; color: #FFFFFF; }
+    .ticker-tip b { font-weight: 600; color: var(--tk-tooltip-strong); }
     /* "—" in Mkt Cap where no public market cap exists; reason on hover */
-    .mcap-na { cursor: help; border-bottom: 1px dotted #CBD5E1; color: #94A3B8; }
-    .chg-up { color: #16A34A; }
-    .chg-down { color: #DC2626; }
-    .chg-flat { color: #64748B; }
+    .mcap-na { cursor: help; border-bottom: 1px dotted var(--tk-border-strong); color: var(--tk-text-faint); }
+    .chg-up { color: var(--tk-pos); }
+    .chg-down { color: var(--tk-neg); }
+    .chg-flat { color: var(--tk-text-muted); }
 
     .stButton > button {
-        background: #FFFFFF; color: #1E293B; border: 1px solid #CBD5E1;
+        background: var(--tk-surface); color: var(--tk-text); border: 1px solid var(--tk-border-strong);
         font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
         border-radius: 4px; padding: 0.4rem 1.2rem;
     }
-    .stButton > button:hover { background: #F1F5F9; border-color: #4F7FD6; color: #1E293B; }
+    .stButton > button:hover { background: var(--tk-surface-alt); border-color: var(--tk-accent); color: var(--tk-text); }
 
     @media (max-width: 768px) {
         .block-container { padding-left: 0.5rem; padding-right: 0.5rem; max-width: 100%; }
@@ -357,14 +363,17 @@ def make_mini_sparkline(close_series, height=120):
 
     first_val = float(close_series.iloc[0])
     last_val = float(close_series.iloc[-1])
-    color = "#16A34A" if last_val >= first_val else "#DC2626"
+    pal = palette()
+    up = last_val >= first_val
+    color = pal["pos"] if up else pal["neg"]
+    r, g, b = (int(color.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4))
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=close_series.index, y=close_series.values,
         mode="lines", line=dict(color=color, width=1.5),
         fill="tozeroy",
-        fillcolor="rgba(22,163,74,0.06)" if last_val >= first_val else "rgba(220,38,38,0.06)",
+        fillcolor=f"rgba({r},{g},{b},0.06)",
         hoverinfo="skip",
     ))
 
@@ -387,12 +396,12 @@ def make_mini_sparkline(close_series, height=120):
             dict(
                 x=close_series.index[0], y=y_range[1],
                 text=start_date, showarrow=False, xanchor="left", yanchor="bottom",
-                font=dict(size=9, color="#94A3B8", family="JetBrains Mono, monospace"),
+                font=dict(size=9, color=pal["text-faint"], family="JetBrains Mono, monospace"),
             ),
             dict(
                 x=close_series.index[-1], y=y_range[1],
                 text=end_date, showarrow=False, xanchor="right", yanchor="bottom",
-                font=dict(size=9, color="#94A3B8", family="JetBrains Mono, monospace"),
+                font=dict(size=9, color=pal["text-faint"], family="JetBrains Mono, monospace"),
             ),
         ],
     )
@@ -478,4 +487,4 @@ for group_name in WATCHLIST.keys():
 
 # Footer
 st.markdown("---")
-st.markdown('<div style="text-align:center; font-size:0.65rem; color:#94A3B8; font-family:\'DM Sans\',sans-serif;">Stock Watchlist \u00b7 Secco Capital \u00b7 Confidential \u00b7 Not investment advice</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align:center; font-size:0.65rem; color:var(--tk-text-faint); font-family:\'DM Sans\',sans-serif;">Stock Watchlist \u00b7 Secco Capital \u00b7 Confidential \u00b7 Not investment advice</div>', unsafe_allow_html=True)
