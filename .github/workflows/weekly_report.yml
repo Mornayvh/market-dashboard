@@ -2,11 +2,12 @@ name: Weekly Report Email
 
 on:
   schedule:
-    # Fridays at 21:30 UTC — after the NYSE close year-round. The close is
+    # Fridays at 22:00 UTC — after the NYSE close year-round. The close is
     # 21:00 UTC under EST and 20:00 UTC under EDT, and GitHub cron has no DST
-    # handling, so this single time stays safely after the bell in both.
-    # 23:30 SAST / 22:30 UK in summer.
-    - cron: '30 21 * * 5'
+    # handling, so this single time clears the bell by an hour in winter and
+    # two in summer, leaving room for the daily bars to settle.
+    # Friday 23:00 UK in summer / 22:00 in winter; 00:00 SAST Saturday.
+    - cron: '0 22 * * 5'
 
   # Manual trigger, with the option to build without sending.
   workflow_dispatch:

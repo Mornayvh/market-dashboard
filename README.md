@@ -131,9 +131,10 @@ Generated PDFs are gitignored.
 
 `weekly_report_email.py` builds both PDFs, asks Claude for a short note on what
 drove markets, and sends the lot via Resend. Scheduled by
-`.github/workflows/weekly_report.yml` for **Fridays at 21:30 UTC** — after the
-NYSE close year-round (21:00 UTC under EST, 20:00 under EDT), since GitHub cron
-has no DST handling.
+`.github/workflows/weekly_report.yml` for **Fridays at 22:00 UTC** — an hour
+after the NYSE close in winter and two in summer (21:00 UTC under EST, 20:00
+under EDT), since GitHub cron has no DST handling. That is Friday evening in
+the UK but just past midnight Saturday in South Africa.
 
 ```bash
 python weekly_report_email.py --dry-run   # build and print, send nothing
