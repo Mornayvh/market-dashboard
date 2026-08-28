@@ -127,6 +127,54 @@ Generated PDFs are gitignored.
 
 ---
 
+## Weekly report email
+
+`weekly_report_email.py` builds both PDFs, asks Claude for a short note on what
+drove markets, and sends the lot via Resend. Scheduled by
+`.github/workflows/weekly_report.yml` for **Fridays at 21:30 UTC** — after the
+NYSE close year-round (21:00 UTC under EST, 20:00 under EDT), since GitHub cron
+has no DST handling.
+
+```bash
+python weekly_report_email.py --dry-run   # build and print, send nothing
+python weekly_report_email.py             # build and send
+```
+
+`workflow_dispatch` runs it on demand, with a `dry_run` checkbox. Each run
+archives the PDFs as a build artifact for 90 days.
+
+### Required GitHub secrets
+
+| Secret | Required | Notes |
+|--------|----------|-------|
+| `RESEND_API_KEY` | yes | Resend API key |
+| `EMAIL_RECIPIENTS` | yes | Comma-separated |
+| `EMAIL_FROM` | no | Defaults to `Secco Capital <reports@seccocapital.com>`; the domain must be verified in Resend |
+| `ANTHROPIC_API_KEY` | no | Enables the weekly note; without it the report still sends, just without commentary |
+| `FRED_API_KEY` | no | Rates and spreads on the market PDF |
+
+### The weekly note
+
+`src/weekly_note.py` calls `claude-opus-5` with the server-side web search tool.
+The split matters:
+
+- **Numbers come from our own data.** The week's moves are passed into the
+  prompt from the same metrics the PDF is built from, and the model is told
+  every figure it quotes must come from there.
+- **Causes come from search**, with the sources listed under the note in the
+  email. Where coverage gives no clean driver for a move, the model is told to
+  say so rather than reach for one.
+
+**Only macro data goes into the prompt** — indices, rates, spreads, commodities,
+FX, volatility. The stock watchlist and any holding or counterparty name is
+deliberately never sent, because web search turns prompt content into
+third-party queries. Preserve that when editing the prompt.
+
+Every failure path — no key, API error, refusal, empty response — degrades to
+sending the report without a note rather than not sending.
+
+---
+
 ## Deployment
 
 ### Streamlit Community Cloud (current)

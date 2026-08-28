@@ -1,0 +1,54 @@
+name: Weekly Report Email
+
+on:
+  schedule:
+    # Fridays at 21:30 UTC — after the NYSE close year-round. The close is
+    # 21:00 UTC under EST and 20:00 UTC under EDT, and GitHub cron has no DST
+    # handling, so this single time stays safely after the bell in both.
+    # 23:30 SAST / 22:30 UK in summer.
+    - cron: '30 21 * * 5'
+
+  # Manual trigger, with the option to build without sending.
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build the PDFs and note but send no email'
+        type: boolean
+        default: false
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Send weekly report
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_RECIPIENTS: ${{ secrets.EMAIL_RECIPIENTS }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python weekly_report_email.py ${{ inputs.dry_run && '--dry-run' || '' }}
+
+      # Keeps a copy of what went out, so a delivery query can be answered
+      # without rebuilding the week's data.
+      - name: Archive the PDFs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-report-${{ github.run_id }}
+          path: '*.pdf'
+          retention-days: 90
+          if-no-files-found: warn
