@@ -497,11 +497,53 @@ def page_css(max_width: str = "1400px") -> str:
 
 
 # ---------------------------------------------------------------------------
+# Navigating the top window from inside a component iframe
+#
+# Streamlit renders components.html into an iframe sandboxed as:
+#
+#   allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox
+#   allow-same-origin allow-scripts allow-downloads
+#
+# There is no allow-top-navigation or allow-top-navigation-by-user-activation,
+# so the iframe cannot navigate the top window itself. `top.location.replace`,
+# `top.location.href` and `<a target="_top">` are all refused with
+#
+#   "Unsafe attempt to initiate navigation for frame ... The frame attempting
+#    navigation of the top-level window is sandboxed, but the flag of
+#    'allow-top-navigation' ... is not set."
+#
+# and — this is what made the bug so quiet — the refusal is a console error, not
+# an exception, so a try/except around the call catches nothing and the theme
+# simply never changed.
+#
+# `allow-same-origin` IS granted, so the iframe shares the parent's origin and
+# can reach into its DOM. A <script> appended to the parent document executes in
+# the parent's own context, which is not sandboxed, and may navigate freely.
+# That is the escape hatch below; it is the only part of the theme mechanism
+# that depends on this quirk, so it lives in one place.
+# ---------------------------------------------------------------------------
+
+_TOP_NAV_JS = """
+  function seccoTopNavigate(url) {
+    try {
+      var doc = (window.top || window.parent).document;
+      var s = doc.createElement('script');
+      s.textContent = "window.location.replace(" + JSON.stringify(url) + ");";
+      doc.head.appendChild(s);
+      try { doc.head.removeChild(s); } catch (e) {}
+      return true;
+    } catch (e) { return false; }
+  }
+"""
+
+
+# ---------------------------------------------------------------------------
 # localStorage bridge
 # ---------------------------------------------------------------------------
 
 _BRIDGE = """
 <script>
+%s
 (function () {
   var KEY = %s, applied = %s;
   function store() {
@@ -526,7 +568,7 @@ _BRIDGE = """
     // replacement page loads.
     win.document.documentElement.style.background =
       remembered === 'dark' ? '#0B1220' : '#F8FAFC';
-    win.location.replace(url.toString());
+    seccoTopNavigate(url.toString());
   } catch (e) {}
 })();
 </script>
@@ -538,7 +580,7 @@ def _storage_bridge(theme: str) -> None:
     # follows it, without depending on how Streamlit renders the height attribute.
     st.markdown('<div class="secco-theme-bridge"></div>', unsafe_allow_html=True)
     components.html(
-        _BRIDGE % (json.dumps(STORAGE_KEY), json.dumps(theme)),
+        _BRIDGE % (_TOP_NAV_JS, json.dumps(STORAGE_KEY), json.dumps(theme)),
         height=0,
     )
 
@@ -546,20 +588,25 @@ def _storage_bridge(theme: str) -> None:
 def storage_writer_js() -> str:
     """JS for the home-page toggle: remember the choice, then reload the top
     window under the new theme. Returned as a string because the toggle lives
-    inside app.py's own component iframe."""
-    return """
+    inside app.py's own component iframe, which is why it needs
+    `seccoTopNavigate` rather than touching `top.location` directly."""
+    return _TOP_NAV_JS + """
   function seccoSetTheme(t) {
     var KEY = %s;
     try { window.top.localStorage.setItem(KEY, t); }
     catch (e) { try { window.localStorage.setItem(KEY, t); } catch (e2) {} }
+    var target;
     try {
       var win = window.top || window.parent;
       var url = new URL(win.location.href);
       url.searchParams.set('theme', t);
+      target = url.toString();
+      // Paint the parent immediately so the old theme does not flash while the
+      // replacement page loads.
       win.document.documentElement.style.background =
         t === 'dark' ? '#0B1220' : '#F8FAFC';
-      win.location.replace(url.toString());
-    } catch (e) { location.reload(); }
+    } catch (e) { location.reload(); return; }
+    if (!seccoTopNavigate(target)) location.reload();
   }
 """ % json.dumps(STORAGE_KEY)
 
