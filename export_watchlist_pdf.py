@@ -28,6 +28,8 @@ from reportlab.platypus import (
     BaseDocTemplate, Frame, PageTemplate, Paragraph, Spacer, Table, TableStyle,
 )
 
+from src.watchlist import CURRENCY_SYMBOLS, FULL_YEAR_MIN_DAYS, WATCHLIST
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -39,67 +41,6 @@ BORDER = colors.HexColor("#E2E8F0")
 ROW_ALT = colors.HexColor("#F8FAFC")
 GREEN = colors.HexColor("#16A34A")
 RED = colors.HexColor("#DC2626")
-
-# Calendar-day span a 1y fetch must cover before LTM/52-week figures are shown.
-# Keep in sync with pages/3_Stock_Watchlist.py FULL_YEAR_MIN_DAYS.
-FULL_YEAR_MIN_DAYS = 300
-
-# Keep in sync with pages/3_Stock_Watchlist.py WATCHLIST
-WATCHLIST = {
-    "Core Holdings": [
-        ("Richemont", "CFR.SW", "CHF"),
-        ("Remgro", "REM.JO", "ZAR"),
-        ("Reinet", "REINA.AS", "EUR"),
-    ],
-    "Connected Holdings": [
-        ("BAT (LSE)", "BATS.L", "GBP"),
-        ("BAT (JSE)", "BTI.JO", "ZAR"),
-        ("FirstRand", "FSR.JO", "ZAR"),
-        ("OUTsurance", "OUT.JO", "ZAR"),
-        ("Discovery", "DSY.JO", "ZAR"),
-    ],
-    "Tiger Global IPO's": [
-        ("Cerebras", "CBRS", "USD"),
-    ],
-    "USA Tech": [
-        ("Alphabet", "GOOGL", "USD"),
-        ("Amazon", "AMZN", "USD"),
-        ("Apple", "AAPL", "USD"),
-        ("Dell", "DELL", "USD"),
-        ("Meta", "META", "USD"),
-        ("Microsoft", "MSFT", "USD"),
-        ("Nvidia", "NVDA", "USD"),
-        ("SpaceX", "SPCX", "USD"),
-        ("Tesla", "TSLA", "USD"),
-        ("Palo Alto", "PANW", "USD"),
-        ("Uber", "UBER", "USD"),
-    ],
-    "China Tech": [
-        ("Alibaba", "BABA", "USD"),
-        ("BYD", "002594.SZ", "CNY"),
-        ("CXMT", "688825.SS", "CNY"),
-        ("Tencent", "TCEHY", "USD"),
-        ("Unitree", "688836.SS", "CNY"),
-    ],
-    "Financials": [
-        ("JP Morgan", "JPM", "USD"),
-        ("Goldman Sachs", "GS", "USD"),
-        ("BofA", "BAC", "USD"),
-        ("Morgan Stanley", "MS", "USD"),
-        ("Berkshire Hathaway", "BRK-B", "USD"),
-        ("Markel", "MKL", "USD"),
-        ("Apollo", "APO", "USD"),
-        ("KKR", "KKR", "USD"),
-    ],
-    "Real World": [
-        ("Deere & Co", "DE", "USD"),
-        ("Teledyne", "TDY", "USD"),
-        ("Waste Management", "WM", "USD"),
-    ],
-}
-
-CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "EUR": "€", "CHF": "CHF ", "ZAR": "R", "CNY": "¥"}
-
 
 def fmt_price(val, currency):
     if val is None or pd.isna(val):

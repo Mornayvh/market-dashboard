@@ -11,6 +11,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 from src.theme import apply_theme, page_css, palette
+from src.watchlist import CURRENCY_SYMBOLS, FULL_YEAR_MIN_DAYS, WATCHLIST
 
 st.set_page_config(
     page_title="Stock Watchlist | Secco Capital",
@@ -80,66 +81,6 @@ st.markdown("<style>" + page_css("1400px") + """
 # ---------------------------------------------------------------------------
 # Stock definitions
 # ---------------------------------------------------------------------------
-
-WATCHLIST = {
-    "Core Holdings": [
-        ("Richemont", "CFR.SW", "CHF"),
-        ("Remgro", "REM.JO", "ZAR"),
-        ("Reinet", "REINA.AS", "EUR"),
-    ],
-    "Connected Holdings": [
-        ("BAT (LSE)", "BATS.L", "GBP"),
-        ("BAT (JSE)", "BTI.JO", "ZAR"),
-        ("FirstRand", "FSR.JO", "ZAR"),
-        ("OUTsurance", "OUT.JO", "ZAR"),
-        ("Discovery", "DSY.JO", "ZAR"),
-    ],
-    "Tiger Global IPO's": [
-        ("Cerebras", "CBRS", "USD"),
-    ],
-    "USA Tech": [
-        ("Alphabet", "GOOGL", "USD"),
-        ("Amazon", "AMZN", "USD"),
-        ("Apple", "AAPL", "USD"),
-        ("Dell", "DELL", "USD"),
-        ("Meta", "META", "USD"),
-        ("Microsoft", "MSFT", "USD"),
-        ("Nvidia", "NVDA", "USD"),
-        ("SpaceX", "SPCX", "USD"),
-        ("Tesla", "TSLA", "USD"),
-        ("Palo Alto", "PANW", "USD"),
-        ("Uber", "UBER", "USD"),
-    ],
-    "China Tech": [
-        ("Alibaba", "BABA", "USD"),
-        ("BYD", "002594.SZ", "CNY"),
-        ("CXMT", "688825.SS", "CNY"),
-        ("Tencent", "TCEHY", "USD"),
-        ("Unitree", "688836.SS", "CNY"),
-    ],
-    "Financials": [
-        ("JP Morgan", "JPM", "USD"),
-        ("Goldman Sachs", "GS", "USD"),
-        ("BofA", "BAC", "USD"),
-        ("Morgan Stanley", "MS", "USD"),
-        ("Berkshire Hathaway", "BRK-B", "USD"),
-        ("Markel", "MKL", "USD"),
-        ("Apollo", "APO", "USD"),
-        ("KKR", "KKR", "USD"),
-    ],
-    "Real World": [
-        ("Deere & Co", "DE", "USD"),
-        ("Teledyne", "TDY", "USD"),
-        ("Waste Management", "WM", "USD"),
-    ],
-}
-
-CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "EUR": "€", "CHF": "CHF ", "ZAR": "R", "CNY": "¥"}
-
-# Calendar-day span a 1y fetch must cover before LTM and 52-week figures are
-# reported. Below this the series is a recent listing, not a year of trading.
-# 300 rather than 365 so exchange holidays and short weeks don't trip it.
-FULL_YEAR_MIN_DAYS = 300
 
 # Tickers that carry no meaningful public market capitalisation — proxy vehicles,
 # funds, or pre-listing entities. Yahoo may still return a figure, so these show

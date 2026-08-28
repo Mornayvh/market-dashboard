@@ -1,7 +1,22 @@
-# ◼ Market Dashboard
+# ◼ Secco Capital — Investment Intelligence Platform
 
-Institutional-quality daily macro and market snapshot built with Streamlit.  
-Designed for speed of interpretation — one glance gives you rates, equities, commodities, crypto, credit, and vol.
+A Streamlit multi-page platform for daily macro, portfolio and holdings analysis.
+Designed for speed of interpretation — one glance gives you rates, equities,
+commodities, credit, FX and vol, plus dedicated views for private holdings and
+listed alternative managers.
+
+---
+
+## Pages
+
+| Page | File | What it does |
+|------|------|--------------|
+| Home | `app.py` | Landing page — live clock, ticker strip and the dashboard carousel. Also hosts the light/dark theme toggle. |
+| Market Dashboard | `pages/1_Market_Dashboard.py` | Daily macro snapshot: rates, equities, commodities, credit spreads, FX, volatility. |
+| Partner Dashboard | `pages/2_Partner_Dashboard.py` | Allocations by geography, asset class, sector and stage. **Password-protected.** |
+| Stock Watchlist | `pages/3_Stock_Watchlist.py` | Live prices for core, connected and global holdings across exchanges and currencies. |
+| Direct Investments | `pages/4_Direct_Investments.py` | Public-market proxy tracker for private holdings — comps, sector ETFs, capex, sentiment. |
+| Alt Managers | `pages/5_Alt_Managers.py` | Listed alternative managers compared as stocks — valuation, returns, risk. |
 
 ---
 
@@ -9,19 +24,30 @@ Designed for speed of interpretation — one glance gives you rates, equities, c
 
 ```
 market-dashboard/
-├── app.py                  # Streamlit entry point — layout and rendering
-├── requirements.txt        # Python dependencies
-├── src/
-│   ├── __init__.py
-│   ├── config.py           # Asset universe and data source configuration
-│   ├── data_ingest.py      # Fetches raw data from Yahoo Finance and FRED
-│   ├── data_process.py     # Computes metrics (latest, 1D, 1W, YTD)
-│   └── viz_helpers.py      # Formatting, colors, Plotly chart builders
-└── README.md
+├── app.py                      # Home page — topbar, ticker, hero, carousel
+├── pages/                      # One file per dashboard (Streamlit auto-routes these)
+├── export_pdf.py               # Market Dashboard -> PDF snapshot (standalone)
+├── export_watchlist_pdf.py     # Stock Watchlist -> PDF snapshot (standalone)
+├── requirements.txt
+├── data/
+│   ├── Internal_Investments_Dashboard.xlsx   # Partner Dashboard source
+│   └── static/                 # Hand-maintained quarterly figures (see below)
+├── scripts/
+│   └── fetch_share_prices.py   # Ad-hoc: pull daily OHLC into an Excel workbook
+└── src/
+    ├── config.py               # Macro asset universe and data sources
+    ├── data_ingest.py          # Raw fetches from Yahoo Finance and FRED
+    ├── data_process.py         # Metrics (latest, 1D, 1W, LTM)
+    ├── viz_helpers.py          # Formatting, colours, Plotly builders
+    ├── theme.py                # Light/dark palette + the shared page stylesheet
+    ├── watchlist.py            # The stock watchlist universe (single source of truth)
+    ├── alt_managers/           # Alt-manager universe, fetchers, metrics, AUM reference
+    └── direct_investments/     # Holdings config, loaders, view builders
 ```
 
-**Architecture:** Three clean layers — ingestion → processing → visualisation.  
-Each layer is independently testable and replaceable.
+**Architecture:** ingestion (`data_ingest`) → processing (`data_process`) →
+presentation (pages + `viz_helpers`). The two larger dashboards own their own
+subpackage under `src/` rather than pushing everything through the shared layer.
 
 ---
 
@@ -30,123 +56,100 @@ Each layer is independently testable and replaceable.
 ### 1. Prerequisites
 
 - Python 3.10+ (check with `python3 --version`)
-- pip (comes with Python)
 
-If you don't have Python 3.10+:
-```bash
-brew install python@3.12
-```
+If you don't have it: `brew install python@3.12`
 
-### 2. Clone / Copy the Project
-
-Place the `market-dashboard/` folder wherever you like.
-
-### 3. Create a Virtual Environment
+### 2. Virtual environment and dependencies
 
 ```bash
 cd market-dashboard
 python3 -m venv .venv
 source .venv/bin/activate
-```
-
-### 4. Install Dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
-### 5. Set Up FRED API Key (Optional but Recommended)
+### 3. FRED API key (optional but recommended)
 
-The dashboard uses FRED for rates (Fed Funds Rate) and credit spreads (IG, HY, EM).  
-Without a FRED key, those assets fall back to Yahoo Finance where available, or show "—".
+FRED supplies the Fed Funds Rate and the credit spreads (IG, HY, EM). Without a
+key those rows show "—"; everything else still works off Yahoo Finance.
 
-1. Get a free API key: https://fred.stlouisfed.org/docs/api/api_key.html  
-2. Set it:
+Get a free key at https://fred.stlouisfed.org/docs/api/api_key.html, then:
 
-```bash
-export FRED_API_KEY="your_key_here"
-```
-
-To make it permanent, add to `~/.zshrc`:
 ```bash
 echo 'export FRED_API_KEY="your_key_here"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-### 6. Run the Dashboard
+### 4. Partner Dashboard password (optional)
+
+That page is gated. Set either a Streamlit secret:
+
+```toml
+# .streamlit/secrets.toml
+[portfolio]
+password = "your_password"
+```
+
+or the `PORTFOLIO_PASSWORD` environment variable. Without one, the page cannot
+be opened.
+
+### 5. Run
 
 ```bash
 streamlit run app.py
 ```
 
-Opens at `http://localhost:8501` in your browser.
+Opens at `http://localhost:8501`.
 
 ---
 
 ## Usage
 
-- **Refresh data:** Click the "Refresh" button or the sidebar "🔄 Refresh Data"
-- **Auto-cache:** Data is cached for 5 minutes to avoid hammering APIs
-- **Sidebar:** Shows data source info and refresh controls
+- **Refresh:** each page has a Refresh control that clears its cache and reruns.
+- **Caching:** TTLs are tuned per data type — 5 min for prices, 1 h for market
+  caps and FX, 24 h for slow-moving fundamentals. Pages fetch live on load;
+  there is no snapshot store.
+- **Theme:** the toggle in the home-page topbar. The choice is written to
+  `localStorage` and carried between pages on the `?theme=` query parameter, so
+  it survives new tabs and browser restarts.
+
+### PDF snapshots
+
+Both exporters run standalone, without a Streamlit server:
+
+```bash
+python export_pdf.py                  # market_dashboard_<YYYY-MM-DD>.pdf
+python export_watchlist_pdf.py        # stock_watchlist_<YYYY-MM-DD>.pdf
+python export_pdf.py --out brief.pdf  # or pick the path
+```
+
+Generated PDFs are gitignored.
 
 ---
 
-## Scheduling Daily Refresh (Cron)
+## Deployment
 
-The architecture separates data fetching from display, making scheduled runs straightforward.
+### Streamlit Community Cloud (current)
 
-### Option A: Cron + Streamlit (simplest)
+1. Push to the GitHub repo.
+2. Entry point is `app.py`.
+3. Add `FRED_API_KEY` and the `[portfolio]` password under Secrets.
 
-Just keep Streamlit running and refresh manually or set the `ttl` cache to auto-expire.
+**A push alone does not update the running app** — reboot it from the Streamlit
+Cloud dashboard after deploying.
 
-### Option B: Cron Data Export Script
+`.streamlit/config.toml` disables the inotify file-watcher, because the shared
+host hits the OS watch limit at startup and crashes the app without it.
 
-Create a `refresh.py` that calls the data layer and saves to a local file:
-
-```python
-# refresh.py — Run via cron, saves snapshot to disk
-from src.data_ingest import fetch_all_data
-from src.data_process import process_all
-import pickle
-from datetime import datetime
-
-raw = fetch_all_data()
-metrics = process_all(raw)
-with open("data/snapshot.pkl", "wb") as f:
-    pickle.dump({"raw": raw, "metrics": metrics, "ts": datetime.now()}, f)
-```
-
-Cron entry (runs at 06:30 every weekday):
-```bash
-crontab -e
-# Add:
-30 6 * * 1-5 cd /path/to/market-dashboard && /path/to/.venv/bin/python refresh.py
-```
-
-Then modify `app.py` to load from the pickle instead of fetching live.
-
----
-
-## Deployment Options
-
-### 1. Streamlit Community Cloud (Free, Easiest)
-
-1. Push to a GitHub repo
-2. Go to https://share.streamlit.io
-3. Connect your repo, set `app.py` as the entry point
-4. Add `FRED_API_KEY` in the Secrets section
-5. Share the generated URL with your team
-
-### 2. Run on a VPS / Cloud VM
+### VPS / Cloud VM
 
 ```bash
-# On the server:
 nohup streamlit run app.py --server.port 8501 --server.address 0.0.0.0 &
 ```
 
-Use a reverse proxy (nginx/caddy) for HTTPS and auth.
+Put a reverse proxy (nginx/caddy) in front for HTTPS and auth.
 
-### 3. Docker
+### Docker
 
 ```Dockerfile
 FROM python:3.12-slim
@@ -164,90 +167,112 @@ docker run -p 8501:8501 -e FRED_API_KEY=your_key market-dashboard
 
 ---
 
-## Phase 2 — Future Improvements
+## Theming and page styling
 
-1. **Add more asset classes:** FX pairs (DXY, EUR/USD), real estate (REITs), and ag commodities
-2. **Historical comparison view:** Toggle between 1M / 3M / 6M / 1Y sparklines
-3. **Alerts:** Colour-coded alerts when spreads widen beyond thresholds or VIX spikes
-4. **Correlation heatmap:** Rolling correlations between major asset classes
-5. **PDF/email snapshot:** Auto-generate a one-page PDF morning brief and email to the team
-6. **Database layer:** Store daily snapshots in SQLite for historical lookback
-7. **Authentication:** Add Streamlit auth or put behind Cloudflare Access for team-only access
-8. **Performance:** Switch to async data fetching with `asyncio` + `aiohttp` for faster loads
-9. **Economic calendar:** Overlay key macro events (FOMC, CPI, NFP) on charts
-10. **Relative value charts:** Spread between assets (e.g. 10Y-5Y, Gold/Silver ratio)
+`src/theme.py` owns both.
+
+- **Palette.** `LIGHT` and `DARK` dicts are published as `--tk-*` CSS custom
+  properties. Page stylesheets reference the variables rather than hex literals,
+  so one palette swap re-skins the platform. A few keys (`categorical`,
+  `navy_scale`, …) are Plotly-only and never emitted as CSS.
+- **Shared stylesheet.** `page_css(max_width)` returns the rules every page
+  needs — font import, shell, chrome-hiding, buttons, the `.page-header` family
+  and `.section-header`. Each page emits it first, then its own rules:
+
+  ```python
+  st.markdown("<style>" + page_css("1400px") + """
+      .my-component { ... }
+  </style>""", unsafe_allow_html=True)
+  ```
+
+  Page rules come after and so win on equal specificity — that is how Alt
+  Managers tightens its header margin and Direct Investments widens its section
+  spacing, each in one line.
+
+  Data tables are deliberately **not** shared. They look alike but differ in
+  alignment, type size and cell padding, so each page owns its own.
+
+Call `apply_theme()` once per page, immediately after `st.set_page_config`.
+
+---
+
+## The stock watchlist universe
+
+`src/watchlist.py` is the single source of truth, imported by both
+`pages/3_Stock_Watchlist.py` and `export_watchlist_pdf.py`. Add or remove names
+there only — the page and the PDF then stay in step automatically.
+
+It holds `WATCHLIST` (group → list of `(name, ticker, currency)`),
+`CURRENCY_SYMBOLS`, and `FULL_YEAR_MIN_DAYS` (the calendar span a 1-year fetch
+must cover before LTM and 52-week figures are reported, so a recent listing
+doesn't show a misleading full-year number).
 
 ---
 
 ## Updating Static Data (Direct Investments page)
 
-The **Direct Investments** page mixes live market data (yfinance / FRED / Google Trends) with **hand-edited quarterly figures** that can't be pulled for free — hyperscaler capex, NVDA Data Center revenue, neocloud capex, global DC supply additions, and FDA novel drug approvals. These live as YAML files in `data/static/` and need to be refreshed each quarter.
-
-### Files & update cadence
+The Direct Investments page mixes live market data (yfinance / FRED / Google
+Trends) with hand-edited quarterly figures that can't be pulled for free. These
+live as YAML in `data/static/` and need refreshing each quarter.
 
 | File | Update when | Source |
 |------|-------------|--------|
 | `hyperscaler_capex.yaml` | After Alphabet/MSFT/META/AMZN earnings (Jan, Apr, Jul, Oct) | 10-Qs |
 | `nvda_dc_revenue.yaml` | After NVDA earnings (Feb, May, Aug, Nov) | NVDA earnings release |
 | `neocloud_capex.yaml` | After CoreWeave & Nebius earnings | 10-Qs |
-| `dc_supply_additions.yaml` | Annually (or after public DC tracker prints) | Cushman & Wakefield / JLL / press |
 | `fda_nme_approvals.yaml` | Annually, around Feb | FDA CDER Novel Drug Approvals page |
 
 ### How to update
 
 1. Open the relevant YAML file in `data/static/`.
 2. **Quarterly schema** (`hyperscaler_capex`, `nvda_dc_revenue`, `neocloud_capex`):
-   - Remove the oldest entry under `quarters:` (keeps the chart at 8 quarters).
-   - Append a new entry with the latest reported quarter.
-3. **Annual schema** (`dc_supply_additions`, `fda_nme_approvals`):
-   - Append a new entry under `periods:`.
-4. Update the `last_updated:` date and add a one-line note under `sources:` citing the filing/page used.
-5. Commit the file. Streamlit Cloud auto-reloads on push.
+   remove the oldest entry under `quarters:` (keeps the chart at 8 quarters) and
+   append the latest reported quarter.
+3. **Annual schema** (`fda_nme_approvals`): append a new entry under `periods:`.
+4. Update `last_updated:` and add a one-line note under `sources:` citing the
+   filing or page used.
+5. Commit, push, then reboot the app on Streamlit Cloud.
 
-The page shows the `last_updated` date as a caption under each chart so it's easy to spot stale data at a glance.
+Each chart shows its `last_updated` date as a caption, so stale data is visible
+at a glance.
+
+Holdings currently tracked, configured in `src/direct_investments/config.py`:
+Novolex, Kelvion, Real Chemistry, SAP Fioneer, Asia Restaurants.
 
 ---
 
 ## Alternative Asset Managers page
 
-The **Alternative Managers** page (`pages/5_Alt_Managers.py`, backed by `src/alt_managers/`) compares 19 listed alternative asset managers **as stocks**, using Yahoo Finance only (no paid APIs, no scraping, no hardcoded fundamentals).
+`pages/5_Alt_Managers.py`, backed by `src/alt_managers/`, compares **9** listed
+alternative asset managers **as stocks**, using Yahoo Finance plus a small
+hand-maintained AUM table. No paid APIs, no scraping.
 
-- `src/alt_managers/universe.py` — the 19-ticker universe (name, category, geo, tilt, currency).
-- `src/alt_managers/data.py` — cached yfinance fetchers (`@st.cache_data(ttl=3600)`), FX normalization to USD, per-ticker failed-field tracking.
-- `src/alt_managers/metrics.py` — pure return/risk calcs (YTD, 1Y, 3Y/5Y annualized, max drawdown, annualized vol).
+- `universe.py` — the tracked universe (name, category, geo, tilt, currency):
+  Blackstone, KKR, Apollo, Carlyle, Brookfield AM, TPG, EQT AB, CVC Capital,
+  Partners Group.
+- `data.py` — cached yfinance fetchers, FX normalisation to USD, per-ticker
+  failed-field tracking.
+- `metrics.py` — return and risk calcs (YTD, 1Y, 3Y/5Y annualised, max drawdown,
+  annualised vol).
+- `reference_data.py` — hand-maintained **Total AUM** per manager, which Yahoo
+  does not carry. Refresh quarterly: update `total_aum_usd_bn`, `as_of` and
+  `source` per ticker; set the figure to `None` where a firm reports no
+  comparable Total-AUM number and the page renders "—". The seeded figures are
+  approximate and flagged as needing verification against primary disclosures.
 
 ### Known limitations
 
-- **Yahoo data is unofficial** — fields may be stale or missing without warning. Missing values render blank and are listed in the in-app *Data quality* panel; nothing is fabricated or interpolated.
-- **"Forward P/E" is unreliable for alt managers** — it's based on GAAP EPS, not the FRE / Distributable Earnings these firms guide on. Often missing entirely for European listings.
-- **This compares them as _stocks_, not as businesses** — there is no AUM, FRE, perpetual-capital, fundraising, or accrued-carry data (none available free via Yahoo).
-- **BN and BAM are two tickers for one franchise** (Brookfield) — do not sum their market caps.
-- **Currency** — market caps are converted to USD at latest spot FX; prices stay native. Recently-listed names (CVC, Bridgepoint, Patria, EQT) show blank for longer return windows.
-
-### How to extend with reference data (AUM / FRE / asset mix)
-
-Yahoo can't supply the fundamentals that actually drive these businesses. To layer them in later, create an **optional** `src/alt_managers/reference_data.py` exposing something like:
-
-```python
-# src/alt_managers/reference_data.py  (optional — create when you have a source)
-def load_reference() -> dict:
-    """Return {ticker: {"aum_bn": float, "fre_margin": float, "asset_mix": {...}}}.
-    Source: a hand-maintained CSV under data/static/, updated from earnings decks.
-    """
-    ...
-```
-
-Then in `pages/5_Alt_Managers.py`, attempt the import and merge into the comparison table if present:
-
-```python
-try:
-    from src.alt_managers.reference_data import load_reference
-    ref = load_reference()
-except ImportError:
-    ref = {}
-```
-
-This keeps the page working with Yahoo-only data today, and picks up richer fundamentals automatically once the reference module exists — no other code changes needed.
+- **Yahoo data is unofficial** — fields may be stale or missing without warning.
+  Missing values render blank and are listed in the in-app *Data quality* panel;
+  nothing is fabricated or interpolated.
+- **Forward P/E is unreliable here** — it is based on GAAP EPS, not the FRE or
+  Distributable Earnings these firms guide on, and is often missing entirely for
+  the European listings.
+- **This compares them as _stocks_, not as businesses** — beyond the AUM
+  reference table there is no FRE, perpetual-capital, fundraising or accrued-carry
+  data, none of which is available free.
+- **Currency** — market caps are converted to USD at latest spot FX; prices stay
+  native. Recently-listed names (CVC, EQT) show blank for longer return windows.
 
 ---
 
@@ -255,11 +280,28 @@ This keeps the page working with Yahoo-only data today, and picks up richer fund
 
 | Issue | Fix |
 |-------|-----|
-| `ModuleNotFoundError` | Make sure venv is activated: `source .venv/bin/activate` |
-| FRED data shows "—" | Set `FRED_API_KEY` environment variable |
-| Yahoo Finance rate-limited | Wait a few minutes; the 5-min cache helps |
+| `ModuleNotFoundError` | Activate the venv: `source .venv/bin/activate` |
+| FRED rows show "—" | Set `FRED_API_KEY` |
+| Partner Dashboard won't open | Set the `[portfolio]` secret or `PORTFOLIO_PASSWORD` |
+| Yahoo Finance rate-limited | Wait a few minutes; the caches help |
 | Port 8501 in use | `streamlit run app.py --server.port 8502` |
-| Stale data | Click Refresh or clear cache in sidebar |
+| Stale data | Use the page's Refresh control |
+| Pushed but nothing changed | Reboot the app in the Streamlit Cloud dashboard |
+| `inotify watch limit reached` | Already handled by `fileWatcherType = "none"` in `.streamlit/config.toml` |
+
+---
+
+## Possible Improvements
+
+1. **More asset classes:** REITs and ag commodities on the Market Dashboard
+2. **Historical comparison:** toggle 1M / 3M / 6M / 1Y sparkline windows
+3. **Alerts:** flag spreads widening past a threshold, or a VIX spike
+4. **Correlation heatmap:** rolling correlations across asset classes
+5. **Database layer:** store daily snapshots for historical lookback
+6. **Authentication:** platform-wide auth rather than the single gated page
+7. **Performance:** async fetching (`asyncio` + `aiohttp`) to cut load times
+8. **Economic calendar:** overlay FOMC, CPI and NFP dates on charts
+9. **Relative value:** spread charts (10Y-5Y, Gold/Silver)
 
 ---
 
