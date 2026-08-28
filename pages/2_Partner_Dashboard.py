@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 from pathlib import Path
 from collections import Counter
 
-from src.theme import apply_theme, palette, plotly_layout
+from src.theme import apply_theme, page_css, palette, plotly_layout
 
 st.set_page_config(
     page_title="Partner Dashboard | Secco Capital",
@@ -26,36 +26,9 @@ apply_theme()
 # CSS — house style, driven by the active theme's --tk-* variables
 # ---------------------------------------------------------------------------
 
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
-
-    .stApp { background-color: var(--tk-app-bg); color: var(--tk-text); }
-    .block-container { padding-top: 2rem; padding-bottom: 1rem; max-width: 100%; }
-
-    #MainMenu { visibility: hidden; }
-    footer { visibility: hidden; }
-    .stDeployButton { display: none; }
-    header[data-testid="stHeader"] { background: var(--tk-app-bg); }
-
-    .port-header {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 0.75rem 0 1.25rem 0; border-bottom: 1px solid var(--tk-border); margin-bottom: 1.5rem;
-    }
-    .port-title {
-        font-family: 'DM Sans', sans-serif; font-size: 1.4rem;
-        font-weight: 700; color: var(--tk-text); letter-spacing: -0.02em;
-    }
-    .port-subtitle {
-        font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--tk-text-muted); margin-top: 2px;
-    }
-
-    .section-header {
-        font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
-        color: var(--tk-text-muted); text-transform: uppercase; letter-spacing: 0.12em;
-        padding: 0.6rem 0 0.4rem 0; border-bottom: 1px solid var(--tk-border); margin-bottom: 0.6rem;
-    }
-
+st.markdown("<style>" + page_css("100%") + """
+    /* This page's table is left-aligned throughout and sized a touch smaller
+       than the house default, so it defines its own rather than overriding. */
     .data-table {
         width: 100%; border-collapse: collapse;
         font-family: 'JetBrains Mono', monospace; font-size: 0.74rem;
@@ -97,21 +70,12 @@ st.markdown("""
         color: var(--tk-on-accent); font-weight: 600;
     }
 
-    .stButton > button {
-        background: var(--tk-surface); color: var(--tk-text); border: 1px solid var(--tk-border-strong);
-        font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
-        border-radius: 4px; padding: 0.4rem 1.2rem;
-    }
-    .stButton > button:hover { background: var(--tk-surface-alt); border-color: var(--tk-accent); color: var(--tk-text); }
     /* ── Mobile responsive ── */
     @media (max-width: 768px) {
-        .block-container { padding-left: 0.5rem; padding-right: 0.5rem; max-width: 100%; }
-        .port-header { flex-direction: column; gap: 0.5rem; align-items: flex-start; }
-        .port-title { font-size: 1.1rem; }
+        .page-header { align-items: flex-start; }
         .data-table { font-size: 0.65rem; }
         .data-table th { font-size: 0.55rem; padding: 0.3rem; }
         .data-table td { padding: 0.3rem; }
-        .section-header { font-size: 0.6rem; }
         .tag { font-size: 0.6rem; padding: 1px 5px; }
     }
 </style>
@@ -141,8 +105,8 @@ def check_password():
     st.markdown("")
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
-        st.markdown('<div class="port-title" style="text-align:center; margin-bottom:0.5rem;">Partner Dashboard</div>', unsafe_allow_html=True)
-        st.markdown('<div class="port-subtitle" style="text-align:center; margin-bottom:1.5rem;">Enter password to continue</div>', unsafe_allow_html=True)
+        st.markdown('<div class="page-title" style="text-align:center; margin-bottom:0.5rem;">Partner Dashboard</div>', unsafe_allow_html=True)
+        st.markdown('<div class="page-subtitle" style="text-align:center; margin-bottom:1.5rem;">Enter password to continue</div>', unsafe_allow_html=True)
         pw = st.text_input("Password", type="password", label_visibility="collapsed", placeholder="Enter password")
         if st.button("Access Dashboard", use_container_width=True):
             if pw == correct_pw:
@@ -368,7 +332,7 @@ def build_world_map(df):
 # ---------------------------------------------------------------------------
 
 # Header
-st.markdown("""<div class="port-header"><div><div class="port-title">\u25FC Partner Dashboard</div><div class="port-subtitle">Investment Allocation & Strategy Map</div></div></div>""", unsafe_allow_html=True)
+st.markdown("""<div class="page-header"><div><div class="page-title">\u25FC Partner Dashboard</div><div class="page-subtitle">Investment Allocation & Strategy Map</div></div></div>""", unsafe_allow_html=True)
 if st.button("\u2190 Home", key="home_btn"):
     st.switch_page("app.py")
 

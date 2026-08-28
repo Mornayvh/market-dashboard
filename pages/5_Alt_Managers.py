@@ -15,7 +15,7 @@ from src.alt_managers.universe import TICKERS, CATEGORIES, GEOS, TILTS
 from src.alt_managers import data as dl
 from src.alt_managers import metrics
 from src.alt_managers import reference_data as ref
-from src.theme import apply_theme, palette as theme_palette, plotly_layout
+from src.theme import apply_theme, page_css, palette as theme_palette, plotly_layout
 
 st.set_page_config(
     page_title="Alt Managers | Secco Capital",
@@ -32,29 +32,10 @@ PAL = theme_palette()
 # ---------------------------------------------------------------------------
 # CSS — Secco house style, driven by the active theme's --tk-* variables
 # ---------------------------------------------------------------------------
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
-    .stApp { background-color: var(--tk-app-bg); color: var(--tk-text); }
-    .block-container { padding-top: 2rem; padding-bottom: 1rem; max-width: 1500px; }
-    #MainMenu { visibility: hidden; }
-    footer { visibility: hidden; }
-    .stDeployButton { display: none; }
-    header[data-testid="stHeader"] { background: var(--tk-app-bg); }
-
-    .am-header {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 0.75rem 0 1.25rem 0; border-bottom: 1px solid var(--tk-border); margin-bottom: 1.25rem;
-    }
-    .am-title { font-family: 'DM Sans', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--tk-text); letter-spacing: -0.02em; }
-    .am-subtitle { font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--tk-text-muted); margin-top: 2px; }
-    .am-timestamp { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--tk-text-muted); text-align: right; }
-
-    .section-header {
-        font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
-        color: var(--tk-text-muted); text-transform: uppercase; letter-spacing: 0.12em;
-        padding: 1.1rem 0 0.5rem 0; border-bottom: 1px solid var(--tk-border); margin-bottom: 0.8rem;
-    }
+st.markdown("<style>" + page_css("1500px") + """
+    .page-header { margin-bottom: 1.25rem; }
+    /* Roomier section spacing than the house default. */
+    .section-header { padding: 1.1rem 0 0.5rem 0; margin-bottom: 0.8rem; }
 
     .kpi-card {
         background: var(--tk-surface); border: 1px solid var(--tk-border); border-radius: 6px;
@@ -83,13 +64,6 @@ st.markdown("""
     .metric-line .lbl { color: var(--tk-text-muted); }
     .metric-line .val { color: var(--tk-text); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
 
-    .stButton > button {
-        background: var(--tk-surface); color: var(--tk-text); border: 1px solid var(--tk-border-strong);
-        font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
-        border-radius: 4px; padding: 0.4rem 1.2rem;
-    }
-    .stButton > button:hover { background: var(--tk-surface-alt); border-color: var(--tk-accent); color: var(--tk-text); }
-
     /* ── Table styling — matches Market Dashboard / Stock Watchlist ── */
     .table-scroll { overflow-x: auto; }
     .data-table {
@@ -113,9 +87,6 @@ st.markdown("""
     }
     .data-table td.txt { text-align: left; color: var(--tk-text-soft); font-family: 'DM Sans', sans-serif; }
     .data-table tr:hover { background: var(--tk-surface-alt); }
-    .chg-up { color: var(--tk-pos); }
-    .chg-down { color: var(--tk-neg); }
-    .chg-flat { color: var(--tk-text-muted); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -260,10 +231,10 @@ with st.sidebar:
 # Header
 # ---------------------------------------------------------------------------
 st.markdown(
-    f"""<div class="am-header">
-        <div><div class="am-title">◼ Alternative Asset Managers</div>
-        <div class="am-subtitle">Listed alt managers compared as stocks · Yahoo Finance only</div></div>
-        <div class="am-timestamp">Last refresh: {TS.strftime('%d %b %Y  %H:%M')}</div>
+    f"""<div class="page-header">
+        <div><div class="page-title">◼ Alternative Asset Managers</div>
+        <div class="page-subtitle">Listed alt managers compared as stocks · Yahoo Finance only</div></div>
+        <div class="page-timestamp">Last refresh: {TS.strftime('%d %b %Y  %H:%M')}</div>
     </div>""",
     unsafe_allow_html=True,
 )

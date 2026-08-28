@@ -13,7 +13,7 @@ import pandas as pd
 from src.config import ASSETS
 from src.data_ingest import fetch_all_data
 from src.data_process import process_all, get_category_df, compute_vix_average, fetch_equity_pe
-from src.theme import apply_theme
+from src.theme import apply_theme, page_css
 from src.viz_helpers import (
     fmt_value, fmt_change, change_color,
     make_sparkline, make_vix_sparkline, make_ltm_bar_chart,
@@ -41,77 +41,7 @@ apply_theme()
 # Custom CSS — house style, driven by the active theme's --tk-* variables
 # ---------------------------------------------------------------------------
 
-st.markdown("""
-<style>
-    /* ── Global ── */
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
-
-    .stApp {
-        background-color: var(--tk-app-bg);
-        color: var(--tk-text);
-    }
-
-    /* Remove default padding */
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 1rem;
-        max-width: 1400px;
-    }
-
-    /* ── Header ── */
-    .dashboard-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.75rem 0 1.25rem 0;
-        border-bottom: 1px solid var(--tk-border);
-        margin-bottom: 1.5rem;
-    }
-    .dashboard-header-left {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-    .dashboard-logo {
-        height: 36px;
-        width: auto;
-        /* The wordmark is a single flat slate; on a dark ground it has to be
-           inverted to stay legible. No-op in the light theme. */
-        filter: var(--tk-logo-filter);
-    }
-    .dashboard-title {
-        font-family: 'DM Sans', sans-serif;
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: var(--tk-text);
-        letter-spacing: -0.02em;
-    }
-    .dashboard-subtitle {
-        font-family: 'DM Sans', sans-serif;
-        font-size: 0.8rem;
-        color: var(--tk-text-muted);
-        margin-top: 2px;
-    }
-    .dashboard-timestamp {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.72rem;
-        color: var(--tk-text-muted);
-        text-align: right;
-    }
-
-    /* ── Section headers ── */
-    .section-header {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.7rem;
-        font-weight: 600;
-        color: var(--tk-text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        padding: 0.6rem 0 0.4rem 0;
-        border-bottom: 1px solid var(--tk-border);
-        margin-bottom: 0.6rem;
-    }
-
+st.markdown("<style>" + page_css("1400px") + """
     /* ── Metric card ── */
     .metric-card {
         background: var(--tk-surface);
@@ -185,32 +115,6 @@ st.markdown("""
     }
     .data-table tr:hover { background: var(--tk-surface-alt); }
 
-    /* ── Hide Streamlit defaults ── */
-    #MainMenu { visibility: hidden; }
-    footer { visibility: hidden; }
-    .stDeployButton { display: none; }
-    header[data-testid="stHeader"] { background: var(--tk-app-bg); }
-
-    /* Button styling */
-    .stButton > button {
-        background: var(--tk-surface);
-        color: var(--tk-text);
-        border: 1px solid var(--tk-border-strong);
-        font-family: 'DM Sans', sans-serif;
-        font-size: 0.78rem;
-        font-weight: 600;
-        border-radius: 4px;
-        padding: 0.4rem 1.2rem;
-    }
-    .stButton > button:hover {
-        background: var(--tk-surface-alt);
-        border-color: var(--tk-accent);
-        color: var(--tk-text);
-    }
-
-    /* Plotly chart backgrounds */
-    .stPlotlyChart { background: transparent !important; }
-
     /* Status indicator */
     .status-dot {
         display: inline-block;
@@ -227,17 +131,13 @@ st.markdown("""
 
     /* ── Mobile responsive ── */
     @media (max-width: 768px) {
-        .block-container { padding-left: 0.5rem; padding-right: 0.5rem; max-width: 100%; }
-        .dashboard-header { flex-direction: column; gap: 0.5rem; }
-        .dashboard-header-left { gap: 0.5rem; }
-        .dashboard-title { font-size: 1.1rem; }
+        .page-header-left { gap: 0.5rem; }
         .metric-card { padding: 0.5rem 0.6rem; }
         .metric-value { font-size: 1rem; }
         .metric-change-item { font-size: 0.6rem; }
         .data-table { font-size: 0.65rem; }
         .data-table th { font-size: 0.55rem; padding: 0.3rem; }
         .data-table td { padding: 0.3rem; }
-        .section-header { font-size: 0.6rem; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -273,14 +173,14 @@ def render_header(timestamp: datetime):
         if logo_path.exists():
             if ext == "svg":
                 svg_content = logo_path.read_text()
-                logo_html = f'<div class="dashboard-logo">{svg_content}</div>'
+                logo_html = f'<div class="page-logo">{svg_content}</div>'
             else:
                 b64 = base64.b64encode(logo_path.read_bytes()).decode()
                 mime = "image/png" if ext == "png" else f"image/{ext}"
-                logo_html = f'<img class="dashboard-logo" src="data:{mime};base64,{b64}" />'
+                logo_html = f'<img class="page-logo" src="data:{mime};base64,{b64}" />'
             break
 
-    html = f"""<div class="dashboard-header"><div class="dashboard-header-left">{logo_html}<div><div class="dashboard-title">Market Dashboard</div><div class="dashboard-subtitle">Daily Macro & Market Snapshot</div></div></div><div class="dashboard-timestamp"><span class="status-dot status-live"></span>Last refresh: {ts_str}</div></div>"""
+    html = f"""<div class="page-header"><div class="page-header-left">{logo_html}<div><div class="page-title">Market Dashboard</div><div class="page-subtitle">Daily Macro & Market Snapshot</div></div></div><div class="page-timestamp"><span class="status-dot status-live"></span>Last refresh: {ts_str}</div></div>"""
     st.markdown(html, unsafe_allow_html=True)
     if st.button("\u2190 Home", key="home_btn"):
         st.switch_page("app.py")

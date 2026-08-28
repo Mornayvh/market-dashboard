@@ -8,7 +8,7 @@ from datetime import datetime
 import streamlit as st
 
 from src.direct_investments.config import HOLDING_ORDER, get_holding
-from src.theme import apply_theme
+from src.theme import apply_theme, page_css
 from src.direct_investments.views import (
     render_holding_header, render_comps, render_sparkline_grid,
     render_fred_indicators, render_trends, render_static_block,
@@ -30,38 +30,10 @@ apply_theme()
 # CSS — match existing dashboards, driven by the active theme's --tk-* variables
 # ---------------------------------------------------------------------------
 
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
-
-    .stApp { background-color: var(--tk-app-bg); color: var(--tk-text); }
-    .block-container { padding-top: 2rem; padding-bottom: 1rem; max-width: 1400px; }
-
-    #MainMenu { visibility: hidden; }
-    footer { visibility: hidden; }
-    .stDeployButton { display: none; }
-    header[data-testid="stHeader"] { background: var(--tk-app-bg); }
-
-    .di-header {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 0.75rem 0 1.25rem 0; border-bottom: 1px solid var(--tk-border); margin-bottom: 1.5rem;
-    }
-    .di-title {
-        font-family: 'DM Sans', sans-serif; font-size: 1.4rem;
-        font-weight: 700; color: var(--tk-text); letter-spacing: -0.02em;
-    }
-    .di-subtitle {
-        font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--tk-text-muted); margin-top: 2px;
-    }
-    .di-timestamp {
-        font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--tk-text-muted); text-align: right;
-    }
-
-    .section-header {
-        font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
-        color: var(--tk-text-muted); text-transform: uppercase; letter-spacing: 0.12em;
-        padding: 1.1rem 0 0.5rem 0; border-bottom: 1px solid var(--tk-border); margin-bottom: 0.8rem;
-    }
+st.markdown("<style>" + page_css("1400px") + """
+    /* Roomier section spacing than the house default — this page stacks many
+       more sections than the others. */
+    .section-header { padding: 1.1rem 0 0.5rem 0; margin-bottom: 0.8rem; }
 
     .holding-header {
         background: var(--tk-surface); border: 1px solid var(--tk-border); border-radius: 6px;
@@ -111,10 +83,6 @@ st.markdown("""
     }
     .data-table tr:hover { background: var(--tk-surface-alt); }
 
-    .stock-ticker {
-        font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
-        color: var(--tk-text-faint); margin-left: 0.4rem;
-    }
     .comp-name-primary { font-weight: 700; }
     /* HQ country flag; sits before the company name, place name on hover */
     .comp-flag {
@@ -185,13 +153,6 @@ st.markdown("""
         color: var(--tk-text-soft); margin-top: 2px;
     }
     .spark-price { color: var(--tk-text); font-weight: 600; }
-
-    .stButton > button {
-        background: var(--tk-surface); color: var(--tk-text); border: 1px solid var(--tk-border-strong);
-        font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
-        border-radius: 4px; padding: 0.4rem 1.2rem;
-    }
-    .stButton > button:hover { background: var(--tk-surface-alt); border-color: var(--tk-accent); color: var(--tk-text); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -220,10 +181,10 @@ with st.sidebar:
 
 ts_str = datetime.now().strftime("%d %b %Y  %H:%M")
 st.markdown(
-    f"""<div class="di-header">
-        <div><div class="di-title">◼ Direct Investments</div>
-        <div class="di-subtitle">Private holdings — public-market proxy tracker</div></div>
-        <div class="di-timestamp">Last refresh: {ts_str}</div>
+    f"""<div class="page-header">
+        <div><div class="page-title">◼ Direct Investments</div>
+        <div class="page-subtitle">Private holdings — public-market proxy tracker</div></div>
+        <div class="page-timestamp">Last refresh: {ts_str}</div>
     </div>""",
     unsafe_allow_html=True,
 )

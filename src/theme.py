@@ -386,6 +386,117 @@ def _shared_css(theme: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Shared page stylesheet
+#
+# Every dashboard page used to carry its own copy of the block below — the same
+# font import, shell, chrome-hiding and button rules, plus a header family that
+# differed only by class prefix (.port-, .watch-, .di-, .am-). One copy lives
+# here now and the pages call page_css().
+#
+# What is deliberately NOT here: the per-page data tables. They look alike but
+# differ in font size, cell padding and column alignment (the Partner table is
+# left-aligned throughout, Alt Managers adds nowrap and .txt columns), so a
+# shared base would need so many overrides that each page is clearer owning its
+# own. Same for genuinely page-specific components — metric cards, KPI cards,
+# holding callouts, tooltips.
+#
+# `__MAXW__` is substituted rather than using an f-string so the CSS braces do
+# not have to be doubled throughout.
+# ---------------------------------------------------------------------------
+
+_PAGE_CSS = """
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+    /* ── Shell ── */
+    .stApp { background-color: var(--tk-app-bg); color: var(--tk-text); }
+    .block-container { padding-top: 2rem; padding-bottom: 1rem; max-width: __MAXW__; }
+
+    /* ── Hide Streamlit's own chrome ── */
+    #MainMenu { visibility: hidden; }
+    footer { visibility: hidden; }
+    .stDeployButton { display: none; }
+    header[data-testid="stHeader"] { background: var(--tk-app-bg); }
+    .stPlotlyChart { background: transparent !important; }
+
+    /* ── Page header ── */
+    .page-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.75rem 0 1.25rem 0; border-bottom: 1px solid var(--tk-border);
+        margin-bottom: 1.5rem;
+    }
+    .page-header-left { display: flex; align-items: center; gap: 0.75rem; }
+    .page-logo {
+        height: 36px; width: auto;
+        /* The wordmark is a single flat slate; on a dark ground it has to be
+           inverted to stay legible. No-op in the light theme. */
+        filter: var(--tk-logo-filter);
+    }
+    .page-title {
+        font-family: 'DM Sans', sans-serif; font-size: 1.4rem;
+        font-weight: 700; color: var(--tk-text); letter-spacing: -0.02em;
+    }
+    .page-subtitle {
+        font-family: 'DM Sans', sans-serif; font-size: 0.8rem;
+        color: var(--tk-text-muted); margin-top: 2px;
+    }
+    .page-timestamp {
+        font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+        color: var(--tk-text-muted); text-align: right;
+    }
+
+    /* ── Section header ──
+       Direct Investments and Alt Managers want roomier spacing and override
+       the padding / margin-bottom locally. */
+    .section-header {
+        font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+        color: var(--tk-text-muted); text-transform: uppercase; letter-spacing: 0.12em;
+        padding: 0.6rem 0 0.4rem 0; border-bottom: 1px solid var(--tk-border);
+        margin-bottom: 0.6rem;
+    }
+
+    /* ── Shared inline bits ── */
+    .stock-ticker {
+        font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+        color: var(--tk-text-faint); margin-left: 0.4rem;
+    }
+    .chg-up { color: var(--tk-pos); }
+    .chg-down { color: var(--tk-neg); }
+    .chg-flat { color: var(--tk-text-muted); }
+
+    /* ── Buttons ── */
+    .stButton > button {
+        background: var(--tk-surface); color: var(--tk-text);
+        border: 1px solid var(--tk-border-strong);
+        font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
+        border-radius: 4px; padding: 0.4rem 1.2rem;
+    }
+    .stButton > button:hover {
+        background: var(--tk-surface-alt); border-color: var(--tk-accent);
+        color: var(--tk-text);
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 768px) {
+        .block-container { padding-left: 0.5rem; padding-right: 0.5rem; max-width: 100%; }
+        .page-header { flex-direction: column; gap: 0.5rem; }
+        .page-title { font-size: 1.1rem; }
+        .section-header { font-size: 0.6rem; }
+    }
+"""
+
+
+def page_css(max_width: str = "1400px") -> str:
+    """The stylesheet every dashboard page shares, as the inner text of a
+    `<style>` block. Pass the page's content width; everything else is fixed.
+
+    Emit it before the page's own rules so those win on equal specificity:
+
+        st.markdown(f"<style>{page_css()}\\n.my-rule {{...}}</style>", ...)
+    """
+    return _PAGE_CSS.replace("__MAXW__", max_width)
+
+
+# ---------------------------------------------------------------------------
 # localStorage bridge
 # ---------------------------------------------------------------------------
 

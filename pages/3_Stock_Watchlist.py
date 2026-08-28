@@ -10,7 +10,7 @@ import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
 
-from src.theme import apply_theme, palette
+from src.theme import apply_theme, page_css, palette
 
 st.set_page_config(
     page_title="Stock Watchlist | Secco Capital",
@@ -27,36 +27,7 @@ apply_theme()
 # CSS — house style, driven by the active theme's --tk-* variables
 # ---------------------------------------------------------------------------
 
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
-
-    .stApp { background-color: var(--tk-app-bg); color: var(--tk-text); }
-    .block-container { padding-top: 2rem; padding-bottom: 1rem; max-width: 1400px; }
-
-    #MainMenu { visibility: hidden; }
-    footer { visibility: hidden; }
-    .stDeployButton { display: none; }
-    header[data-testid="stHeader"] { background: var(--tk-app-bg); }
-
-    .watch-header {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 0.75rem 0 1.25rem 0; border-bottom: 1px solid var(--tk-border); margin-bottom: 1.5rem;
-    }
-    .watch-title {
-        font-family: 'DM Sans', sans-serif; font-size: 1.4rem;
-        font-weight: 700; color: var(--tk-text); letter-spacing: -0.02em;
-    }
-    .watch-subtitle {
-        font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--tk-text-muted); margin-top: 2px;
-    }
-
-    .section-header {
-        font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
-        color: var(--tk-text-muted); text-transform: uppercase; letter-spacing: 0.12em;
-        padding: 0.6rem 0 0.4rem 0; border-bottom: 1px solid var(--tk-border); margin-bottom: 0.6rem;
-    }
-
+st.markdown("<style>" + page_css("1400px") + """
     .stock-table {
         width: 100%; border-collapse: collapse;
         font-family: 'JetBrains Mono', monospace; font-size: 0.76rem;
@@ -76,10 +47,6 @@ st.markdown("""
         font-weight: 500; font-size: 0.78rem;
     }
     .stock-table tr:hover { background: var(--tk-surface-alt); }
-    .stock-ticker {
-        font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
-        color: var(--tk-text-faint); margin-left: 0.4rem;
-    }
 
     /* Hoverable listing note on tickers with an ambiguous / multi-listing story */
     .ticker-note { position: relative; cursor: help; border-bottom: 1px dotted var(--tk-text-faint); }
@@ -101,21 +68,8 @@ st.markdown("""
     .ticker-tip b { font-weight: 600; color: var(--tk-tooltip-strong); }
     /* "—" in Mkt Cap where no public market cap exists; reason on hover */
     .mcap-na { cursor: help; border-bottom: 1px dotted var(--tk-border-strong); color: var(--tk-text-faint); }
-    .chg-up { color: var(--tk-pos); }
-    .chg-down { color: var(--tk-neg); }
-    .chg-flat { color: var(--tk-text-muted); }
-
-    .stButton > button {
-        background: var(--tk-surface); color: var(--tk-text); border: 1px solid var(--tk-border-strong);
-        font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600;
-        border-radius: 4px; padding: 0.4rem 1.2rem;
-    }
-    .stButton > button:hover { background: var(--tk-surface-alt); border-color: var(--tk-accent); color: var(--tk-text); }
 
     @media (max-width: 768px) {
-        .block-container { padding-left: 0.5rem; padding-right: 0.5rem; max-width: 100%; }
-        .watch-header { flex-direction: column; gap: 0.5rem; }
-        .watch-title { font-size: 1.1rem; }
         .stock-table { font-size: 0.65rem; }
         .stock-table th { font-size: 0.55rem; padding: 0.3rem; }
         .stock-table td { padding: 0.3rem; }
@@ -455,7 +409,7 @@ def render_stock_table(df):
 # Layout
 # ---------------------------------------------------------------------------
 
-st.markdown("""<div class="watch-header"><div><div class="watch-title">\u25FC Stock Watchlist</div><div class="watch-subtitle">Core, Connected & Global Holdings by Sector</div></div></div>""", unsafe_allow_html=True)
+st.markdown("""<div class="page-header"><div><div class="page-title">\u25FC Stock Watchlist</div><div class="page-subtitle">Core, Connected & Global Holdings by Sector</div></div></div>""", unsafe_allow_html=True)
 
 if st.button("\u2190 Home", key="home_btn"):
     st.switch_page("app.py")
