@@ -12,6 +12,9 @@ from datetime import datetime, timedelta
 
 from src.theme import apply_theme, page_css, palette
 from src.watchlist import CURRENCY_SYMBOLS, FULL_YEAR_MIN_DAYS, WATCHLIST
+# Shared spot-FX helper. It lives under direct_investments but is generic: it
+# resolves either quote direction and returns None rather than guess a rate.
+from src.direct_investments.data_loader import fetch_fx_to_usd
 
 st.set_page_config(
     page_title="Stock Watchlist | Secco Capital",
@@ -69,6 +72,8 @@ st.markdown("<style>" + page_css("1400px") + """
     .ticker-tip b { font-weight: 600; color: var(--tk-tooltip-strong); }
     /* "—" in Mkt Cap where no public market cap exists; reason on hover */
     .mcap-na { cursor: help; border-bottom: 1px dotted var(--tk-border-strong); color: var(--tk-text-faint); }
+    /* Caps converted out of their listing currency; native figure + rate on hover */
+    .mcap-fx { cursor: help; border-bottom: 1px dotted var(--tk-border-strong); }
 
     @media (max-width: 768px) {
         .stock-table { font-size: 0.65rem; }
@@ -88,6 +93,13 @@ st.markdown("<style>" + page_css("1400px") + """
 # Currently empty: every name on the watchlist is a listed equity. SPCX was
 # briefly listed here in error — SpaceX IPO'd on Nasdaq on 12 June 2026.
 MARKET_CAP_INELIGIBLE: dict[str, str] = {}
+
+# Listing currencies whose market cap is converted to USD before display.
+# The China Tech group is split between CNY-quoted A-shares (BYD, CXMT, Unitree)
+# and US ADRs whose caps Yahoo already reports in USD (Alibaba, Tencent), so
+# without this the column cannot be read down the group. Prices are left in the
+# listing currency — only the cap is converted.
+MCAP_USD_FROM = {"CNY"}
 
 # Tickers where the listing venue isn't obvious from the symbol — shown as a
 # hover box on the ticker in the table.
@@ -121,6 +133,27 @@ def fetch_market_cap(ticker: str):
         return None
 
 
+def convert_market_cap(val, currency):
+    """
+    Convert a market cap to USD when its listing currency is in MCAP_USD_FROM.
+
+    Returns (value, label_currency, hover_note). The note records the native
+    figure and the rate used, so a converted number is never presented as if it
+    were reported. When the rate does not resolve the native figure is returned
+    unchanged — a missing rate must not print a CNY number labelled USD.
+    """
+    if val is None or currency not in MCAP_USD_FROM:
+        return val, currency, None
+    rate = fetch_fx_to_usd(currency)
+    if not rate:
+        return val, currency, None
+    note = (
+        f"{currency} {_mcap_magnitude(val)} converted at "
+        f"USD/{currency} {1 / rate:,.4f} (Yahoo spot)"
+    )
+    return val * rate, "USD", note
+
+
 @st.cache_data(ttl=300)
 def fetch_watchlist_data():
     """Fetch price data for all watchlist stocks."""
@@ -143,6 +176,7 @@ def fetch_watchlist_data():
                     "group": group, "name": name, "ticker": ticker, "currency": currency,
                     "price": None, "chg_1d": None, "chg_1m": None, "chg_ltm": None,
                     "high_52w": None, "low_52w": None, "market_cap": None,
+                    "mcap_currency": currency, "mcap_note": None,
                 })
                 continue
 
@@ -153,6 +187,7 @@ def fetch_watchlist_data():
                     "group": group, "name": name, "ticker": ticker, "currency": currency,
                     "price": None, "chg_1d": None, "chg_1m": None, "chg_ltm": None,
                     "high_52w": None, "low_52w": None, "market_cap": None,
+                    "mcap_currency": currency, "mcap_note": None,
                 })
                 continue
             last = float(close.iloc[-1])
@@ -186,17 +221,22 @@ def fetch_watchlist_data():
             high_52w = float(close.max()) if has_full_year else None
             low_52w = float(close.min()) if has_full_year else None
 
+            mcap, mcap_cur, mcap_note = convert_market_cap(
+                fetch_market_cap(ticker), currency
+            )
+
             results.append({
                 "group": group, "name": name, "ticker": ticker, "currency": currency,
                 "price": last, "chg_1d": chg_1d, "chg_1m": chg_1m, "chg_ltm": chg_ltm,
                 "high_52w": high_52w, "low_52w": low_52w,
-                "market_cap": fetch_market_cap(ticker),
+                "market_cap": mcap, "mcap_currency": mcap_cur, "mcap_note": mcap_note,
             })
         except Exception:
             results.append({
                 "group": group, "name": name, "ticker": ticker, "currency": currency,
                 "price": None, "chg_1d": None, "chg_1m": None, "chg_ltm": None,
                 "high_52w": None, "low_52w": None, "market_cap": None,
+                "mcap_currency": currency, "mcap_note": None,
             })
 
     return pd.DataFrame(results), histories, datetime.now()
@@ -215,12 +255,22 @@ def fmt_price(val, currency):
         return f"{sym}{val:,.1f}"
     return f"{sym}{val:,.2f}"
 
-def fmt_market_cap(val, currency, ticker):
+def _mcap_magnitude(val):
+    """Market cap scaled to T/B/M, without a currency label."""
+    if val >= 1e12:
+        return f"{val/1e12:.2f}T"
+    if val >= 1e9:
+        return f"{val/1e9:.1f}B"
+    return f"{val/1e6:.0f}M"
+
+
+def fmt_market_cap(val, currency, ticker, note=None):
     """
     Market cap as "ISO 1.23T/B/M". ISO codes rather than the price column's
     symbols because six currencies appear here and the cap sits in the major
     unit while some prices sit in the minor one — a bare symbol would conflate
-    the two. Ineligible tickers render "—" with the reason on hover.
+    the two. Ineligible tickers render "—" with the reason on hover; converted
+    caps (see MCAP_USD_FROM) carry the native figure and rate on hover.
     """
     reason = MARKET_CAP_INELIGIBLE.get(ticker)
     if reason:
@@ -229,11 +279,14 @@ def fmt_market_cap(val, currency, ticker):
     if val is None or pd.isna(val) or val == 0:
         return "—"
     cur = f"{currency} " if currency else ""
-    if val >= 1e12:
-        return f"{cur}{val/1e12:.2f}T"
-    if val >= 1e9:
-        return f"{cur}{val/1e9:.1f}B"
-    return f"{cur}{val/1e6:.0f}M"
+    out = f"{cur}{_mcap_magnitude(val)}"
+    # A DataFrame round-trip turns a missing note into NaN, not None.
+    if note is not None and pd.isna(note):
+        note = None
+    if note:
+        esc = html.escape(note, quote=True)
+        return f'<span class="mcap-fx" title="{esc}">{out}</span>'
+    return out
 
 def fmt_chg(val):
     if val is None or pd.isna(val):
@@ -316,7 +369,12 @@ def render_stock_table(df):
         ltm = fmt_chg(row["chg_ltm"])
         hi = fmt_price(row["high_52w"], row["currency"])
         lo = fmt_price(row["low_52w"], row["currency"])
-        mcap = fmt_market_cap(row.get("market_cap"), row["currency"], row["ticker"])
+        # The cap's currency is not always the listing currency — CNY caps are
+        # shown in USD — so label it from mcap_currency, not row["currency"].
+        mcap_cur = row.get("mcap_currency") or row["currency"]
+        mcap = fmt_market_cap(
+            row.get("market_cap"), mcap_cur, row["ticker"], row.get("mcap_note")
+        )
 
         # Name and ticker together are the hover target, so pointing at either
         # the company name or the symbol opens the listing note.
