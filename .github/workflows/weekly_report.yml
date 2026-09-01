@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Build the PDFs and note but send no email'
+        description: 'Build the PDFs but send no email'
         type: boolean
         default: false
 
@@ -39,7 +39,6 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           EMAIL_RECIPIENTS: ${{ secrets.EMAIL_RECIPIENTS }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           python weekly_report_email.py ${{ inputs.dry_run && '--dry-run' || '' }}
 

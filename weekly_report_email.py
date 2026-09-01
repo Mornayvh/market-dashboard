@@ -3,11 +3,10 @@ weekly_report_email.py — Emails the weekly dashboard report via Resend.
 
 Builds the Market Dashboard and Stock Watchlist PDFs (no Streamlit server
 needed — both pull data through the src/ ingest layer, exactly like the
-standalone export scripts), asks Claude for a short note on what drove markets
-this week, and sends the lot as one email with both PDFs attached.
+standalone export scripts) and sends them as one email with both attached.
 
 Usage:
-    python weekly_report_email.py            # build, generate note, send
+    python weekly_report_email.py            # build and send
     python weekly_report_email.py --dry-run  # build and print, send nothing
 
 Environment:
@@ -15,8 +14,6 @@ Environment:
     EMAIL_RECIPIENTS    required — comma-separated recipients
     EMAIL_FROM          optional — sender, default "Secco Capital <reports@seccocapital.com>"
                                    (the domain must be verified in Resend)
-    ANTHROPIC_API_KEY   optional — enables the weekly note; without it the
-                                   report still sends, just without commentary
     FRED_API_KEY        optional — rates and spreads on the market PDF
 
 Scheduled by .github/workflows/weekly_report.yml (Fridays after the US close).
@@ -36,7 +33,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # Both exporters expose build_pdf(out_path); alias to disambiguate.
 from export_pdf import build_pdf as build_market_pdf
 from export_watchlist_pdf import build_pdf as build_watchlist_pdf
-from src.weekly_note import generate_weekly_note
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -49,47 +45,7 @@ RESEND_MAX_TOTAL_MB = 40  # Resend's per-message ceiling, attachments included
 # Email body
 # ---------------------------------------------------------------------------
 
-def _note_html(note: str | None, sources: list[tuple[str, str]]) -> str:
-    """The commentary block. Renders nothing at all when there is no note, so
-    the email degrades to a clean PDFs-only report."""
-    if not note:
-        return ""
-
-    paragraphs = "".join(
-        f'<p style="margin:0 0 0.7rem 0;">{p.strip()}</p>'
-        for p in note.split("\n\n") if p.strip()
-    )
-
-    sources_html = ""
-    if sources:
-        items = "".join(
-            f'<li style="margin-bottom:3px;">'
-            f'<a href="{url}" style="color:#4F7FD6; text-decoration:none;">{title}</a></li>'
-            for title, url in sources[:8]
-        )
-        sources_html = (
-            '<div style="margin-top:14px; padding-top:10px; border-top:1px solid #E2E8F0;">'
-            '<div style="font-family:\'Courier New\',monospace; font-size:10px; '
-            'text-transform:uppercase; letter-spacing:0.1em; color:#94A3B8; '
-            'margin-bottom:6px;">Sources</div>'
-            f'<ul style="margin:0; padding-left:16px; font-size:11px; color:#64748B;">{items}</ul>'
-            "</div>"
-        )
-
-    return f"""
-    <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px;
-         padding:16px 18px; margin-bottom:22px;">
-      <div style="font-family:'Courier New',monospace; font-size:10px; font-weight:700;
-           text-transform:uppercase; letter-spacing:0.1em; color:#64748B;
-           padding-bottom:8px; margin-bottom:10px; border-bottom:1px solid #E2E8F0;">
-        The Week in Markets
-      </div>
-      <div style="font-size:13.5px; line-height:1.65; color:#1E293B;">{paragraphs}</div>
-      {sources_html}
-    </div>"""
-
-
-def build_html(date_str: str, note: str | None, sources: list[tuple[str, str]]) -> str:
+def build_html(date_str: str) -> str:
     return f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="margin:0; padding:0; background:#F1F5F9;">
@@ -103,8 +59,6 @@ def build_html(date_str: str, note: str | None, sources: list[tuple[str, str]]) 
     </div>
 
     <div style="padding:22px 24px;">
-      {_note_html(note, sources)}
-
       <div style="font-size:13.5px; line-height:1.6; color:#1E293B;">
         Attached:
         <ul style="margin:8px 0 0 0; padding-left:18px;">
@@ -127,12 +81,11 @@ def build_html(date_str: str, note: str | None, sources: list[tuple[str, str]]) 
 </body></html>"""
 
 
-def build_text(date_str: str, note: str | None) -> str:
-    """Plain-text alternative. Mail clients that reject HTML still get the note."""
-    parts = [f"Weekly Dashboard Report — {date_str}", ""]
-    if note:
-        parts += ["THE WEEK IN MARKETS", "", note, ""]
-    parts += [
+def build_text(date_str: str) -> str:
+    """Plain-text alternative for clients that reject HTML."""
+    parts = [
+        f"Weekly Dashboard Report — {date_str}",
+        "",
         "Attached:",
         "  - Market Dashboard — rates, equities, commodities, credit, FX and volatility",
         "  - Stock Watchlist — core, connected and global holdings",
@@ -193,7 +146,7 @@ def send_email(subject, html, text, recipients, attachment_paths, api_key, sende
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--dry-run", action="store_true",
-                    help="Build the PDFs and note, print the note, send nothing.")
+                    help="Build the PDFs and print what would be sent; send nothing.")
     args = ap.parse_args()
 
     api_key = os.environ.get("RESEND_API_KEY")
@@ -213,31 +166,21 @@ def main():
 
     logger.info("Building Market Dashboard PDF...")
     market_pdf = f"market_dashboard_{date_tag}.pdf"
-    metrics = build_market_pdf(market_pdf)   # reused for the note, not refetched
+    build_market_pdf(market_pdf)
 
     logger.info("Building Stock Watchlist PDF...")
     watchlist_pdf = f"stock_watchlist_{date_tag}.pdf"
     build_watchlist_pdf(watchlist_pdf)
 
-    # Macro metrics only — the note generator must never see the watchlist.
-    logger.info("Generating the weekly note...")
-    note, sources = generate_weekly_note(metrics)
-
     subject = f"Secco Capital — Weekly Dashboard Report, {date_str}"
-    html = build_html(date_str, note, sources)
-    text = build_text(date_str, note)
+    html = build_html(date_str)
+    text = build_text(date_str)
 
     if args.dry_run:
         print("\n" + "=" * 70)
         print(f"SUBJECT: {subject}")
         print(f"FROM:    {sender}")
         print(f"TO:      {recipients_str or '(unset)'}")
-        print("=" * 70)
-        print(note or "(no note — ANTHROPIC_API_KEY unset or generation failed)")
-        if sources:
-            print("\nSOURCES:")
-            for title, url in sources:
-                print(f"  - {title}\n    {url}")
         print("=" * 70)
         for p in (market_pdf, watchlist_pdf):
             print(f"attachment: {p} ({os.path.getsize(p) / 1000:.0f} KB)")
