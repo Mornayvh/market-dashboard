@@ -6,6 +6,7 @@ Still not a full business comparison: no FRE / carry / perpetual-capital data.
 """
 
 from datetime import datetime
+from html import escape
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -55,10 +56,29 @@ st.markdown("<style>" + page_css("1500px") + """
         margin-top: 0.3rem;
     }
     .dd-summary-label {
+        display: block;
         font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 600;
         color: var(--tk-text-muted); text-transform: uppercase; letter-spacing: 0.1em;
         margin-bottom: 0.5rem;
     }
+    /* The About block is a single <details>: "Read full description" sits bottom-right
+       inside the box and swaps the trimmed text for the full text in place, rather
+       than opening a second container below it. */
+    details.dd-summary > summary { list-style: none; cursor: pointer; }
+    details.dd-summary > summary::-webkit-details-marker { display: none; }
+    .dd-summary-short, .dd-summary-full { display: block; }
+    .dd-summary-full { display: none; }
+    details.dd-summary[open] .dd-summary-short { display: none; }
+    details.dd-summary[open] .dd-summary-full { display: block; }
+    .dd-summary-toggle {
+        display: block; text-align: right; margin-top: 0.7rem;
+        font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; font-weight: 600;
+        color: var(--tk-accent); text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .dd-summary-toggle:hover { text-decoration: underline; }
+    .dd-summary-toggle .tg-less { display: none; }
+    details.dd-summary[open] .dd-summary-toggle .tg-more { display: none; }
+    details.dd-summary[open] .dd-summary-toggle .tg-less { display: inline; }
     .dd-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--tk-text-muted); margin: 0.4rem 0; }
     .metric-line { display: flex; justify-content: space-between; padding: 0.35rem 0; border-bottom: 1px solid var(--tk-border-soft); font-family: 'DM Sans', sans-serif; font-size: 0.82rem; }
     .metric-line .lbl { color: var(--tk-text-muted); }
@@ -320,10 +340,16 @@ text_cols = {"Ticker", "Name", "Category", "Geo", "Tilt", "AUM as of"}
 color_cols = {"LTM %", "3Y % (ann)", "5Y % (ann)"}
 
 st.markdown(render_html_table(df, fmts, text_cols, color_cols), unsafe_allow_html=True)
+st.caption(
+    f"Market data is live from Yahoo (see 'Last refresh' above). AUM is hand-maintained "
+    f"reference data on a separate cycle — latest reported figures, last verified "
+    f"{datetime.strptime(ref.LAST_VERIFIED, '%Y-%m-%d').strftime('%d %B %Y')}; "
+    f"next refresh due with Q3'26 reporting."
+)
 
 with st.expander("Explain the columns / data-quality notes"):
     st.markdown("""
-- **AUM (USD bn)** — Total assets under management. **Hand-maintained reference data — not from Yahoo** (Yahoo carries no AUM). Figures are approximate, refreshed manually each quarter; the **AUM as of** column shows the reporting date. *Verify against the firm's disclosure before relying on it.* Blank for any firm with no comparable Total-AUM figure.
+- **AUM (USD bn)** — Total assets under management. **Hand-maintained reference data — not from Yahoo** (Yahoo carries no AUM), so it moves only when the table is refreshed by hand, not with the live market data above. Every figure is taken from the firm's own latest disclosure — Q2'26 for the US managers, H1'26 for the Europeans — and the **AUM as of** column shows that reporting date. Two basis caveats: **BAM**'s USD 1.3tn (Q2'26 supplemental) is measured across Brookfield as a whole, including Brookfield Corporation, on a methodology BAM states differs from other alt managers — it is *not* like-for-like with the other rows, and its comparable manager metric is fee-bearing capital of USD 672bn; **CVC**'s results disclose fee-paying AUM (EUR 153.2bn) only, so the total is CVC's own EUR 212bn figure. EQT and CVC are converted from EUR at the 30 Jun 2026 rate (EUR/USD 1.1422). Blank for any firm with no comparable Total-AUM figure.
 - **Valuation multiples (Trail P/E, P/B, EV/EBITDA, EV/Sales)** — all GAAP-based, off Yahoo's `info` payload.
 - **Fwd P/E** — price ÷ analyst consensus forward EPS. Consensus for alt managers is on **adjusted** earnings (FRE/DE basis), not GAAP, so Fwd P/E can sit far below Trail P/E whenever GAAP earnings are depressed by mark-to-market swings (e.g. Apollo/Athene investment marks). The Trail-vs-Fwd gap is mostly an accounting-basis gap, not an expected earnings explosion. Alt managers themselves guide on **Fee-Related Earnings (FRE)** and **Distributable Earnings (DE)** — these GAAP multiples are *not* what sell-side analysts use to value the firms and will look richer/cheaper than the FRE/DE-based multiples in research notes. Treat them as a rough cross-sectional read, not a price target. *EV/EBITDA is frequently missing for the US listings (Yahoo doesn't compute `enterpriseValue` for them); EV/Sales fills that gap.* For firms that list in one currency but report in another (EQT: SEK price, EUR financials), Yahoo's P/B / EV/EBITDA / EV/Sales are inflated by the cross rate — these are **FX-corrected here** before display.
 - **Div Yield %** — Yahoo reports this already in percent; shown as-is.
@@ -435,14 +461,21 @@ with left:
     st.markdown("<br>", unsafe_allow_html=True)
     short, full = _short_summary(dd.get("longBusinessSummary"))
     if short:
-        st.markdown(
-            f'<div class="dd-summary">'
-            f'<div class="dd-summary-label">About {m["name"]}</div>'
-            f'{short}</div>',
-            unsafe_allow_html=True)
+        label = f'<span class="dd-summary-label">About {escape(m["name"])}</span>'
         if full:
-            with st.expander("Read full description"):
-                st.markdown(full)
+            # Both texts live in the same box; CSS shows one or the other on toggle.
+            st.markdown(
+                f'<details class="dd-summary"><summary>{label}'
+                f'<span class="dd-summary-short">{escape(short)}</span>'
+                f'<span class="dd-summary-full">{escape(full)}</span>'
+                f'<span class="dd-summary-toggle">'
+                f'<span class="tg-more">Read full description</span>'
+                f'<span class="tg-less">Show less</span>'
+                f'</span></summary></details>',
+                unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="dd-summary">{label}{escape(short)}</div>',
+                        unsafe_allow_html=True)
     else:
         st.caption("Business summary unavailable from Yahoo Finance.")
 
