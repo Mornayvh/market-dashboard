@@ -38,6 +38,9 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           EMAIL_RECIPIENTS: ${{ secrets.EMAIL_RECIPIENTS }}
+          # An undefined secret expands to "", so EMAIL_FROM arrives set but
+          # empty and never falls back to the script's default. The script's
+          # env() treats blank as unset; leave this line as it is.
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
         run: |
           python weekly_report_email.py ${{ inputs.dry_run && '--dry-run' || '' }}

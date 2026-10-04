@@ -8,8 +8,9 @@ standalone export scripts) and sends them as one email with both attached.
 Usage:
     python weekly_report_email.py            # build and send
     python weekly_report_email.py --dry-run  # build and print, send nothing
+    python weekly_report_email.py --check    # verify key and sender, build nothing
 
-Environment:
+Environment (a variable set to the empty string counts as unset — see env()):
     RESEND_API_KEY      required — Resend API key
     EMAIL_RECIPIENTS    required — comma-separated recipients
     EMAIL_FROM          optional — sender, default "Secco Capital <reports@seccocapital.com>"
@@ -39,6 +40,18 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_FROM = "Secco Capital <reports@seccocapital.com>"
 RESEND_MAX_TOTAL_MB = 40  # Resend's per-message ceiling, attachments included
+
+
+def env(name: str, default: str | None = None) -> str | None:
+    """Read an environment variable, treating blank as unset.
+
+    GitHub Actions expands `env: X: ${{ secrets.X }}` to the empty string when
+    the secret does not exist, so the variable is present but empty and a plain
+    os.environ.get(name, default) returns "" rather than the default. Every
+    optional variable must come through here.
+    """
+    value = os.environ.get(name)
+    return value.strip() if value and value.strip() else default
 
 
 # ---------------------------------------------------------------------------
@@ -135,8 +148,66 @@ def send_email(subject, html, text, recipients, attachment_paths, api_key, sende
         timeout=60,
     )
     if resp.status_code != 200:
-        raise RuntimeError(f"Resend API error {resp.status_code}: {resp.text}")
+        raise RuntimeError(
+            f"Resend API error {resp.status_code} sending from {sender!r} to "
+            f"{len(recipients)} recipient(s): {resp.text}"
+        )
     logger.info("Sent. Resend id: %s", resp.json().get("id", "unknown"))
+
+
+def preflight(api_key: str, sender: str) -> None:
+    """Check the key and the sender domain with Resend.
+
+    Runs before the PDF build so a credential or domain problem surfaces in
+    seconds with a usable message, rather than three minutes later as an
+    opaque API error.
+    """
+    domain = sender.rsplit("@", 1)[-1].rstrip(">").strip().lower()
+
+    resp = requests.get(
+        "https://api.resend.com/domains",
+        headers={"Authorization": f"Bearer {api_key}"},
+        timeout=30,
+    )
+    if resp.status_code in (401, 403) or (
+        resp.status_code == 400 and "api key" in resp.text.lower()
+    ):
+        raise RuntimeError(
+            f"Resend rejected the API key ({resp.status_code}): {resp.text}\n"
+            "Check the RESEND_API_KEY repo secret against a live key at "
+            "https://resend.com/api-keys."
+        )
+    if resp.status_code != 200:
+        raise RuntimeError(f"Resend API error {resp.status_code}: {resp.text}")
+
+    registered = {d["name"].lower(): d.get("status") for d in resp.json().get("data", [])}
+    logger.info("Resend domains: %s", registered or "(none registered)")
+
+    # Resend's shared sandbox sender needs no verification, but it delivers
+    # only to the address that owns the Resend account.
+    if domain.endswith("resend.dev"):
+        logger.warning(
+            "Sending from %s — Resend's sandbox sender. No domain verification "
+            "needed, but it delivers only to the Resend account owner's own "
+            "address; every other recipient is dropped.", domain
+        )
+        return
+
+    status = registered.get(domain)
+    if status is None:
+        raise RuntimeError(
+            f"Sender domain '{domain}' is not registered in this Resend account "
+            f"(registered: {', '.join(registered) or 'none'}). Either add and "
+            f"verify it at https://resend.com/domains, or set EMAIL_FROM to a "
+            f"sender on a domain that is already verified."
+        )
+    if status != "verified":
+        raise RuntimeError(
+            f"Sender domain '{domain}' is registered but its status is "
+            f"'{status}', not 'verified' — finish its DNS records at "
+            f"https://resend.com/domains."
+        )
+    logger.info("Sender domain '%s' is verified.", domain)
 
 
 # ---------------------------------------------------------------------------
@@ -147,19 +218,35 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--dry-run", action="store_true",
                     help="Build the PDFs and print what would be sent; send nothing.")
+    ap.add_argument("--check", action="store_true",
+                    help="Verify the Resend key and sender domain; build and send nothing.")
     args = ap.parse_args()
 
-    api_key = os.environ.get("RESEND_API_KEY")
-    recipients_str = os.environ.get("EMAIL_RECIPIENTS")
-    sender = os.environ.get("EMAIL_FROM", DEFAULT_FROM)
+    api_key = env("RESEND_API_KEY")
+    recipients_str = env("EMAIL_RECIPIENTS")
+    sender = env("EMAIL_FROM", DEFAULT_FROM)
 
-    if not args.dry_run and not (api_key and recipients_str):
-        sys.exit(
-            "Missing environment variables. Set:\n"
-            '  export RESEND_API_KEY="re_..."\n'
-            '  export EMAIL_RECIPIENTS="a@example.com,b@example.com"\n'
-            "Or pass --dry-run to build without sending."
-        )
+    if args.check:
+        print(f"FROM: {sender}")
+        print(f"TO:   {recipients_str or '(unset)'}")
+        if not api_key:
+            sys.exit("RESEND_API_KEY is unset or empty — nothing to check.")
+        preflight(api_key, sender)
+        print("\n\u2713 Resend key and sender domain both check out.")
+        return
+
+    if not args.dry_run:
+        missing = [n for n, v in (("RESEND_API_KEY", api_key),
+                                  ("EMAIL_RECIPIENTS", recipients_str)) if not v]
+        if missing:
+            sys.exit(
+                f"Missing or empty: {', '.join(missing)}. Set:\n"
+                '  export RESEND_API_KEY="re_..."\n'
+                '  export EMAIL_RECIPIENTS="a@example.com,b@example.com"\n'
+                "Or pass --dry-run to build without sending."
+            )
+        # Credentials before compute: the build takes minutes, this takes a second.
+        preflight(api_key, sender)
 
     date_tag = datetime.now().strftime("%Y-%m-%d")
     date_str = datetime.now().strftime("%d %B %Y")
@@ -193,4 +280,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except RuntimeError as exc:
+        # Config and API failures are operational, not bugs — a traceback in
+        # the Actions log buries the one line that says what went wrong.
+        sys.exit(f"ERROR: {exc}")
