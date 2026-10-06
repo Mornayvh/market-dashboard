@@ -138,8 +138,17 @@ python build_report_html.py                  # weekly/weekly_brief.html
 python build_report_html.py --out page.html  # or pick the path
 ```
 
-Unlike the PDFs, `weekly/weekly_brief.html` is **committed, not gitignored** —
-the cloud routine below reads it out of the repo rather than refetching.
+Unlike the PDFs, the output is **committed, not gitignored**, and lands in two
+places each Friday:
+
+| Path | For |
+|------|-----|
+| `weekly/weekly_brief.html` | Fixed path the republish routine reads. Overwritten weekly. |
+| `weekly/archive/secco-market-brief-<YYYY-MM-DD>.html` | Dated copy to attach to an email. Accumulates. |
+
+One file, ~29KB, no images and no JavaScript. The only external reference is
+Google Fonts, so a recipient opening it offline gets the fallback stacks
+(Georgia / system sans / Menlo) and an otherwise identical page.
 
 ### How the weekly refresh works
 

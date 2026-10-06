@@ -39,11 +39,20 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python build_report_html.py --out weekly/weekly_brief.html
 
+      # weekly_brief.html is the fixed path the republish routine reads. The
+      # dated copy is the one you attach to an email — an attachment called
+      # "weekly_brief.html" tells the reader nothing about which week it is.
+      - name: Keep a dated copy to send
+        run: |
+          mkdir -p weekly/archive
+          cp weekly/weekly_brief.html \
+             "weekly/archive/secco-market-brief-$(date -u +%F).html"
+
       - name: Commit the rebuilt page
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add weekly/weekly_brief.html
+          git add weekly/weekly_brief.html weekly/archive
           # The page carries a build timestamp, so it differs every run; this
           # guard only catches a run that produced no file at all.
           if git diff --staged --quiet; then
