@@ -8,3 +8,6 @@ stock_watchlist_*.pdf
 
 # Editor crash/temp artifacts (e.g. ".!32567!app.py")
 .!*!*
+
+# Live-deal material — never belongs on GitHub
+Reports/

@@ -127,44 +127,53 @@ Generated PDFs are gitignored.
 
 ---
 
-## Weekly report email
+## Weekly market brief
 
-`weekly_report_email.py` builds both PDFs and sends them as one email via
-Resend. Scheduled by `.github/workflows/weekly_report.yml` for **Fridays at
-22:00 UTC** — an hour after the NYSE close in winter and two in summer (21:00
-UTC under EST, 20:00 under EDT), since GitHub cron has no DST handling. That is
-Friday evening in the UK but just past midnight Saturday in South Africa.
+`build_report_html.py` renders the market overview and the stock watchlist to
+one self-contained HTML page, pulling through the same `src/` ingest layer as
+the PDF exporters so the page, the PDFs and the dashboard never disagree.
 
 ```bash
-python weekly_report_email.py --check     # verify key and sender, build nothing
-python weekly_report_email.py --dry-run   # build and print, send nothing
-python weekly_report_email.py             # build and send
+python build_report_html.py                  # weekly/weekly_brief.html
+python build_report_html.py --out page.html  # or pick the path
 ```
 
-`workflow_dispatch` runs it on demand, with a `dry_run` checkbox. Each run
-archives the PDFs as a build artifact for 90 days.
+Unlike the PDFs, `weekly/weekly_brief.html` is **committed, not gitignored** —
+the cloud routine below reads it out of the repo rather than refetching.
 
-GitHub's scheduler queues cron runs under load, so the job has been starting
-90 minutes to three hours after 22:00 UTC. It still lands the same evening,
-but do not read the cron line as a delivery time.
+### How the weekly refresh works
+
+Two scheduled jobs, deliberately split so the data fetch and the publish fail
+independently:
+
+| When (UTC) | What | Where |
+|------------|------|-------|
+| Fri 22:00 | Build the page from Yahoo + FRED, commit it | `.github/workflows/weekly_report.yml` |
+| Sat 03:00 | Clone the repo, republish the page to the Artifact | Cloud routine (claude.ai/code/routines) |
+
+The principals hold **one permanent Artifact link** that refreshes in place;
+nothing is emailed and no attachment changes hands.
+
+The five-hour gap is not padding. GitHub queues cron runs under load, and this
+job has been starting 90 minutes to three hours after 22:00 UTC — so the cron
+line is a *lower bound*, not a run time. The routine checks the committed
+page's build timestamp and skips the republish rather than pushing a stale
+page if Actions has not landed yet.
+
+Both halves run on demand: `workflow_dispatch` on the Actions tab, and "Run
+now" on the routine.
 
 ### Required GitHub secrets
 
 | Secret | Required | Notes |
 |--------|----------|-------|
-| `RESEND_API_KEY` | yes | Resend API key |
-| `EMAIL_RECIPIENTS` | yes | Comma-separated |
-| `EMAIL_FROM` | no | Defaults to `Secco Capital <reports@seccocapital.com>`; the domain must be verified in Resend |
-| `FRED_API_KEY` | no | Rates and spreads on the market PDF |
+| `FRED_API_KEY` | no | Rates and credit spreads. Without it those rows render as — and everything sourced from Yahoo still works. |
 
-A secret that does not exist expands to the empty string in the workflow, so an
-unset `EMAIL_FROM` arrives as a set-but-blank variable. `env()` in the script
-treats blank as unset so the default still applies; keep new optional variables
-going through it.
-
-`--check` calls Resend's `/domains` endpoint and reports whether the key is live
-and the sender's domain verified. The same check runs before every real send, so
-a credential problem fails in seconds instead of after the PDF build.
+Resend is no longer involved; `RESEND_API_KEY`, `EMAIL_RECIPIENTS` and
+`EMAIL_FROM` can be deleted from the repo secrets. The mailer it drove,
+`weekly_report_email.py`, was removed — recover it with
+`git show 9d9ab64:weekly_report_email.py` if the email route is ever wanted
+back.
 
 ---
 

@@ -1,4 +1,4 @@
-name: Weekly Report Email
+name: Weekly Market Brief
 
 on:
   schedule:
@@ -7,18 +7,19 @@ on:
     # handling, so this single time clears the bell by an hour in winter and
     # two in summer, leaving room for the daily bars to settle.
     # Friday 23:00 UK in summer / 22:00 in winter; 00:00 SAST Saturday.
+    #
+    # A cloud routine republishes the committed page to the Artifact an hour
+    # later; if you move this time, move that one with it.
     - cron: '0 22 * * 5'
 
-  # Manual trigger, with the option to build without sending.
   workflow_dispatch:
-    inputs:
-      dry_run:
-        description: 'Build the PDFs but send no email'
-        type: boolean
-        default: false
+
+# Needed to push the rebuilt page back to the repo.
+permissions:
+  contents: write
 
 jobs:
-  send-report:
+  build-brief:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -33,25 +34,21 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Send weekly report
+      - name: Build the brief
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          EMAIL_RECIPIENTS: ${{ secrets.EMAIL_RECIPIENTS }}
-          # An undefined secret expands to "", so EMAIL_FROM arrives set but
-          # empty and never falls back to the script's default. The script's
-          # env() treats blank as unset; leave this line as it is.
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-        run: |
-          python weekly_report_email.py ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: python build_report_html.py --out weekly/weekly_brief.html
 
-      # Keeps a copy of what went out, so a delivery query can be answered
-      # without rebuilding the week's data.
-      - name: Archive the PDFs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: weekly-report-${{ github.run_id }}
-          path: '*.pdf'
-          retention-days: 90
-          if-no-files-found: warn
+      - name: Commit the rebuilt page
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add weekly/weekly_brief.html
+          # The page carries a build timestamp, so it differs every run; this
+          # guard only catches a run that produced no file at all.
+          if git diff --staged --quiet; then
+            echo "No change to commit."
+            exit 0
+          fi
+          git commit -m "Rebuild the weekly market brief ($(date -u +%Y-%m-%d))"
+          git push

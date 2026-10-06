@@ -152,7 +152,7 @@ def draw_page_chrome(canv: canvas.Canvas, doc):
 
 def build_pdf(out_path: str):
     """Write the Market Dashboard PDF and return the metrics DataFrame it was
-    built from, so a caller that also needs the numbers (weekly_report_email)
+    built from, so a caller that also needs the numbers (the weekly brief builder)
     doesn't have to fetch them a second time."""
     logger.info("Fetching market data...")
     raw = fetch_all_data()
