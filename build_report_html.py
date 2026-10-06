@@ -2,12 +2,11 @@
 build_report_html.py — Render the weekly brief (market overview + stock
 watchlist) to one self-contained HTML page.
 
-The page is published as a Claude Artifact and refreshed in place every week,
-so principals keep one unchanging link rather than a new attachment each time.
-
-The output is committed, not gitignored: .github/workflows/weekly_report.yml
-builds and commits it on Fridays, and the cloud routine that republishes the
-Artifact reads it straight out of the repo rather than refetching the data.
+.github/workflows/weekly_report.yml builds this every Friday after the US
+close and commits a dated copy under weekly/archive/, which is the file that
+gets attached to the weekly email to principals. The output is committed
+rather than gitignored so a `git pull` is the only step between the build and
+sending it.
 
 Usage:
     python build_report_html.py                  # writes weekly/weekly_brief.html
@@ -637,7 +636,7 @@ def render_html(market: dict, watch: dict, now: datetime) -> str:
   </section>
 
   <footer>
-    <span>Point-in-time snapshot built {now.strftime("%d %B %Y at %H:%M")} local.
+    <span>Point-in-time snapshot built {now.astimezone().strftime("%d %B %Y at %H:%M %Z")}.
           Sources: Yahoo Finance (prices), FRED (rates and credit spreads).</span>
     <span>Secco Capital · Confidential · Not investment advice.</span>
   </footer>

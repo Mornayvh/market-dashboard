@@ -8,8 +8,9 @@ on:
     # two in summer, leaving room for the daily bars to settle.
     # Friday 23:00 UK in summer / 22:00 in winter; 00:00 SAST Saturday.
     #
-    # A cloud routine republishes the committed page to the Artifact an hour
-    # later; if you move this time, move that one with it.
+    # GitHub queues cron runs under load — this one has started 90 minutes to
+    # three hours late — so treat the time as a lower bound, not a delivery
+    # time. The brief is waiting on Saturday morning either way.
     - cron: '0 22 * * 5'
 
   workflow_dispatch:
@@ -39,9 +40,9 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python build_report_html.py --out weekly/weekly_brief.html
 
-      # weekly_brief.html is the fixed path the republish routine reads. The
-      # dated copy is the one you attach to an email — an attachment called
-      # "weekly_brief.html" tells the reader nothing about which week it is.
+      # The dated copy is the deliverable — the file attached to the weekly
+      # email. weekly_brief.html stays at a fixed path as the always-latest
+      # version, for anything that wants to read it without globbing.
       - name: Keep a dated copy to send
         run: |
           mkdir -p weekly/archive

@@ -143,34 +143,32 @@ places each Friday:
 
 | Path | For |
 |------|-----|
-| `weekly/weekly_brief.html` | Fixed path the republish routine reads. Overwritten weekly. |
-| `weekly/archive/secco-market-brief-<YYYY-MM-DD>.html` | Dated copy to attach to an email. Accumulates. |
+| `weekly/weekly_brief.html` | Always-latest copy at a fixed path. Overwritten weekly. |
+| `weekly/archive/secco-market-brief-<YYYY-MM-DD>.html` | **The deliverable** — the dated file attached to the weekly email. Accumulates. |
 
 One file, ~29KB, no images and no JavaScript. The only external reference is
 Google Fonts, so a recipient opening it offline gets the fallback stacks
 (Georgia / system sans / Menlo) and an otherwise identical page.
 
-### How the weekly refresh works
+### How the weekly build works
 
-Two scheduled jobs, deliberately split so the data fetch and the publish fail
-independently:
+`.github/workflows/weekly_report.yml` runs every **Friday at 22:00 UTC** — an
+hour after the NYSE close in winter and two in summer (21:00 UTC under EST,
+20:00 under EDT), since GitHub cron has no DST handling. That is Friday evening
+in the UK and just past midnight Saturday in South Africa.
 
-| When (UTC) | What | Where |
-|------------|------|-------|
-| Fri 22:00 | Build the page from Yahoo + FRED, commit it | `.github/workflows/weekly_report.yml` |
-| Sat 03:00 | Clone the repo, republish the page to the Artifact | Cloud routine (claude.ai/code/routines) |
+It builds the page, commits both copies, and pushes. Over the weekend, `git
+pull` and attach `weekly/archive/secco-market-brief-<date>.html` to an email.
 
-The principals hold **one permanent Artifact link** that refreshes in place;
-nothing is emailed and no attachment changes hands.
+GitHub queues cron runs under load, and this job has started 90 minutes to
+three hours after 22:00 UTC. Read the cron line as a lower bound, not a run
+time — it still lands well before Saturday morning.
 
-The five-hour gap is not padding. GitHub queues cron runs under load, and this
-job has been starting 90 minutes to three hours after 22:00 UTC — so the cron
-line is a *lower bound*, not a run time. The routine checks the committed
-page's build timestamp and skips the republish rather than pushing a stale
-page if Actions has not landed yet.
+`workflow_dispatch` runs it on demand from the Actions tab, or:
 
-Both halves run on demand: `workflow_dispatch` on the Actions tab, and "Run
-now" on the routine.
+```bash
+gh workflow run "Weekly Market Brief" && gh run watch
+```
 
 ### Required GitHub secrets
 
@@ -178,11 +176,13 @@ now" on the routine.
 |--------|----------|-------|
 | `FRED_API_KEY` | no | Rates and credit spreads. Without it those rows render as — and everything sourced from Yahoo still works. |
 
-Resend is no longer involved; `RESEND_API_KEY`, `EMAIL_RECIPIENTS` and
-`EMAIL_FROM` can be deleted from the repo secrets. The mailer it drove,
+Resend is no longer involved. It never worked: the scheduled runs on 26
+September and 3 October both died on `Resend API error 422: The domain is
+invalid`, because seccocapital.com was never verified in Resend. Sending by
+hand sidesteps the whole problem. `RESEND_API_KEY`, `EMAIL_RECIPIENTS` and
+`EMAIL_FROM` can be deleted from the repo secrets, and the mailer they drove,
 `weekly_report_email.py`, was removed — recover it with
-`git show 9d9ab64:weekly_report_email.py` if the email route is ever wanted
-back.
+`git show 9d9ab64:weekly_report_email.py` if it is ever wanted back.
 
 ---
 
