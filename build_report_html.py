@@ -438,7 +438,11 @@ body {
 
 .levels {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  /* One row, always. auto-fit used to drop the last tile onto a second row
+     the moment the tiles stopped fitting; --levels is the actual tile count,
+     set on the element, so adding or removing a key level stays correct.
+     minmax(0, 1fr) rather than 1fr so a long figure cannot widen its column. */
+  grid-template-columns: repeat(var(--levels, 8), minmax(0, 1fr));
   gap: 1px;
   background: var(--border);
   border: 1px solid var(--border);
@@ -449,14 +453,15 @@ body {
 
 .level {
   background: var(--surface);
-  padding: 14px 16px;
+  padding: 13px 10px;
   display: flex;
   flex-direction: column;
   gap: 3px;
+  min-width: 0;
 }
 
 .level .label {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -465,10 +470,15 @@ body {
 
 .level .value {
   font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 19px;
+  /* Sized to the column, not the viewport: the page caps at 1120px, so a vw
+     clamp resolves to its ceiling on any large monitor and overflows. Eight
+     columns give ~134px, less 20px padding; "108,311.34" is the longest
+     figure here and needs ~102px at this size. */
+  font-size: 17px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   letter-spacing: -.02em;
+  white-space: nowrap;
 }
 
 .level .delta {
@@ -818,6 +828,16 @@ footer {
   gap: 5px;
 }
 
+@media (max-width: 880px) {
+  /* Four columns leave room for the full-size figure again. */
+  .levels { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .level .value { font-size: 19px; }
+}
+
+@media (max-width: 460px) {
+  .levels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 600px) {
   .page { padding: 20px 14px 48px; gap: 26px; }
   th, td { padding-left: 12px; padding-right: 12px; }
@@ -1079,7 +1099,7 @@ def render_html(market: dict, watch: dict, instruments: dict, now: datetime) -> 
     </div>
   </header>
 
-  <div class="levels">{levels}</div>
+  <div class="levels" style="--levels:{len(market["key_levels"])}">{levels}</div>
 
   <section>
     <div class="section-head">
