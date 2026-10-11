@@ -28,7 +28,7 @@ from reportlab.platypus import (
     BaseDocTemplate, Frame, PageTemplate, Paragraph, Spacer, Table, TableStyle,
 )
 
-from src.watchlist import CURRENCY_SYMBOLS, FULL_YEAR_MIN_DAYS, WATCHLIST
+from src.watchlist import CURRENCY_SYMBOLS, WATCHLIST, fetch_watchlist
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -66,42 +66,9 @@ def chg_color(val):
     return GREEN if val > 0 else RED
 
 
-def fetch_one(ticker: str):
-    """Return (price, chg_1d, chg_1m, chg_ltm, high_52w, low_52w) or all-None on failure."""
-    try:
-        hist = yf.Ticker(ticker).history(period="1y", auto_adjust=True)
-        if hist is None or hist.empty or "Close" not in hist.columns:
-            return (None,) * 6
-
-        hist.index = pd.to_datetime(hist.index).tz_localize(None)
-        close = hist["Close"]
-        last = float(close.iloc[-1])
-
-        chg_1d = (last / float(close.iloc[-2]) - 1) * 100 if len(close) >= 2 else None
-
-        chg_1m = None
-        month_ago = datetime.now() - timedelta(days=30)
-        month_data = close[close.index <= month_ago]
-        if not month_data.empty:
-            chg_1m = (last / float(month_data.iloc[-1]) - 1) * 100
-
-        # LTM and 52-week figures need roughly a year of history; a recent
-        # listing would otherwise report its first days as a 12-month move.
-        span_days = (close.index[-1] - close.index[0]).days if len(close) >= 2 else 0
-        has_full_year = span_days >= FULL_YEAR_MIN_DAYS
-
-        chg_ltm = None
-        if len(close) >= 2 and has_full_year:
-            chg_ltm = (last / float(close.iloc[0]) - 1) * 100
-
-        hi = float(close.max()) if has_full_year else None
-        lo = float(close.min()) if has_full_year else None
-
-        return last, chg_1d, chg_1m, chg_ltm, hi, lo
-    except Exception as e:
-        logger.warning("Fetch failed for %s: %s", ticker, e)
-        return (None,) * 6
-
+# fetch_one used to pull each ticker on its own. Yahoo rate-limits a
+# datacentre IP at that request count — it gutted the 10 October 2026 brief —
+# so both surfaces now share the batched fetch in src/watchlist.py.
 
 def build_group_table(rows):
     """rows: list of (name, ticker, currency, price, c1d, c1m, cltm, hi, lo)."""
@@ -181,10 +148,9 @@ def draw_page_chrome(canv: canvas.Canvas, doc):
 
 def build_pdf(out_path: str):
     logger.info("Fetching watchlist data...")
-    fetched = {}
-    for group, stocks in WATCHLIST.items():
-        for name, ticker, currency in stocks:
-            fetched[ticker] = fetch_one(ticker)
+    fetched = fetch_watchlist(
+        [t for stocks in WATCHLIST.values() for _, t, _ in stocks]
+    )
     logger.info("Data loaded for %d stocks", len(fetched))
 
     doc = BaseDocTemplate(

@@ -28,12 +28,11 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from export_watchlist_pdf import fetch_one
 from src.config import CATEGORIES
 from src.data_ingest import fetch_all_data
 from src.data_process import process_all
 from src.viz_helpers import fmt_change, fmt_value
-from src.watchlist import CURRENCY_SYMBOLS, WATCHLIST
+from src.watchlist import CURRENCY_SYMBOLS, WATCHLIST, fetch_watchlist
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -52,6 +51,12 @@ KEY_LEVELS = [
 
 MOVERS_PER_SIDE = 3  # top N risers and N fallers in the movers strip
 
+# Refuse to write a page where this share of holdings came back priceless.
+# Yahoo rate-limits a datacentre IP, and on 10 October 2026 that silently
+# produced a brief with 31 of 36 holdings blank which the workflow committed
+# and reported as a success. Failing loudly beats shipping a gutted page.
+MAX_BLANK_SHARE = 0.15
+
 
 # ---------------------------------------------------------------------------
 # Collection
@@ -67,8 +72,17 @@ def _num(val):
 def collect_market() -> dict:
     """Fetch and shape the macro side: {category: [row, ...]} plus key levels."""
     logger.info("Fetching market data...")
-    metrics = process_all(fetch_all_data())
+    raw = fetch_all_data()
+    metrics = process_all(raw)
     logger.info("Market data loaded for %d assets", len(metrics))
+
+    # The brief is anchored on the US close, so the S&P's last bar is the date
+    # the prices actually describe. Using the build date instead would stamp a
+    # Saturday or Sunday on it whenever the Friday job runs past midnight UTC,
+    # which is most weeks. Crypto and FX trade through the weekend, so the
+    # latest bar across all assets would not fix it either.
+    anchor = raw.get("S&P 500")
+    as_at = anchor.index[-1] if anchor is not None and not anchor.empty else None
 
     rows_by_name = {}
     sections = []
@@ -93,23 +107,27 @@ def collect_market() -> dict:
             sections.append({"title": SECTION_LABELS.get(category, category), "rows": rows})
 
     key_levels = [rows_by_name[n] for n in KEY_LEVELS if n in rows_by_name]
-    return {"sections": sections, "key_levels": key_levels}
+    return {"sections": sections, "key_levels": key_levels, "as_at": as_at}
 
 
 def collect_watchlist() -> dict:
     """Fetch and shape the holdings side: one group per WATCHLIST key."""
-    logger.info("Fetching watchlist data for %d names...",
-                sum(len(v) for v in WATCHLIST.values()))
-    groups, movers = [], []
+    tickers = [t for stocks in WATCHLIST.values() for _, t, _ in stocks]
+    logger.info("Fetching watchlist data for %d names...", len(tickers))
+    fetched = fetch_watchlist(tickers)
+
+    groups, movers, blank = [], [], 0
     for group, stocks in WATCHLIST.items():
         rows = []
         for name, ticker, currency in stocks:
-            price, c1d, c1m, cltm, hi, lo = fetch_one(ticker)
+            price, c1d, c1m, cltm, hi, lo = fetched[ticker]
+            if price is None:
+                blank += 1
             price, c1d, c1m, cltm = _num(price), _num(c1d), _num(c1m), _num(cltm)
             hi, lo = _num(hi), _num(lo)
 
             # Where the last price sits in the 52-week range, 0–1. Needs a full
-            # year of history (fetch_one returns hi/lo as None otherwise) and a
+            # year of history (fetch_watchlist returns hi/lo as None otherwise) and a
             # range wide enough to place a marker in.
             pos = None
             if None not in (price, hi, lo) and hi > lo:
@@ -125,6 +143,14 @@ def collect_watchlist() -> dict:
             if c1m is not None:
                 movers.append({"name": name, "chg": c1m, "label": fmt_pct(c1m)})
         groups.append({"title": group, "rows": rows})
+
+    if tickers and blank / len(tickers) > MAX_BLANK_SHARE:
+        raise RuntimeError(
+            f"{blank} of {len(tickers)} holdings came back with no price "
+            f"({blank / len(tickers):.0%}, limit {MAX_BLANK_SHARE:.0%}). "
+            "Yahoo is almost certainly rate-limiting this IP. Refusing to "
+            "write a page this incomplete — rerun the job."
+        )
 
     movers.sort(key=lambda m: m["chg"], reverse=True)
     top = movers[:MOVERS_PER_SIDE]
@@ -600,6 +626,12 @@ def render_html(market: dict, watch: dict, now: datetime) -> str:
 
     n_holdings = sum(len(g["rows"]) for g in watch["groups"])
 
+    as_at = market.get("as_at")
+    as_at_line = (
+        f'Prices as at the close of {as_at.strftime("%A, %d %B %Y")}'
+        if as_at is not None else "Point-in-time snapshot"
+    )
+
     return f"""<title>Secco Weekly Market Brief</title>
 {FONTS}
 <style>{CSS}</style>
@@ -610,7 +642,7 @@ def render_html(market: dict, watch: dict, now: datetime) -> str:
     <span class="eyebrow">Secco Capital</span>
     <h1>Weekly Market Brief</h1>
     <div class="standfirst">
-      <span>As at {now.strftime("%A, %d %B %Y")}</span>
+      <span>{as_at_line}</span>
       <span class="sep">·</span>
       <span>Rebuilt every Friday after the New York close</span>
     </div>
@@ -672,4 +704,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except RuntimeError as exc:
+        # An incomplete fetch is operational, not a bug — a traceback buries
+        # the one line saying why nothing was written.
+        sys.exit(f"ERROR: {exc}")
