@@ -27,7 +27,7 @@ def fetch_yf_history(ticker: str, period: str = "1y") -> Optional[pd.DataFrame]:
     """
     try:
         t = yf.Ticker(ticker)
-        df = t.history(period="1y", auto_adjust=True)
+        df = t.history(period=period, auto_adjust=True)
         if df is None or df.empty:
             logger.warning(f"YF returned empty data for {ticker}")
             return None
@@ -69,10 +69,18 @@ def _get_fred_api_key() -> Optional[str]:
     return key
 
 
-def fetch_fred_series(series_id: str, api_key: Optional[str] = None) -> Optional[pd.DataFrame]:
+def fetch_fred_series(
+    series_id: str,
+    api_key: Optional[str] = None,
+    observation_start: Optional[str] = None,
+) -> Optional[pd.DataFrame]:
     """
     Pull a single FRED series via direct HTTP (no fredapi package needed).
     Returns DataFrame with DatetimeIndex and 'Close' column.
+
+    observation_start ("YYYY-MM-DD") overrides the FRED_LOOKBACK_DAYS window
+    for callers that want the full series — the weekly brief charts rates and
+    spreads over ten years and more.
     """
     import requests
 
@@ -82,13 +90,15 @@ def fetch_fred_series(series_id: str, api_key: Optional[str] = None) -> Optional
         return None
     try:
         end = datetime.today()
-        start = end - timedelta(days=FRED_LOOKBACK_DAYS)
+        start = observation_start or (
+            end - timedelta(days=FRED_LOOKBACK_DAYS)
+        ).strftime("%Y-%m-%d")
         url = "https://api.stlouisfed.org/fred/series/observations"
         params = {
             "series_id": series_id,
             "api_key": api_key,
             "file_type": "json",
-            "observation_start": start.strftime("%Y-%m-%d"),
+            "observation_start": start,
             "observation_end": end.strftime("%Y-%m-%d"),
         }
         resp = requests.get(url, params=params, timeout=15)

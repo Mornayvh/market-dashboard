@@ -148,7 +148,7 @@ def draw_page_chrome(canv: canvas.Canvas, doc):
 
 def build_pdf(out_path: str):
     logger.info("Fetching watchlist data...")
-    fetched = fetch_watchlist(
+    fetched, _ = fetch_watchlist(
         [t for stocks in WATCHLIST.values() for _, t, _ in stocks]
     )
     logger.info("Data loaded for %d stocks", len(fetched))

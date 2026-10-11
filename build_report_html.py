@@ -19,7 +19,9 @@ Streamlit secrets) supplies rates and credit; without it those rows read "—".
 
 import argparse
 import html
+import json
 import logging
+import re
 import os
 import sys
 from datetime import datetime
@@ -28,11 +30,11 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from src.config import CATEGORIES
-from src.data_ingest import fetch_all_data
+from src.config import ASSETS
+from src.data_ingest import fetch_fred_series
 from src.data_process import process_all
 from src.viz_helpers import fmt_change, fmt_value
-from src.watchlist import CURRENCY_SYMBOLS, WATCHLIST, fetch_watchlist
+from src.watchlist import CURRENCY_SYMBOLS, WATCHLIST, fetch_closes, fetch_watchlist
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -57,10 +59,28 @@ MOVERS_PER_SIDE = 3  # top N risers and N fallers in the movers strip
 # and reported as a success. Failing loudly beats shipping a gutted page.
 MAX_BLANK_SHARE = 0.15
 
+# Timeframes offered in the modal, and how many points of each survive into
+# the page. The chart is 640 CSS pixels wide, so 100 points puts one every
+# six — past the eye's ability to tell them apart, and the difference between
+# a page that stays an email attachment and one that does not.
+TIMEFRAMES = [("1Y", 365), ("3Y", 1095), ("5Y", 1825), ("10Y", 3650)]
+SERIES_POINTS = 100
+MIN_SERIES_POINTS = 12          # below this a window is not worth drawing
+CHART_W, CHART_H, CHART_PAD = 640, 180, 12
+
+# FRED series run back decades; this is deep enough for a Max button without
+# hauling the Fed Funds rate since 1954 into an email attachment.
+FRED_START = "1995-01-01"
+
 
 # ---------------------------------------------------------------------------
 # Collection
 # ---------------------------------------------------------------------------
+
+def slugify(value: str) -> str:
+    """Element id safe for tickers like BRK-B, 002594.SZ and names like S&P 500."""
+    return re.sub(r"[^A-Za-z0-9]+", "-", value).strip("-").lower()
+
 
 def _num(val):
     """Coerce pandas NA to None so the templates have one empty case to test."""
@@ -69,11 +89,81 @@ def _num(val):
     return float(val)
 
 
-def collect_market() -> dict:
-    """Fetch and shape the macro side: {category: [row, ...]} plus key levels."""
+def _thin(vals: list, n: int) -> list:
+    """Reduce a series to at most n points by stride, always keeping the last."""
+    if len(vals) <= n:
+        return list(vals)
+    stride = len(vals) / n
+    out = [vals[int(i * stride)] for i in range(n)]
+    out[-1] = vals[-1]
+    return out
+
+
+def _window(win, scale: float, dp: int) -> dict:
+    return {
+        "v": [round(float(v) * scale, dp) for v in _thin(win.tolist(), SERIES_POINTS)],
+        "a": win.index[0].strftime("%b %Y"),
+        "b": win.index[-1].strftime("%b %Y"),
+    }
+
+
+def build_timeframes(close, scale: float = 1.0, dp: int = 2) -> tuple[dict, str | None]:
+    """Chart series per timeframe, offering only the ones the history covers.
+
+    A holding listed two years ago gets 1Y and Max and nothing else — putting
+    a "10Y" button on two years of data and drawing the same line as "3Y"
+    would be a lie about the history, and three identical charts besides.
+    """
+    if close is None or len(close) < MIN_SERIES_POINTS:
+        return {}, None
+
+    end = close.index[-1]
+    span_days = (end - close.index[0]).days
+
+    out = {}
+    for label, days in TIMEFRAMES:
+        if span_days < days:
+            continue
+        win = close[close.index >= end - pd.Timedelta(days=days)]
+        if len(win) >= MIN_SERIES_POINTS:
+            out[label] = _window(win, scale, dp)
+    out["Max"] = _window(close, scale, dp)
+
+    return out, ("1Y" if "1Y" in out else "Max")
+
+
+def fetch_market_history() -> dict:
+    """Full close history for every macro asset, keyed by display name.
+
+    Yahoo in one batch; FRED one series at a time, since each is a separate
+    endpoint. FRED_START rather than the ingest layer's rolling year, because
+    the brief charts rates and spreads over a decade.
+    """
+    yf_assets = [a for a in ASSETS if a.ticker]
+    closes = fetch_closes([a.ticker for a in yf_assets], "max")
+
+    out = {}
+    for a in yf_assets:
+        c = closes.get(a.ticker)
+        if c is not None and len(c):
+            out[a.name] = c
+
+    for a in ASSETS:
+        if a.name in out or not a.fred_id:
+            continue
+        df = fetch_fred_series(a.fred_id, observation_start=FRED_START)
+        if df is not None and not df.empty:
+            out[a.name] = df["Close"]
+
+    logger.info("History for %d/%d macro assets", len(out), len(ASSETS))
+    return out
+
+
+def collect_market(instruments: dict) -> dict:
+    """Macro side. Appends each asset's modal payload to `instruments`."""
     logger.info("Fetching market data...")
-    raw = fetch_all_data()
-    metrics = process_all(raw)
+    history = fetch_market_history()
+    metrics = process_all({k: v.to_frame("Close") for k, v in history.items()})
     logger.info("Market data loaded for %d assets", len(metrics))
 
     # The brief is anchored on the US close, so the S&P's last bar is the date
@@ -81,28 +171,47 @@ def collect_market() -> dict:
     # Saturday or Sunday on it whenever the Friday job runs past midnight UTC,
     # which is most weeks. Crypto and FX trade through the weekend, so the
     # latest bar across all assets would not fix it either.
-    anchor = raw.get("S&P 500")
-    as_at = anchor.index[-1] if anchor is not None and not anchor.empty else None
+    anchor = history.get("S&P 500")
+    as_at = anchor.index[-1] if anchor is not None and len(anchor) else None
 
-    rows_by_name = {}
-    sections = []
+    rows_by_name, sections = {}, []
     for category in SECTION_ORDER:
         rows = []
-        subset = metrics[metrics["category"] == category]
-        for name, r in subset.iterrows():
+        for name, r in metrics[metrics["category"] == category].iterrows():
             is_rate, is_spread = bool(r["is_rate"]), bool(r["is_spread"])
+            changes = [
+                (_num(r["daily_chg"]), fmt_change(_num(r["daily_chg"]), is_rate, is_spread)),
+                (_num(r["weekly_chg"]), fmt_change(_num(r["weekly_chg"]), is_rate, is_spread)),
+                (_num(r["ltm_chg"]), fmt_change(_num(r["ltm_chg"]), is_rate, is_spread)),
+            ]
+            invert = bool(r["invert_color"])
             row = {
                 "name": name,
                 "value": fmt_value(_num(r["latest"]), is_rate, is_spread),
-                "changes": [
-                    (_num(r["daily_chg"]), fmt_change(_num(r["daily_chg"]), is_rate, is_spread)),
-                    (_num(r["weekly_chg"]), fmt_change(_num(r["weekly_chg"]), is_rate, is_spread)),
-                    (_num(r["ltm_chg"]), fmt_change(_num(r["ltm_chg"]), is_rate, is_spread)),
-                ],
-                "invert": bool(r["invert_color"]),
+                "changes": changes,
+                "invert": invert,
+                "slug": slugify(name),
             }
             rows.append(row)
             rows_by_name[name] = row
+
+            # Spreads are carried as percent and shown as bps, so the chart has
+            # to be scaled the same way the table is.
+            scale = 100.0 if is_spread else 1.0
+            suffix = " bps" if is_spread else ("%" if is_rate else "")
+            dp = 0 if is_spread else 2
+            tf, default = build_timeframes(history.get(name), scale, dp)
+            instruments[row["slug"]] = {
+                "n": name,
+                "m": f"{SECTION_LABELS.get(category, category)} · market overview",
+                "p": row["value"],
+                "sym": "", "suf": suffix, "dp": dp,
+                "s": [["1 day", changes[0][1], tone(changes[0][0], invert)],
+                      ["1 week", changes[1][1], tone(changes[1][0], invert)],
+                      ["12 months", changes[2][1], tone(changes[2][0], invert)]],
+                "tf": tf, "d": default,
+            }
+
         if rows:
             sections.append({"title": SECTION_LABELS.get(category, category), "rows": rows})
 
@@ -110,11 +219,11 @@ def collect_market() -> dict:
     return {"sections": sections, "key_levels": key_levels, "as_at": as_at}
 
 
-def collect_watchlist() -> dict:
-    """Fetch and shape the holdings side: one group per WATCHLIST key."""
+def collect_watchlist(instruments: dict) -> dict:
+    """Holdings side. Appends each holding's modal payload to `instruments`."""
     tickers = [t for stocks in WATCHLIST.values() for _, t, _ in stocks]
     logger.info("Fetching watchlist data for %d names...", len(tickers))
-    fetched = fetch_watchlist(tickers)
+    fetched, closes = fetch_watchlist(tickers, period="max")
 
     groups, movers, blank = [], [], 0
     for group, stocks in WATCHLIST.items():
@@ -123,25 +232,43 @@ def collect_watchlist() -> dict:
             price, c1d, c1m, cltm, hi, lo = fetched[ticker]
             if price is None:
                 blank += 1
-            price, c1d, c1m, cltm = _num(price), _num(c1d), _num(c1m), _num(cltm)
-            hi, lo = _num(hi), _num(lo)
 
-            # Where the last price sits in the 52-week range, 0–1. Needs a full
-            # year of history (fetch_watchlist returns hi/lo as None otherwise) and a
-            # range wide enough to place a marker in.
+            # Where the last price sits in the 52-week range, 0-1. Needs a full
+            # year of history (fetch_watchlist returns hi/lo as None otherwise)
+            # and a range wide enough to place a marker in.
             pos = None
             if None not in (price, hi, lo) and hi > lo:
                 pos = min(max((price - lo) / (hi - lo), 0.0), 1.0)
 
-            rows.append({
+            changes = [(c1d, fmt_pct(c1d)), (c1m, fmt_pct(c1m)), (cltm, fmt_pct(cltm))]
+            row = {
                 "name": name, "ticker": ticker, "currency": currency,
                 "price": fmt_price(price, currency),
-                "changes": [(c1d, fmt_pct(c1d)), (c1m, fmt_pct(c1m)), (cltm, fmt_pct(cltm))],
+                "changes": changes,
                 "hi": fmt_price(hi, currency), "lo": fmt_price(lo, currency),
                 "pos": pos,
-            })
+                # Element ids must survive tickers like BRK-B and 002594.SZ.
+                "slug": slugify(ticker),
+            }
+            rows.append(row)
             if c1m is not None:
                 movers.append({"name": name, "chg": c1m, "label": fmt_pct(c1m)})
+
+            stats = [["1 day", changes[0][1], tone(c1d)],
+                     ["1 month", changes[1][1], tone(c1m)],
+                     ["12 months", changes[2][1], tone(cltm)]]
+            if pos is not None:
+                stats += [["52-week low", row["lo"], ""], ["52-week high", row["hi"], ""]]
+
+            tf, default = build_timeframes(closes.get(ticker))
+            instruments[row["slug"]] = {
+                "n": name,
+                "m": f"{ticker} · {group} · quoted in {currency}",
+                "p": row["price"],
+                "sym": CURRENCY_SYMBOLS.get(currency, ""), "suf": "", "dp": 2,
+                "s": stats, "tf": tf, "d": default,
+            }
+
         groups.append({"title": group, "rows": rows})
 
     if tickers and blank / len(tickers) > MAX_BLANK_SHARE:
@@ -511,6 +638,174 @@ td.level-val { color: var(--ink); }
 
 .range.empty { color: var(--ink-3); }
 
+/* ---- Clickable rows ---- */
+
+tr.clickable { cursor: pointer; }
+
+tr.clickable:hover td,
+tr.clickable:focus-visible td { background: var(--surface-alt); }
+
+tr.clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* A quiet affordance — the table must still read as a table, not a toolbar. */
+tr.clickable td.name::after {
+  content: "›";
+  color: var(--ink-3);
+  margin-left: 6px;
+  opacity: 0;
+}
+
+tr.clickable:hover td.name::after,
+tr.clickable:focus-visible td.name::after { opacity: 1; }
+
+/* ---- Detail dialog ---- */
+
+#sheet {
+  width: min(680px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 24px 64px -24px rgba(15, 23, 42, .55);
+}
+
+#sheet::backdrop { background: rgba(15, 23, 42, .55); }
+
+.panel { padding: 22px 24px 24px; display: flex; flex-direction: column; gap: 18px; }
+
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.panel-head h3 {
+  margin: 0;
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+.panel-sub { margin: 3px 0 0; font-size: 12px; color: var(--ink-2); }
+
+.panel-price {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+
+/* ---- Timeframe buttons ---- */
+
+.tfbar {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  align-self: flex-start;
+  flex-wrap: wrap;
+}
+
+.tf {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-2);
+  font: 500 12px/1 "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .04em;
+  padding: 7px 13px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+
+.tf:hover { color: var(--ink); background: var(--surface); }
+
+.tf.on {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .08);
+}
+
+.tf:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ---- Chart ---- */
+
+.chart-wrap { margin: 0; display: flex; flex-direction: column; gap: 7px; }
+
+#sheet-chart { width: 100%; height: 180px; display: block; overflow: visible; }
+
+.chart-axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Direction is the chart's only colour, and it carries meaning, so it comes
+   from the same pos/neg tokens the change columns use. */
+#sheet-chart.up   { --trace: var(--pos); }
+#sheet-chart.down { --trace: var(--neg); }
+
+.chart-line { fill: none; stroke: var(--trace); stroke-width: 1.75; vector-effect: non-scaling-stroke; }
+.chart-area { fill: var(--trace); opacity: .10; stroke: none; }
+.chart-end  { fill: var(--trace); }
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.stat { background: var(--surface); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+
+.stat .k {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.stat .v {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+#sheet-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#sheet-close:hover { background: var(--surface-alt); color: var(--ink); }
+#sheet-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 /* ---- Footer ---- */
 
 footer {
@@ -528,6 +823,136 @@ footer {
   th, td { padding-left: 12px; padding-right: 12px; }
 }
 """
+
+# Kept out of the page template because that is an f-string and this is full
+# of braces. <dialog> is doing the real work — modality, Esc and focus return
+# are the browser's job, not ours.
+SCRIPT = """
+(function () {
+  var D = JSON.parse(document.getElementById('brief-data').textContent);
+  var sheet = document.getElementById('sheet');
+  if (!sheet || !sheet.showModal) return;   // no <dialog>: rows stay inert
+
+  var W = %d, H = %d, PAD = %d;
+  var svg = document.getElementById('sheet-chart');
+  var NS = 'http://www.w3.org/2000/svg';
+  var current = null, frame = null;
+
+  function fmt(v, inst) {
+    var a = Math.abs(v);
+    var dp = Math.min(inst.dp, a >= 10000 ? 0 : (a >= 100 ? 1 : inst.dp));
+    return inst.sym + v.toLocaleString('en-GB', {
+      minimumFractionDigits: dp, maximumFractionDigits: dp
+    }) + inst.suf;
+  }
+
+  function el(name, attrs) {
+    var n = document.createElementNS(NS, name);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+
+  function draw(inst, key) {
+    var win = inst.tf[key];
+    svg.textContent = '';
+    if (!win) return;
+
+    var v = win.v, lo = Math.min.apply(null, v), hi = Math.max.apply(null, v);
+    var span = hi - lo, usable = H - 2 * PAD, step = W / (v.length - 1);
+
+    var pts = v.map(function (y, i) {
+      // A dead-flat series would divide by zero; park it on the centre line.
+      var py = span === 0 ? PAD + usable / 2 : PAD + (hi - y) / span * usable;
+      return [i * step, py];
+    });
+
+    var line = 'M' + pts.map(function (p) {
+      return p[0].toFixed(1) + ',' + p[1].toFixed(1);
+    }).join(' L');
+
+    svg.setAttribute('class', v[v.length - 1] >= v[0] ? 'up' : 'down');
+    svg.appendChild(el('path', {d: line + ' L' + W + ',' + H + ' L0,' + H + ' Z',
+                                'class': 'chart-area'}));
+    svg.appendChild(el('path', {d: line, 'class': 'chart-line'}));
+    svg.appendChild(el('circle', {cx: pts[pts.length - 1][0].toFixed(1),
+                                  cy: pts[pts.length - 1][1].toFixed(1),
+                                  r: 4, 'class': 'chart-end'}));
+
+    document.getElementById('sheet-from').textContent = win.a + '  ·  low ' + fmt(lo, inst);
+    document.getElementById('sheet-to').textContent = 'high ' + fmt(hi, inst) + '  ·  ' + win.b;
+
+    Array.prototype.forEach.call(document.querySelectorAll('.tf'), function (b) {
+      var on = b.dataset.tf === key;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  function open(id) {
+    var inst = D[id];
+    if (!inst) return;
+    current = inst;
+
+    document.getElementById('sheet-name').textContent = inst.n;
+    document.getElementById('sheet-meta').textContent = inst.m;
+    document.getElementById('sheet-price').textContent = inst.p;
+
+    document.getElementById('sheet-stats').innerHTML = inst.s.map(function (st) {
+      return '<div class="stat"><span class="k"></span><span class="v ' + st[2] +
+             '"></span></div>';
+    }).join('');
+    // Values are written as text, never parsed as markup.
+    Array.prototype.forEach.call(document.querySelectorAll('#sheet-stats .stat'),
+      function (d, i) {
+        d.querySelector('.k').textContent = inst.s[i][0];
+        d.querySelector('.v').textContent = inst.s[i][1];
+      });
+
+    var bar = document.getElementById('sheet-tfs');
+    bar.textContent = '';
+    Object.keys(inst.tf).forEach(function (k) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tf';
+      b.dataset.tf = k;
+      b.textContent = k;
+      b.addEventListener('click', function () { draw(current, k); });
+      bar.appendChild(b);
+    });
+
+    if (inst.d) draw(inst, inst.d);
+    sheet.showModal();
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('tr.clickable'), function (row) {
+    row.addEventListener('click', function () { open(row.dataset.id); });
+    row.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(row.dataset.id); }
+    });
+  });
+
+  document.getElementById('sheet-close')
+          .addEventListener('click', function () { sheet.close(); });
+
+  // Click outside the panel closes it. The dialog fills the backdrop, so
+  // compare against its box rather than looking at the event target.
+  sheet.addEventListener('click', function (e) {
+    var b = sheet.getBoundingClientRect();
+    if (e.clientX < b.left || e.clientX > b.right ||
+        e.clientY < b.top  || e.clientY > b.bottom) sheet.close();
+  });
+
+  // Redraw on resize so the line keeps its aspect; viewBox handles the rest.
+  window.addEventListener('resize', function () {
+    if (!current || !sheet.open) return;
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(function () {
+      var on = document.querySelector('.tf.on');
+      if (on) draw(current, on.dataset.tf);
+    });
+  });
+}());
+""" % (CHART_W, CHART_H, CHART_PAD)
 
 FONTS = (
     '<link rel="preconnect" href="https://fonts.googleapis.com">'
@@ -552,7 +977,8 @@ def change_cells(changes, invert=False) -> str:
 
 def render_market_section(section: dict) -> str:
     rows = "".join(
-        "<tr>"
+        f'<tr class="clickable" tabindex="0" role="button" data-id="{r["slug"]}" '
+        f'aria-label="Chart for {esc(r["name"])}">'
         f'<td class="name">{esc(r["name"])}</td>'
         f'<td class="level-val">{esc(r["value"])}</td>'
         f'{change_cells(r["changes"], r["invert"])}'
@@ -584,7 +1010,8 @@ def render_range(r: dict) -> str:
 
 def render_watchlist_group(group: dict) -> str:
     rows = "".join(
-        "<tr>"
+        f'<tr class="clickable" tabindex="0" role="button" data-id="{r["slug"]}" '
+        f'aria-label="Chart for {esc(r["name"])}">'
         f'<td class="name">{esc(r["name"])}<span class="tick">{esc(r["ticker"])}</span></td>'
         f'<td class="level-val">{esc(r["price"])}</td>'
         f'{change_cells(r["changes"])}'
@@ -603,7 +1030,7 @@ def render_watchlist_group(group: dict) -> str:
     )
 
 
-def render_html(market: dict, watch: dict, now: datetime) -> str:
+def render_html(market: dict, watch: dict, instruments: dict, now: datetime) -> str:
     levels = "".join(
         '<div class="level">'
         f'<span class="label">{esc(r["name"])}</span>'
@@ -625,6 +1052,10 @@ def render_html(market: dict, watch: dict, now: datetime) -> str:
     )
 
     n_holdings = sum(len(g["rows"]) for g in watch["groups"])
+
+    # Embedded as a JSON script block rather than a JS literal so the series
+    # never have to survive escaping into executable source.
+    data_json = json.dumps(instruments, separators=(",", ":"))
 
     as_at = market.get("as_at")
     as_at_line = (
@@ -653,7 +1084,8 @@ def render_html(market: dict, watch: dict, now: datetime) -> str:
   <section>
     <div class="section-head">
       <h2>Market Overview</h2>
-      <span class="note">Rates and spreads move in absolute terms; everything else in per cent.</span>
+      <span class="note">Select any row for its price history. Rates and spreads
+        move in absolute terms; everything else in per cent.</span>
     </div>
     {"".join(render_market_section(s) for s in market["sections"])}
   </section>
@@ -667,6 +1099,30 @@ def render_html(market: dict, watch: dict, now: datetime) -> str:
     {"".join(render_watchlist_group(g) for g in watch["groups"])}
   </section>
 
+  <dialog id="sheet" aria-labelledby="sheet-name">
+    <button id="sheet-close" type="button" aria-label="Close">&#215;</button>
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <h3 id="sheet-name"></h3>
+          <p class="panel-sub" id="sheet-meta"></p>
+        </div>
+        <div class="panel-price" id="sheet-price"></div>
+      </div>
+      <div class="tfbar" id="sheet-tfs" role="group" aria-label="Chart timeframe"></div>
+      <figure class="chart-wrap">
+        <svg id="sheet-chart" viewBox="0 0 {CHART_W} {CHART_H}"
+             preserveAspectRatio="none" role="img" aria-label="Price history"></svg>
+        <figcaption class="chart-axis">
+          <span id="sheet-from"></span><span id="sheet-to"></span>
+        </figcaption>
+      </figure>
+      <div class="stats" id="sheet-stats"></div>
+    </div>
+  </dialog>
+
+  <script id="brief-data" type="application/json">{data_json}</script>
+
   <footer>
     <span>Point-in-time snapshot built {now.astimezone().strftime("%d %B %Y at %H:%M %Z")}.
           Sources: Yahoo Finance (prices), FRED (rates and credit spreads).</span>
@@ -674,6 +1130,8 @@ def render_html(market: dict, watch: dict, now: datetime) -> str:
   </footer>
 
 </div>
+
+<script>{SCRIPT}</script>
 """
 
 
@@ -682,9 +1140,10 @@ def render_html(market: dict, watch: dict, now: datetime) -> str:
 # ---------------------------------------------------------------------------
 
 def build(out_path: str) -> str:
-    market = collect_market()
-    watch = collect_watchlist()
-    page = render_html(market, watch, datetime.now())
+    instruments = {}
+    market = collect_market(instruments)
+    watch = collect_watchlist(instruments)
+    page = render_html(market, watch, instruments, datetime.now())
 
     parent = os.path.dirname(os.path.abspath(out_path))
     os.makedirs(parent, exist_ok=True)

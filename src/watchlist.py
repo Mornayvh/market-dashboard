@@ -124,8 +124,8 @@ def _close_series(frame) -> "pd.Series | None":
     return close
 
 
-def fetch_watchlist(tickers: list[str]) -> dict[str, tuple]:
-    """Metrics for every ticker, as one batch request plus retries.
+def fetch_closes(tickers: list[str], period: str = "1y") -> dict[str, "pd.Series | None"]:
+    """Close history for every ticker, as one batch request plus retries.
 
     yf.download takes the whole list in a single call. Anything it returns
     empty for is retried individually, which covers the occasional delisting
@@ -134,7 +134,7 @@ def fetch_watchlist(tickers: list[str]) -> dict[str, tuple]:
     frames = {}
     try:
         raw = yf.download(
-            tickers, period="1y", auto_adjust=True, group_by="ticker",
+            tickers, period=period, auto_adjust=True, group_by="ticker",
             threads=False, progress=False,
         )
         if raw is not None and not raw.empty:
@@ -146,21 +146,48 @@ def fetch_watchlist(tickers: list[str]) -> dict[str, tuple]:
     except Exception as exc:
         logger.warning("Batch download failed (%s); falling back per ticker.", exc)
 
-    results, retried = {}, []
+    closes, retried = {}, []
     for t in tickers:
         close = _close_series(frames.get(t))
         if close is None:
             retried.append(t)
             try:
-                close = _close_series(yf.Ticker(t).history(period="1y", auto_adjust=True))
+                close = _close_series(yf.Ticker(t).history(period=period, auto_adjust=True))
             except Exception as exc:
                 logger.warning("Fetch failed for %s: %s", t, exc)
                 close = None
-        results[t] = _metrics_from_close(close)
+        closes[t] = close
 
     if retried:
         logger.info("Retried %d ticker(s) individually: %s", len(retried), ", ".join(retried))
+    missing = [t for t, c in closes.items() if c is None]
+    if missing:
+        logger.warning("No history for %d ticker(s): %s", len(missing), ", ".join(missing))
+    return closes
+
+
+def fetch_watchlist(
+    tickers: list[str], period: str = "1y",
+) -> tuple[dict[str, tuple], dict[str, "pd.Series | None"]]:
+    """Metrics and close history for every ticker.
+
+    Returns (metrics, closes). The close series are kept rather than discarded
+    after the metrics are computed, because the HTML brief charts them.
+
+    `period` lengthens the history returned without disturbing the numbers:
+    the metrics are always computed on the trailing year, so asking for "max"
+    gives a decade of chart data and the same 1D/1M/LTM figures as before.
+    """
+    closes = fetch_closes(tickers, period)
+
+    results = {}
+    for t, close in closes.items():
+        window = close
+        if close is not None and len(close):
+            window = close[close.index >= close.index[-1] - pd.Timedelta(days=365)]
+        results[t] = _metrics_from_close(window)
+
     missing = [t for t, m in results.items() if m[0] is None]
     if missing:
         logger.warning("No price for %d ticker(s): %s", len(missing), ", ".join(missing))
-    return results
+    return results, closes
