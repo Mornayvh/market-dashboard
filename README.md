@@ -164,6 +164,24 @@ GitHub queues cron runs under load, and this job has started 90 minutes to
 three hours after 22:00 UTC. Read the cron line as a lower bound, not a run
 time — it still lands well before Saturday morning.
 
+### If no brief appears on Saturday
+
+The build refuses to write a page when more than 15% of holdings come back
+without a price, and exits non-zero — so the job goes red and commits nothing.
+
+That gate exists because of 10 October 2026: Yahoo rate-limited the runner,
+31 of 36 holdings came back empty, and the job committed the hollow page and
+reported success. It was one `git pull` from being emailed to principals.
+
+Yahoo throttles by IP and a datacentre IP is treated far more harshly than a
+residential one, which is why this never reproduces locally. The fetch is now
+batched into roughly one request (`src/watchlist.fetch_watchlist`), making it
+much less likely — but it is an unofficial source with nothing behind it.
+
+**So a missing Saturday file is the gate working, not the system breaking.**
+Check the Actions tab, then rerun the job — throttling is transient and a
+rerun an hour later normally clears it.
+
 `workflow_dispatch` runs it on demand from the Actions tab, or:
 
 ```bash
