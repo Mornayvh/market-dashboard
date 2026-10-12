@@ -78,6 +78,10 @@ FRED_START = "1995-01-01"
 COMMENTARY_PATH = "weekly/commentary.md"
 COMMENTARY_SECTIONS = ["Market Overview", "Stock Watchlist"]
 
+# Per-asset commentary and news for the chart modals, written by hand in the
+# same way and spliced in by the same script.
+ASSETS_PATH = "weekly/assets.md"
+
 
 # ---------------------------------------------------------------------------
 # Collection
@@ -108,6 +112,69 @@ def read_commentary(path: str = COMMENTARY_PATH) -> dict:
     if missing:
         logger.warning("Commentary not written for: %s", ", ".join(missing))
     return out
+
+
+def read_asset_notes(path: str = ASSETS_PATH) -> dict:
+    """Per-asset commentary and news, keyed by whatever heading was typed.
+
+    Resolution to an instrument happens later, in attach_asset_notes, so a
+    heading can be a name ("Apple", "USD/ZAR") or a ticker ("AAPL") — nobody
+    should have to type the internal slug.
+
+    Each "### " section is free prose, optionally followed by a News: block of
+        - YYYY-MM-DD | Headline | https://...
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = f.read()
+    except FileNotFoundError:
+        return {}
+
+    notes = {}
+    for chunk in raw.split("\n### ")[1:]:
+        head, _, body = chunk.partition("\n")
+        body = body.split("\n### ")[0].split("\n## ")[0].strip()
+        if not body:
+            continue
+
+        prose, _, news_block = body.partition("News:")
+        articles = []
+        for line in news_block.splitlines():
+            line = line.strip().lstrip("-").strip()
+            if not line:
+                continue
+            parts = [p.strip() for p in line.split("|")]
+            if len(parts) < 2:
+                logger.warning("Skipping malformed news line under %r: %s", head.strip(), line)
+                continue
+            date, title = parts[0], parts[1]
+            url = parts[2] if len(parts) > 2 else ""
+            articles.append({"d": date, "t": title, "u": url})
+
+        prose = prose.strip()
+        if prose or articles:
+            notes[slugify(head.strip())] = {"c": prose, "news": articles}
+    return notes
+
+
+def attach_asset_notes(instruments: dict, aliases: dict, notes: dict) -> None:
+    """Fold the hand-written notes into the instrument payloads, in place."""
+    unmatched = []
+    for key, note in notes.items():
+        target = aliases.get(key)
+        if not target:
+            unmatched.append(key)
+            continue
+        if note["c"]:
+            instruments[target]["c"] = note["c"]
+        if note["news"]:
+            instruments[target]["news"] = note["news"]
+
+    if unmatched:
+        logger.warning("Asset notes matched nothing: %s", ", ".join(sorted(unmatched)))
+    matched = len(notes) - len(unmatched)
+    if matched:
+        logger.info("Attached notes to %d instrument(s).", matched)
 
 
 def render_commentary(text: str | None) -> str:
@@ -147,10 +214,19 @@ def _thin(vals: list, n: int) -> list:
 
 
 def _window(win, scale: float, dp: int) -> dict:
+    """Values plus the date of each one, for the chart's hover readout.
+
+    Dates ride along as whole-day offsets from the window's first date rather
+    than as strings: trading days are not evenly spaced, so the hover card
+    would drift by days if the position were interpolated, and 100 ISO dates
+    per window across 62 instruments and 5 windows is a lot of page to carry.
+    """
+    idx = _thin(list(win.index), SERIES_POINTS)
+    start = idx[0]
     return {
         "v": [round(float(v) * scale, dp) for v in _thin(win.tolist(), SERIES_POINTS)],
-        "a": win.index[0].strftime("%b %Y"),
-        "b": win.index[-1].strftime("%b %Y"),
+        "t": start.strftime("%Y-%m-%d"),
+        "o": [int((d - start).days) for d in idx],
     }
 
 
@@ -206,7 +282,7 @@ def fetch_market_history() -> dict:
     return out
 
 
-def collect_market(instruments: dict) -> dict:
+def collect_market(instruments: dict, aliases: dict) -> dict:
     """Macro side. Appends each asset's modal payload to `instruments`."""
     logger.info("Fetching market data...")
     history = fetch_market_history()
@@ -248,6 +324,7 @@ def collect_market(instruments: dict) -> dict:
             suffix = " bps" if is_spread else ("%" if is_rate else "")
             dp = 0 if is_spread else 2
             tf, default = build_timeframes(history.get(name), scale, dp)
+            aliases[slugify(name)] = row["slug"]
             instruments[row["slug"]] = {
                 "n": name,
                 "m": f"{SECTION_LABELS.get(category, category)} · market overview",
@@ -266,7 +343,7 @@ def collect_market(instruments: dict) -> dict:
     return {"sections": sections, "key_levels": key_levels, "as_at": as_at}
 
 
-def collect_watchlist(instruments: dict) -> dict:
+def collect_watchlist(instruments: dict, aliases: dict) -> dict:
     """Holdings side. Appends each holding's modal payload to `instruments`."""
     tickers = [t for stocks in WATCHLIST.values() for _, t, _ in stocks]
     logger.info("Fetching watchlist data for %d names...", len(tickers))
@@ -308,6 +385,10 @@ def collect_watchlist(instruments: dict) -> dict:
                 stats += [["52-week low", row["lo"], ""], ["52-week high", row["hi"], ""]]
 
             tf, default = build_timeframes(closes.get(ticker))
+            # Reachable as "Apple" or "AAPL"; the name loses to the ticker
+            # only where a name is shared, e.g. SpaceX sits in both tables.
+            aliases.setdefault(slugify(name), row["slug"])
+            aliases[slugify(ticker)] = row["slug"]
             instruments[row["slug"]] = {
                 "n": name,
                 "m": f"{ticker} · {group} · quoted in {currency}",
@@ -836,7 +917,94 @@ tr.clickable:focus-visible td.name::after { opacity: 1; }
 
 .chart-wrap { margin: 0; display: flex; flex-direction: column; gap: 7px; }
 
+.chart-plot { position: relative; }
+
 #sheet-chart { width: 100%; height: 180px; display: block; overflow: visible; }
+
+/* ---- Hover readout ---- */
+
+.chart-cursor { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 2 3; }
+.chart-dot { fill: var(--surface); stroke: var(--trace); stroke-width: 2; }
+
+.hovercard {
+  position: absolute;
+  top: 0;
+  /* Centred on the cursor by script, which also keeps it inside the plot. */
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: var(--ink);
+  color: var(--surface);
+  border-radius: 5px;
+  padding: 5px 9px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 14px -6px rgba(15, 23, 42, .6);
+}
+
+.hover-date { color: var(--ink-3); font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+
+.hover-price {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+/* ---- Per-asset commentary and news ---- */
+
+.asset-note {
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 15.5px;
+  line-height: 1.68;
+  color: var(--ink);
+  border-top: 1px solid var(--border);
+  padding-top: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.asset-note p { margin: 0; }
+
+.asset-news { display: flex; flex-direction: column; gap: 0; }
+
+.asset-news .news-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 9px;
+}
+
+.news-item {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.news-item:first-of-type { border-top: 0; }
+
+/* The date is the point of this list: it is how you tell a piece written
+   this week from one carried over because the week was quiet. */
+.news-date {
+  flex: none;
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  min-width: 68px;
+}
+
+.news-title { font-size: 13.5px; line-height: 1.45; color: var(--ink); text-decoration: none; }
+a.news-title:hover { color: var(--accent); text-decoration: underline; }
+a.news-title:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+.news-stale { color: var(--ink-3); font-size: 11px; font-style: italic; }
 
 .chart-axis {
   display: flex;
@@ -928,10 +1096,14 @@ footer {
 }
 """
 
+# Raw string: the JS carries regex escapes like /\n\s*\n/, which a plain
+# triple-quote would turn into real newlines and silently break. The %d slots
+# are the chart geometry and are unaffected by raw.
+#
 # Kept out of the page template because that is an f-string and this is full
 # of braces. <dialog> is doing the real work — modality, Esc and focus return
 # are the browser's job, not ours.
-SCRIPT = """
+SCRIPT = r"""
 (function () {
   var D = JSON.parse(document.getElementById('brief-data').textContent);
   var sheet = document.getElementById('sheet');
@@ -949,6 +1121,24 @@ SCRIPT = """
       minimumFractionDigits: dp, maximumFractionDigits: dp
     }) + inst.suf;
   }
+
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun',
+                'Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function dateAt(win, i) {
+    // Parsed as UTC and read back as UTC, so a timezone west of Greenwich
+    // cannot shift every label back by a day.
+    var d = new Date(win.t + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + win.o[i]);
+    return d;
+  }
+
+  function dayLabel(d) {
+    return ('0' + d.getUTCDate()).slice(-2) + ' ' + MONTHS[d.getUTCMonth()] +
+           ' ' + d.getUTCFullYear();
+  }
+
+  function monthLabel(d) { return MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); }
 
   function el(name, attrs) {
     var n = document.createElementNS(NS, name);
@@ -982,13 +1172,105 @@ SCRIPT = """
                                   cy: pts[pts.length - 1][1].toFixed(1),
                                   r: 4, 'class': 'chart-end'}));
 
-    document.getElementById('sheet-from').textContent = win.a + '  ·  low ' + fmt(lo, inst);
-    document.getElementById('sheet-to').textContent = 'high ' + fmt(hi, inst) + '  ·  ' + win.b;
+    document.getElementById('sheet-from').textContent =
+      monthLabel(dateAt(win, 0)) + '  ·  low ' + fmt(lo, inst);
+    document.getElementById('sheet-to').textContent =
+      'high ' + fmt(hi, inst) + '  ·  ' + monthLabel(dateAt(win, v.length - 1));
+
+    // Hover state belongs to the window just drawn, not the one before it.
+    plot = {win: win, inst: inst, pts: pts};
+    hideHover();
 
     Array.prototype.forEach.call(document.querySelectorAll('.tf'), function (b) {
       var on = b.dataset.tf === key;
       b.classList.toggle('on', on);
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  var hover = document.getElementById('sheet-hover');
+  var plot = null;
+
+  function hideHover() {
+    hover.hidden = true;
+    var old = svg.querySelector('.chart-cursor');
+    if (old) old.remove();
+    old = svg.querySelector('.chart-dot');
+    if (old) old.remove();
+  }
+
+  function showHover(clientX) {
+    if (!plot) return;
+    var box = svg.getBoundingClientRect();
+    if (!box.width) return;
+
+    // Nearest point to the cursor, in the SVG's own coordinate space.
+    var x = (clientX - box.left) / box.width * W;
+    var i = Math.round(x / (W / (plot.pts.length - 1)));
+    i = Math.max(0, Math.min(plot.pts.length - 1, i));
+
+    var p = plot.pts[i];
+    hideHover();
+    svg.appendChild(el('line', {x1: p[0], y1: 0, x2: p[0], y2: H, 'class': 'chart-cursor'}));
+    svg.appendChild(el('circle', {cx: p[0], cy: p[1], r: 4, 'class': 'chart-dot'}));
+
+    hover.querySelector('.hover-date').textContent = dayLabel(dateAt(plot.win, i));
+    hover.querySelector('.hover-price').textContent = fmt(plot.win.v[i], plot.inst);
+    hover.hidden = false;
+
+    // Keep the card inside the plot rather than letting it hang off an edge.
+    var left = p[0] / W * box.width;
+    var half = hover.offsetWidth / 2;
+    hover.style.left = Math.max(half, Math.min(box.width - half, left)) + 'px';
+  }
+
+  svg.addEventListener('mousemove', function (e) { showHover(e.clientX); });
+  svg.addEventListener('mouseleave', hideHover);
+  svg.addEventListener('touchmove', function (e) {
+    if (e.touches.length) { e.preventDefault(); showHover(e.touches[0].clientX); }
+  }, {passive: false});
+  svg.addEventListener('touchend', hideHover);
+
+  function renderNote(inst) {
+    var note = document.getElementById('sheet-note');
+    note.textContent = '';
+    note.hidden = !inst.c;
+    if (!inst.c) return;
+    inst.c.split(/\n\s*\n/).forEach(function (para) {
+      var p = document.createElement('p');
+      p.textContent = para.trim();     // text, never markup
+      note.appendChild(p);
+    });
+  }
+
+  function renderNews(inst) {
+    var box = document.getElementById('sheet-news');
+    box.textContent = '';
+    var items = inst.news || [];
+    box.hidden = !items.length;
+    if (!items.length) return;
+
+    var label = document.createElement('span');
+    label.className = 'news-label';
+    label.textContent = 'In the news';
+    box.appendChild(label);
+
+    items.forEach(function (n) {
+      var row = document.createElement('div');
+      row.className = 'news-item';
+
+      var date = document.createElement('span');
+      date.className = 'news-date';
+      date.textContent = n.d;
+      row.appendChild(date);
+
+      var title = document.createElement(n.u ? 'a' : 'span');
+      title.className = 'news-title';
+      title.textContent = n.t;
+      if (n.u) { title.href = n.u; title.target = '_blank'; title.rel = 'noopener noreferrer'; }
+      row.appendChild(title);
+
+      box.appendChild(row);
     });
   }
 
@@ -1024,6 +1306,9 @@ SCRIPT = """
       bar.appendChild(b);
     });
 
+    renderNote(inst);
+    renderNews(inst);
+
     if (inst.d) draw(inst, inst.d);
     sheet.showModal();
   }
@@ -1040,6 +1325,8 @@ SCRIPT = """
 
   // Click outside the panel closes it. The dialog fills the backdrop, so
   // compare against its box rather than looking at the event target.
+  sheet.addEventListener('close', hideHover);
+
   sheet.addEventListener('click', function (e) {
     var b = sheet.getBoundingClientRect();
     if (e.clientX < b.left || e.clientX > b.right ||
@@ -1218,13 +1505,20 @@ def render_html(market: dict, watch: dict, instruments: dict,
       </div>
       <div class="tfbar" id="sheet-tfs" role="group" aria-label="Chart timeframe"></div>
       <figure class="chart-wrap">
-        <svg id="sheet-chart" viewBox="0 0 {CHART_W} {CHART_H}"
-             preserveAspectRatio="none" role="img" aria-label="Price history"></svg>
+        <div class="chart-plot">
+          <svg id="sheet-chart" viewBox="0 0 {CHART_W} {CHART_H}"
+               preserveAspectRatio="none" role="img" aria-label="Price history"></svg>
+          <div class="hovercard" id="sheet-hover" hidden aria-hidden="true">
+            <span class="hover-date"></span><span class="hover-price"></span>
+          </div>
+        </div>
         <figcaption class="chart-axis">
           <span id="sheet-from"></span><span id="sheet-to"></span>
         </figcaption>
       </figure>
       <div class="stats" id="sheet-stats"></div>
+      <div class="asset-note" id="sheet-note" hidden></div>
+      <div class="asset-news" id="sheet-news" hidden></div>
     </div>
   </dialog>
 
@@ -1247,9 +1541,10 @@ def render_html(market: dict, watch: dict, instruments: dict,
 # ---------------------------------------------------------------------------
 
 def build(out_path: str) -> str:
-    instruments = {}
-    market = collect_market(instruments)
-    watch = collect_watchlist(instruments)
+    instruments, aliases = {}, {}
+    market = collect_market(instruments, aliases)
+    watch = collect_watchlist(instruments, aliases)
+    attach_asset_notes(instruments, aliases, read_asset_notes())
     page = render_html(market, watch, instruments, read_commentary(), datetime.now())
 
     parent = os.path.dirname(os.path.abspath(out_path))

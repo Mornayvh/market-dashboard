@@ -177,6 +177,34 @@ covering the week to Friday.
 Friday's Actions build has no `commentary.md`, so the committed page carries
 no boxes until you add them.
 
+### Per-asset commentary and news
+
+Each chart modal can carry its own paragraph and two or three news items,
+written in `weekly/assets.md` and applied by the same `update_commentary.py`.
+
+```markdown
+### Palo Alto          <- name or ticker, never the internal slug
+
+Up 26.7% on the month after fourth-quarter sales rose 34%...
+
+News:
+- 2026-10-06 | Palo Alto stock jumps as AI-agent fear becomes budget fuel | https://...
+```
+
+- Headings resolve by **display name or ticker** — "Apple" or "AAPL",
+  "USD/ZAR", "HY Spread". A heading matching nothing is reported by name when
+  you run the script, so typos surface rather than vanishing silently.
+- An asset you do not write about has no commentary box in its modal.
+- The **news date is the point of the list**: it is how a reader tells a piece
+  written this week from one carried over because the week was quiet. The URL
+  is optional; without it the headline renders as plain text.
+- Notes live in the page's embedded JSON, not its markup, so the script edits
+  and re-serialises that payload. It clears the previous week's notes first —
+  otherwise an asset dropped from the file would keep stale commentary.
+
+`weekly/assets.md` is gitignored like `commentary.md`; the blank form is
+`weekly/assets.template.md`.
+
 ### How the weekly build works
 
 `.github/workflows/weekly_report.yml` runs every **Friday at 22:00 UTC** — an

@@ -16,3 +16,4 @@ Reports/
 # the brief every Friday and a tracked copy would collide with your edits on
 # every pull. The blank form is weekly/commentary.template.md.
 weekly/commentary.md
+weekly/assets.md
