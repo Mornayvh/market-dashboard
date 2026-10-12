@@ -594,13 +594,15 @@ body {
    marks this as written rather than measured. */
 .commentary-body {
   font-family: Newsreader, ui-serif, Georgia, serif;
-  font-size: 16px;
-  line-height: 1.62;
+  /* Full box width. A measure cap looked half-empty against a box as wide as
+     the tables; the extra leading below is what keeps the longer lines
+     tracking, since the eye has further to travel back. */
+  font-size: 17px;
+  line-height: 1.72;
   color: var(--ink);
-  max-width: 68ch;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 11px;
 }
 
 .commentary-body p { margin: 0; }
