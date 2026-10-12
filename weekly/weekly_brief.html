@@ -411,6 +411,12 @@ tr.clickable:focus-visible td.name::after { opacity: 1; }
   justify-content: space-between;
   gap: 18px;
   flex-wrap: wrap;
+  /* The close button is absolutely positioned against the dialog and so takes
+     no space in this row: it sits 14px from the dialog's right edge and is
+     30px wide, while the panel's own padding stops 24px in. Without this the
+     button lands on top of the price. Only the header row gives up the width;
+     the chart below still runs edge to edge. */
+  padding-right: 34px;
 }
 
 .panel-head h3 {
