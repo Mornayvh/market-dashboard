@@ -34,7 +34,9 @@ from src.config import ASSETS
 from src.data_ingest import fetch_fred_series
 from src.data_process import process_all
 from src.viz_helpers import fmt_change, fmt_value
-from src.watchlist import CURRENCY_SYMBOLS, WATCHLIST, fetch_closes, fetch_watchlist
+from src.watchlist import (
+    CURRENCY_SYMBOLS, WATCHLIST, fetch_closes, fetch_earnings, fetch_watchlist,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -178,7 +180,7 @@ def attach_asset_notes(instruments: dict, aliases: dict, notes: dict) -> None:
         if not target:
             unmatched.append(key)
             continue
-        for field in ("c", "e", "news"):
+        for field in ("c", "e", "news"):   # never "er" — that is fetched, not written
             if note.get(field):
                 instruments[target][field] = note[field]
 
@@ -361,6 +363,11 @@ def collect_watchlist(instruments: dict, aliases: dict) -> dict:
     logger.info("Fetching watchlist data for %d names...", len(tickers))
     fetched, closes = fetch_watchlist(tickers, period="max")
 
+    # Refreshed every build, so the brief reflects whatever has most recently
+    # been reported without anyone editing a file. Never fatal: a company with
+    # no earnings history simply has no figures block.
+    earnings = fetch_earnings(tickers)
+
     groups, movers, blank = [], [], 0
     for group, stocks in WATCHLIST.items():
         rows = []
@@ -407,6 +414,7 @@ def collect_watchlist(instruments: dict, aliases: dict) -> dict:
                 "p": row["price"],
                 "sym": CURRENCY_SYMBOLS.get(currency, ""), "suf": "", "dp": 2,
                 "s": stats, "tf": tf, "d": default,
+                "er": earnings.get(ticker),
             }
 
         groups.append({"title": group, "rows": rows})
@@ -1042,6 +1050,45 @@ tr.clickable:focus-visible td.name::after { opacity: 1; }
   color: var(--ink-3);
 }
 
+/* Fetched figures: set apart from the written note above them, because one
+   refreshes every build and the other does not. */
+.earnings-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  padding: 10px 13px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.earnings-when { color: var(--ink-2); }
+
+.earnings-age {
+  margin-left: 7px;
+  color: var(--ink-3);
+  font-size: 11px;
+}
+
+/* A report older than a quarter is the case worth seeing at a glance. */
+.earnings-age.stale { color: var(--neg); font-weight: 600; }
+
+.earnings-eps {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--ink);
+}
+
+.earnings-eps b { margin-left: 7px; font-weight: 500; }
+
+.earnings-next {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
 .asset-earnings p {
   margin: 0;
   font-family: Newsreader, ui-serif, Georgia, serif;
@@ -1190,7 +1237,7 @@ SCRIPT = r"""
   var sheet = document.getElementById('sheet');
   if (!sheet || !sheet.showModal) return;   // no <dialog>: rows stay inert
 
-  var W = %d, H = %d, PAD = %d;
+  var W = __W__, H = __H__, PAD = __PAD__;
   var svg = document.getElementById('sheet-chart');
   var NS = 'http://www.w3.org/2000/svg';
   var current = null, frame = null;
@@ -1327,19 +1374,62 @@ SCRIPT = r"""
   function renderEarnings(inst) {
     var box = document.getElementById('sheet-earnings');
     box.textContent = '';
-    box.hidden = !inst.e;
-    if (!inst.e) return;
+    var er = inst.er;
+    box.hidden = !inst.e && !er;
+    if (box.hidden) return;
 
     var label = document.createElement('span');
     label.className = 'earnings-label';
     label.textContent = 'Most recent earnings report';
     box.appendChild(label);
 
-    inst.e.split(/\n\s*\n/).forEach(function (para) {
-      var p = document.createElement('p');
-      p.textContent = para.trim();     // text, never markup
-      box.appendChild(p);
-    });
+    // Fetched figures first: these refresh on every build, so they are the
+    // part that stays current between hand-written notes.
+    if (er && er.on) {
+      var facts = document.createElement('div');
+      facts.className = 'earnings-facts';
+
+      var when = document.createElement('span');
+      when.className = 'earnings-when';
+      when.textContent = 'Reported ' + er.on;
+      // Age is the point when a company has not reported in a while.
+      if (er.age != null) {
+        var ago = document.createElement('span');
+        ago.className = 'earnings-age' + (er.age > 200 ? ' stale' : '');
+        ago.textContent = er.age + ' days ago';
+        when.appendChild(ago);
+      }
+      facts.appendChild(when);
+
+      var eps = document.createElement('span');
+      eps.className = 'earnings-eps';
+      var txt = 'EPS ' + er.eps;
+      if (er.est != null) txt += ' against ' + er.est + ' expected';
+      eps.textContent = txt;
+      if (er.surp != null) {
+        var s = document.createElement('b');
+        s.className = er.surp >= 0 ? 'pos' : 'neg';
+        s.textContent = (er.surp >= 0 ? '+' : '') + er.surp + '%';
+        eps.appendChild(s);
+      }
+      facts.appendChild(eps);
+      box.appendChild(facts);
+    }
+
+    if (er && er.next) {
+      var nxt = document.createElement('p');
+      nxt.className = 'earnings-next';
+      nxt.textContent = 'Next report expected ' + er.next + '.';
+      box.appendChild(nxt);
+    }
+
+    if (inst.e) {
+      inst.e.split(/\n\s*\n/).forEach(function (para) {
+        var p = document.createElement('p');
+        p.textContent = para.trim();     // text, never markup
+        box.appendChild(p);
+      });
+    }
   }
 
   function renderNews(inst) {
@@ -1443,7 +1533,14 @@ SCRIPT = r"""
     });
   });
 }());
-""" % (CHART_W, CHART_H, CHART_PAD)
+"""
+
+# Token substitution rather than %-formatting: the script contains literal
+# per-cent signs (the earnings surprise, for one) and every one of them would
+# have to be escaped. Tokens cannot collide with JavaScript syntax.
+SCRIPT = (SCRIPT.replace("__W__", str(CHART_W))
+                .replace("__H__", str(CHART_H))
+                .replace("__PAD__", str(CHART_PAD)))
 
 FONTS = (
     '<link rel="preconnect" href="https://fonts.googleapis.com">'

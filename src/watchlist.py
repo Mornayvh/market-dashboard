@@ -191,3 +191,99 @@ def fetch_watchlist(
     if missing:
         logger.warning("No price for %d ticker(s): %s", len(missing), ", ".join(missing))
     return results, closes
+
+
+# Yahoo's earnings history for non-US listings can return records many years
+# old instead of nothing — FirstRand came back with August 2007 and a 3,365%
+# surprise. Any issuer reports at least annually, so a "most recent report"
+# beyond this is a gap in the data, not a fact about the company.
+MAX_EARNINGS_AGE_DAYS = 400
+
+# Longer than any normal quarterly or semi-annual cycle plus reporting lag,
+# so this flags a genuine gap rather than every semi-annual reporter.
+EARNINGS_STALE_DAYS = 200
+
+
+def _usable_surprise(eps: float, est, surp) -> bool:
+    """Whether an estimate and surprise are worth showing beside the actual.
+
+    Yahoo's estimate is not always on the same basis as the reported figure,
+    which produces nonsense: Amazon and Alphabet both came back near +215%,
+    Alibaba at -89%. A surprise of that size is a basis mismatch, not a result.
+    Estimates at or below zero are excluded too — "beating" a forecast loss is
+    arithmetically true and tells a reader nothing.
+    """
+    if est is None or surp is None or est <= 0.25:
+        return False
+    if abs(surp) > 100:
+        return False
+    ratio = eps / est
+    return 0.25 <= ratio <= 4
+
+
+def fetch_earnings(tickers: list[str]) -> dict[str, dict]:
+    """Most recent reported quarter and next expected date, per ticker.
+
+    Pulled fresh on every build, so the brief reflects whatever a company has
+    most recently reported without anyone editing a file. Rows carrying a
+    reported EPS are history; rows without one are scheduled.
+
+    One request per ticker, unlike the batched price fetch — there is no bulk
+    endpoint for this. A ticker that fails or has no history is simply absent
+    from the result; earnings are an addition to the brief, never a reason to
+    fail the build.
+    """
+    out, failed, stale, unusable = {}, [], [], []
+    today = pd.Timestamp.today().normalize()
+
+    for t in tickers:
+        try:
+            df = yf.Ticker(t).get_earnings_dates(limit=16)
+        except Exception as exc:
+            failed.append(t)
+            logger.debug("Earnings fetch failed for %s: %s", t, exc)
+            continue
+        if df is None or df.empty or "Reported EPS" not in df:
+            continue
+
+        df = df.copy()
+        df.index = pd.to_datetime(df.index).tz_localize(None)
+
+        reported = df[df["Reported EPS"].notna()].sort_index()
+        upcoming = df[df["Reported EPS"].isna() & (df.index >= today)].sort_index()
+
+        entry = {}
+        if not reported.empty:
+            row = reported.iloc[-1]
+            when = reported.index[-1]
+            age = int((today - when.normalize()).days)
+            if age > MAX_EARNINGS_AGE_DAYS:
+                stale.append(f"{t} ({when:%Y-%m-%d})")
+            else:
+                entry["on"] = when.strftime("%d %B %Y")
+                entry["age"] = age
+                eps = round(float(row["Reported EPS"]), 2)
+                entry["eps"] = eps
+                est = round(float(row["EPS Estimate"]), 2) if pd.notna(row.get("EPS Estimate")) else None
+                surp = round(float(row["Surprise(%)"]), 1) if pd.notna(row.get("Surprise(%)")) else None
+                if _usable_surprise(eps, est, surp):
+                    entry["est"], entry["surp"] = est, surp
+                elif est is not None:
+                    unusable.append(t)
+        if not upcoming.empty:
+            entry["next"] = upcoming.index[0].strftime("%d %B %Y")
+
+        if entry:
+            out[t] = entry
+
+    if failed:
+        logger.warning("Earnings fetch failed for %d ticker(s): %s",
+                       len(failed), ", ".join(failed))
+    if stale:
+        logger.warning("Discarded earnings older than %d days for: %s",
+                       MAX_EARNINGS_AGE_DAYS, ", ".join(stale))
+    if unusable:
+        logger.info("Estimate not on a comparable basis, showing actual only: %s",
+                    ", ".join(unusable))
+    logger.info("Earnings data for %d/%d tickers", len(out), len(tickers))
+    return out
