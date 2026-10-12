@@ -748,9 +748,26 @@ section { display: flex; flex-direction: column; gap: 16px; }
 
 table {
   width: 100%;
-  min-width: 540px;
   border-collapse: collapse;
+  /* Fixed, with the widths declared below, so every section's columns land in
+     the same place. Under auto layout each table sized its own columns to its
+     own longest cell, so Credit Spreads and Equities stepped out of line with
+     each other down the page. */
+  table-layout: fixed;
 }
+
+/* Market Overview: Instrument | Level | 1D | 1W | LTM */
+.t-macro { min-width: 780px; }
+.t-macro th:nth-child(1), .t-macro td:nth-child(1) { width: 36%; }
+.t-macro th:nth-child(n+2), .t-macro td:nth-child(n+2) { width: 16%; }
+
+/* Stock Watchlist: Holding | Price | 1D | 1M | LTM | 52-Week Range */
+.t-watch { min-width: 940px; }
+.t-watch th:nth-child(1), .t-watch td:nth-child(1) { width: 26%; }
+.t-watch th:nth-child(2), .t-watch td:nth-child(2) { width: 14%; }
+.t-watch th:nth-child(n+3):nth-child(-n+5),
+.t-watch td:nth-child(n+3):nth-child(-n+5) { width: 11%; }
+.t-watch th:nth-child(6), .t-watch td:nth-child(6) { width: 27%; }
 
 th {
   font-size: 10.5px;
@@ -1449,7 +1466,7 @@ def render_market_section(section: dict) -> str:
     return (
         '<div class="block">'
         f'<h3>{esc(section["title"])}</h3>'
-        '<div class="scroll"><table>'
+        '<div class="scroll"><table class="t-macro">'
         "<thead><tr><th>Instrument</th><th>Level</th><th>1D</th><th>1W</th><th>LTM</th></tr></thead>"
         f"<tbody>{rows}</tbody>"
         "</table></div></div>"
@@ -1483,7 +1500,7 @@ def render_watchlist_group(group: dict) -> str:
     return (
         '<div class="block">'
         f'<h3>{esc(group["title"])}</h3>'
-        '<div class="scroll"><table>'
+        '<div class="scroll"><table class="t-watch">'
         "<thead><tr><th>Holding</th><th>Price</th><th>1D</th><th>1M</th><th>LTM</th>"
         "<th>52-Week Range</th></tr></thead>"
         f"<tbody>{rows}</tbody>"
