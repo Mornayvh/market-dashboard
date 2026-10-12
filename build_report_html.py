@@ -700,6 +700,19 @@ body {
 
 .commentary-body p { margin: 0; }
 
+/* Justify the running prose only — the tables, labels and captions stay
+   ranged left, where justification would simply stretch short strings.
+   hyphens: auto matters more than usual here: the commentary box runs the
+   full page width, and justified text that cannot break words opens rivers
+   of white space between them. It needs a language, which .page declares. */
+.commentary-body p,
+.asset-note p,
+.asset-earnings p {
+  text-align: justify;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+}
+
 /* ---- Sections and tables ---- */
 
 section { display: flex; flex-direction: column; gap: 16px; }
@@ -1546,7 +1559,7 @@ def render_html(market: dict, watch: dict, instruments: dict,
 {FONTS}
 <style>{CSS}</style>
 
-<div class="page">
+<div class="page" lang="en-GB">
 
   <header class="masthead">
     <span class="eyebrow">Secco Capital</span>
