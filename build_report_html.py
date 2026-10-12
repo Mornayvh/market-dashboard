@@ -889,7 +889,10 @@ tr.clickable:focus-visible td.name::after { opacity: 1; }
 /* ---- Detail dialog ---- */
 
 #sheet {
-  width: min(680px, calc(100vw - 32px));
+  /* Wider than the original 680px: the earnings block now carries a four
+     column table, and the chart reads better with the extra room. Still well
+     inside the 1120px page so it does not fill a large screen edge to edge. */
+  width: min(880px, calc(100vw - 32px));
   padding: 0;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -1052,11 +1055,21 @@ tr.clickable:focus-visible td.name::after { opacity: 1; }
 
 /* Fetched figures: set apart from the written note above them, because one
    refreshes every build and the other does not. */
+.earnings-meta {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A report well past any normal reporting cycle is the case worth seeing. */
+.earnings-meta.stale { color: var(--neg); font-weight: 600; }
+
 .earnings-facts {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 18px;
-  padding: 10px 13px;
+  flex-direction: column;
+  gap: 5px;
+  padding: 11px 13px;
   background: var(--surface-alt);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -1064,23 +1077,71 @@ tr.clickable:focus-visible td.name::after { opacity: 1; }
   font-variant-numeric: tabular-nums;
 }
 
-.earnings-when { color: var(--ink-2); }
+.ef-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 
-.earnings-age {
-  margin-left: 7px;
+.ef-k {
+  flex: none;
+  min-width: 142px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
   color: var(--ink-3);
-  font-size: 11px;
 }
 
-/* A report older than a quarter is the case worth seeing at a glance. */
-.earnings-age.stale { color: var(--neg); font-weight: 600; }
-
-.earnings-eps {
+.ef-v {
   font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--ink);
 }
 
-.earnings-eps b { margin-left: 7px; font-weight: 500; }
+.ef-row b { font-weight: 500; font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+
+/* Quarter against the same quarter a year earlier — the comparison that says
+   whether the business grew, which a surprise against consensus does not. */
+.earnings-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.earnings-table th {
+  font-size: 10px;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  text-align: right;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+
+.earnings-table th:first-child { text-align: left; }
+
+.earnings-table td {
+  padding: 7px 10px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.earnings-table td:first-child {
+  text-align: left;
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  color: var(--ink-2);
+}
+
+.earnings-table tr:last-child td { border-bottom: 0; }
+
+.earnings-basis {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+}
 
 .earnings-next {
   margin: 0;
@@ -1386,34 +1447,81 @@ SCRIPT = r"""
     // Fetched figures first: these refresh on every build, so they are the
     // part that stays current between hand-written notes.
     if (er && er.on) {
+      var meta = document.createElement('p');
+      meta.className = 'earnings-meta';
+      var when = 'Reported ' + er.on;
+      if (er.age != null) when += '  \u00b7  ' + er.age + ' days ago';
+      if (er.fin) when += '  \u00b7  quarter ended ' + er.fin.end;
+      meta.textContent = when;
+      if (er.age != null && er.age > 200) meta.classList.add('stale');
+      box.appendChild(meta);
+
       var facts = document.createElement('div');
       facts.className = 'earnings-facts';
 
-      var when = document.createElement('span');
-      when.className = 'earnings-when';
-      when.textContent = 'Reported ' + er.on;
-      // Age is the point when a company has not reported in a while.
-      if (er.age != null) {
-        var ago = document.createElement('span');
-        ago.className = 'earnings-age' + (er.age > 200 ? ' stale' : '');
-        ago.textContent = er.age + ' days ago';
-        when.appendChild(ago);
+      function line(label, value, pct) {
+        var row = document.createElement('div');
+        row.className = 'ef-row';
+        var k = document.createElement('span');
+        k.className = 'ef-k'; k.textContent = label; row.appendChild(k);
+        var v = document.createElement('span');
+        v.className = 'ef-v'; v.textContent = value; row.appendChild(v);
+        if (pct != null) {
+          var b = document.createElement('b');
+          b.className = pct >= 0 ? 'pos' : 'neg';
+          b.textContent = (pct >= 0 ? '+' : '') + pct + '%';
+          row.appendChild(b);
+        }
+        facts.appendChild(row);
       }
-      facts.appendChild(when);
 
-      var eps = document.createElement('span');
-      eps.className = 'earnings-eps';
-      var txt = 'EPS ' + er.eps;
-      if (er.est != null) txt += ' against ' + er.est + ' expected';
-      eps.textContent = txt;
-      if (er.surp != null) {
-        var s = document.createElement('b');
-        s.className = er.surp >= 0 ? 'pos' : 'neg';
-        s.textContent = (er.surp >= 0 ? '+' : '') + er.surp + '%';
-        eps.appendChild(s);
+      line('Against consensus',
+           er.est != null ? er.eps + ' against ' + er.est + ' expected' : 'EPS ' + er.eps,
+           er.surp);
+      if (er.py != null) line('Versus a year earlier', er.eps + ' against ' + er.py, er.yoy);
+      if (er.beats != null) {
+        line('Track record',
+             'Above consensus in ' + er.beats + ' of last ' + er.of +
+             ', average ' + (er.avg >= 0 ? '+' : '') + er.avg + '%', null);
       }
-      facts.appendChild(eps);
       box.appendChild(facts);
+
+      if (er.fin && er.fin.rows.length) {
+        var tbl = document.createElement('table');
+        tbl.className = 'earnings-table';
+        var head = document.createElement('tr');
+        ['Metric', 'Actual', 'Year earlier', 'Change'].forEach(function (t) {
+          var th = document.createElement('th'); th.textContent = t; head.appendChild(th);
+        });
+        tbl.appendChild(head);
+        er.fin.rows.forEach(function (r) {
+          var tr = document.createElement('tr');
+          r.forEach(function (cell, i) {
+            var td = document.createElement('td');
+            td.textContent = cell;
+            if (i === 3 && cell !== '\u2014') td.className = cell.charAt(0) === '-' ? 'neg' : 'pos';
+            tr.appendChild(td);
+          });
+          tbl.appendChild(tr);
+        });
+        box.appendChild(tbl);
+
+        // The consensus line and the filed diluted figure are different
+        // measures. Where they diverge materially, say so rather than leave a
+        // reader to assume one of them is wrong.
+        var filed = null;
+        er.fin.rows.forEach(function (r) {
+          if (r[0] === 'Diluted EPS') filed = parseFloat(r[1].replace(/,/g, ''));
+        });
+        if (filed != null && er.eps && Math.abs(filed - er.eps) / Math.abs(er.eps) > 0.2) {
+          var note = document.createElement('p');
+          note.className = 'earnings-basis';
+          note.textContent = 'Consensus is compared on an adjusted basis (' + er.eps +
+            '); the diluted figure above (' + filed.toFixed(2) + ') is as filed. ' +
+            'They are different measures, not a discrepancy.';
+          box.appendChild(note);
+        }
+      }
     }
 
     if (er && er.next) {

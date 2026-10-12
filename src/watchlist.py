@@ -70,6 +70,11 @@ CURRENCY_SYMBOLS = {"USD": "$", "GBP": "£", "EUR": "€", "CHF": "CHF ", "ZAR":
 # 300 rather than 365 so exchange holidays and short weeks don't trip it.
 FULL_YEAR_MIN_DAYS = 300
 
+# Pause before the last attempt at a ticker that came back with no prices.
+# Yahoo's throttling is transient; waiting clears it more reliably than
+# retrying immediately does.
+RETRY_PAUSE_SECONDS = 20
+
 
 # ---------------------------------------------------------------------------
 # Fetching
@@ -80,6 +85,7 @@ FULL_YEAR_MIN_DAYS = 300
 # count near one.
 
 import logging
+import time
 from datetime import datetime, timedelta
 
 import pandas as pd
@@ -160,6 +166,22 @@ def fetch_closes(tickers: list[str], period: str = "1y") -> dict[str, "pd.Series
 
     if retried:
         logger.info("Retried %d ticker(s) individually: %s", len(retried), ", ".join(retried))
+
+    # One last pass after a pause. Earnings and income-statement requests have
+    # pushed this build's quota far enough to drop a price before — Palo Alto
+    # came back empty and left a blank row under commentary quoting its price.
+    # A throttle is transient, so waiting is usually enough.
+    missing = [t for t, c in closes.items() if c is None]
+    if missing:
+        logger.info("Pausing %ds before a final attempt at: %s",
+                    RETRY_PAUSE_SECONDS, ", ".join(missing))
+        time.sleep(RETRY_PAUSE_SECONDS)
+        for t in missing:
+            try:
+                closes[t] = _close_series(yf.Ticker(t).history(period=period, auto_adjust=True))
+            except Exception as exc:
+                logger.warning("Final attempt failed for %s: %s", t, exc)
+
     missing = [t for t, c in closes.items() if c is None]
     if missing:
         logger.warning("No history for %d ticker(s): %s", len(missing), ", ".join(missing))
@@ -221,7 +243,57 @@ def _usable_surprise(eps: float, est, surp) -> bool:
     return 0.25 <= ratio <= 4
 
 
-def fetch_earnings(tickers: list[str]) -> dict[str, dict]:
+def _fmt_money(v: float) -> str:
+    """Compact magnitude label — the scale is what matters, not the digits."""
+    a = abs(v)
+    for cut, suffix in ((1e12, "tn"), (1e9, "bn"), (1e6, "m"), (1e3, "k")):
+        if a >= cut:
+            return f"{v / cut:,.2f}{suffix}"
+    return f"{v:,.2f}"
+
+
+def _financials(ticker: str) -> dict | None:
+    """Revenue, operating and net income for the latest quarter and the one a
+    year before it, from the quarterly income statement.
+
+    Best-effort only: Yahoo throttles this endpoint hard and returns an empty
+    frame rather than an error, so coverage varies between builds. The EPS
+    history above does not depend on it.
+    """
+    try:
+        q = yf.Ticker(ticker).quarterly_income_stmt
+    except Exception:
+        return None
+    if q is None or getattr(q, "empty", True) or len(q.columns) < 5:
+        return None
+
+    cols = sorted(q.columns)
+    latest, prior = cols[-1], cols[-5]       # same quarter, one year earlier
+    rows = []
+    for label, key in (("Revenue", "Total Revenue"),
+                       ("Operating income", "Operating Income"),
+                       ("Net income", "Net Income"),
+                       ("Diluted EPS", "Diluted EPS")):
+        if key not in q.index:
+            continue
+        now, was = q.at[key, latest], q.at[key, prior]
+        if pd.isna(now):
+            continue
+        is_eps = key == "Diluted EPS"
+        cur = f"{float(now):,.2f}" if is_eps else _fmt_money(float(now))
+        if pd.isna(was) or float(was) == 0:
+            rows.append([label, cur, "—", "—"])
+            continue
+        prev = f"{float(was):,.2f}" if is_eps else _fmt_money(float(was))
+        chg = (float(now) - float(was)) / abs(float(was)) * 100
+        rows.append([label, cur, prev, f"{'+' if chg >= 0 else ''}{chg:.1f}%"])
+
+    if not rows:
+        return None
+    return {"end": latest.strftime("%d %B %Y"), "rows": rows}
+
+
+def fetch_earnings(tickers: list[str], with_financials: bool = True) -> dict[str, dict]:
     """Most recent reported quarter and next expected date, per ticker.
 
     Pulled fresh on every build, so the brief reflects whatever a company has
@@ -270,8 +342,29 @@ def fetch_earnings(tickers: list[str]) -> dict[str, dict]:
                     entry["est"], entry["surp"] = est, surp
                 elif est is not None:
                     unusable.append(t)
+                # Same quarter a year earlier, for a like-for-like comparison.
+                if len(reported) >= 5:
+                    py = reported.iloc[-5]["Reported EPS"]
+                    if pd.notna(py) and float(py) != 0:
+                        entry["py"] = round(float(py), 2)
+                        entry["yoy"] = round((eps - float(py)) / abs(float(py)) * 100, 1)
+
+                # Track record against consensus over the last four quarters,
+                # which says more about a company than any single surprise.
+                recent = reported.tail(4)
+                surprises = recent["Surprise(%)"].dropna()
+                if len(surprises) >= 2:
+                    entry["beats"] = int((surprises > 0).sum())
+                    entry["of"] = int(len(surprises))
+                    entry["avg"] = round(float(surprises.mean()), 1)
+
         if not upcoming.empty:
             entry["next"] = upcoming.index[0].strftime("%d %B %Y")
+
+        if entry.get("on") and with_financials:
+            fin = _financials(t)
+            if fin:
+                entry["fin"] = fin
 
         if entry:
             out[t] = entry
