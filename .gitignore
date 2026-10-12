@@ -11,3 +11,8 @@ stock_watchlist_*.pdf
 
 # Live-deal material — never belongs on GitHub
 Reports/
+
+# Your working copy of the weekly commentary. Local only: Actions rebuilds
+# the brief every Friday and a tracked copy would collide with your edits on
+# every pull. The blank form is weekly/commentary.template.md.
+weekly/commentary.md

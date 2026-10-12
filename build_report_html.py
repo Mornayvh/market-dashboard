@@ -72,10 +72,57 @@ CHART_W, CHART_H, CHART_PAD = 640, 180, 12
 # hauling the Fed Funds rate since 1954 into an email attachment.
 FRED_START = "1995-01-01"
 
+# Hand-written each week and spliced in by update_commentary.py, which reuses
+# render_commentary below so there is only ever one renderer. The markers in
+# the page are how that script finds the boxes.
+COMMENTARY_PATH = "weekly/commentary.md"
+COMMENTARY_SECTIONS = ["Market Overview", "Stock Watchlist"]
+
 
 # ---------------------------------------------------------------------------
 # Collection
 # ---------------------------------------------------------------------------
+
+def read_commentary(path: str = COMMENTARY_PATH) -> dict:
+    """The two hand-written paragraphs, keyed by section heading.
+
+    Anything before the first "## " heading is the file's own instructions and
+    is discarded. A heading with nothing under it yields no entry, so the box
+    is left off the page rather than printed empty.
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = f.read()
+    except FileNotFoundError:
+        logger.info("No %s — building without commentary.", path)
+        return {}
+
+    out = {}
+    for chunk in raw.split("\n## ")[1:]:
+        head, _, body = chunk.partition("\n")
+        body = body.split("\n## ")[0].strip()
+        if body:
+            out[head.strip()] = body
+
+    missing = [s for s in COMMENTARY_SECTIONS if s not in out]
+    if missing:
+        logger.warning("Commentary not written for: %s", ", ".join(missing))
+    return out
+
+
+def render_commentary(text: str | None) -> str:
+    """One commentary box, or nothing at all when the section is unwritten."""
+    if not text:
+        return ""
+    paras = "".join(f"<p>{esc(p.strip())}</p>"
+                    for p in re.split(r"\n\s*\n", text) if p.strip())
+    return (
+        '<aside class="commentary">'
+        '<span class="commentary-label">Week in review</span>'
+        f'<div class="commentary-body">{paras}</div>'
+        "</aside>"
+    )
+
 
 def slugify(value: str) -> str:
     """Element id safe for tickers like BRK-B, 002594.SZ and names like S&P 500."""
@@ -522,6 +569,41 @@ body {
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---- Weekly commentary ---- */
+
+.commentary {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 17px 20px 19px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.commentary-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* Set in the serif, against tables set in mono — the shift in voice is what
+   marks this as written rather than measured. */
+.commentary-body {
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 16px;
+  line-height: 1.62;
+  color: var(--ink);
+  max-width: 68ch;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.commentary-body p { margin: 0; }
 
 /* ---- Sections and tables ---- */
 
@@ -1050,7 +1132,8 @@ def render_watchlist_group(group: dict) -> str:
     )
 
 
-def render_html(market: dict, watch: dict, instruments: dict, now: datetime) -> str:
+def render_html(market: dict, watch: dict, instruments: dict,
+                commentary: dict, now: datetime) -> str:
     levels = "".join(
         '<div class="level">'
         f'<span class="label">{esc(r["name"])}</span>'
@@ -1107,6 +1190,7 @@ def render_html(market: dict, watch: dict, instruments: dict, now: datetime) -> 
       <span class="note">Select any row for its price history. Rates and spreads
         move in absolute terms; everything else in per cent.</span>
     </div>
+    <!--commentary:market-->{render_commentary(commentary.get("Market Overview"))}<!--/commentary:market-->
     {"".join(render_market_section(s) for s in market["sections"])}
   </section>
 
@@ -1115,6 +1199,7 @@ def render_html(market: dict, watch: dict, instruments: dict, now: datetime) -> 
       <h2>Stock Watchlist</h2>
       <span class="note">{n_holdings} holdings · priced in the listing currency</span>
     </div>
+    <!--commentary:watchlist-->{render_commentary(commentary.get("Stock Watchlist"))}<!--/commentary:watchlist-->
     {movers_block}
     {"".join(render_watchlist_group(g) for g in watch["groups"])}
   </section>
@@ -1163,7 +1248,7 @@ def build(out_path: str) -> str:
     instruments = {}
     market = collect_market(instruments)
     watch = collect_watchlist(instruments)
-    page = render_html(market, watch, instruments, datetime.now())
+    page = render_html(market, watch, instruments, read_commentary(), datetime.now())
 
     parent = os.path.dirname(os.path.abspath(out_path))
     os.makedirs(parent, exist_ok=True)

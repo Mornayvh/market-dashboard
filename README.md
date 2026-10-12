@@ -150,6 +150,33 @@ One file, ~29KB, no images and no JavaScript. The only external reference is
 Google Fonts, so a recipient opening it offline gets the fallback stacks
 (Georgia / system sans / Menlo) and an otherwise identical page.
 
+### Weekly commentary
+
+Two boxes sit above the Market Overview and Stock Watchlist tables, written by
+hand each week. There is no model in this loop — commentary that goes to
+principals needs a person behind it.
+
+```bash
+# edit weekly/commentary.md, then
+python update_commentary.py
+```
+
+`update_commentary.py` rewrites only the two boxes inside the already-built
+pages. Nothing is refetched, so it takes about a second and every figure stays
+as at Friday's close — a full rebuild could pull Saturday prices into a brief
+covering the week to Friday.
+
+- A section left empty removes its box; the brief reads correctly without it.
+- `weekly/commentary.md` is **gitignored and local to you**; the blank form is
+  `weekly/commentary.template.md`, and the first run copies it across. A
+  tracked working copy would collide with Friday's bot commit on every pull.
+- The script prints back what it is about to write. Last week's prose on this
+  week's numbers is the real failure mode here, and that preview is where it
+  gets caught.
+
+Friday's Actions build has no `commentary.md`, so the committed page carries
+no boxes until you add them.
+
 ### How the weekly build works
 
 `.github/workflows/weekly_report.yml` runs every **Friday at 22:00 UTC** — an
