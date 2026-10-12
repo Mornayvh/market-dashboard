@@ -137,9 +137,21 @@ def read_asset_notes(path: str = ASSETS_PATH) -> dict:
         if not body:
             continue
 
-        prose, _, news_block = body.partition("News:")
+        # Sections are introduced by bare "Earnings:" / "News:" labels on
+        # their own line; everything before the first one is the prose.
+        marks = [(m.start(), m.group(1)) for m in
+                 re.finditer(r"^(Earnings|News):\s*$", body, re.M)]
+        bounds = [m[0] for m in marks] + [len(body)]
+        prose = body[:bounds[0]].strip()
+
+        blocks = {}
+        for i, (pos, name) in enumerate(marks):
+            start = pos + body[pos:].index(":") + 1
+            blocks[name] = body[start:bounds[i + 1]].strip()
+
+        earnings = blocks.get("Earnings", "")
         articles = []
-        for line in news_block.splitlines():
+        for line in blocks.get("News", "").splitlines():
             line = line.strip().lstrip("-").strip()
             if not line:
                 continue
@@ -151,9 +163,10 @@ def read_asset_notes(path: str = ASSETS_PATH) -> dict:
             url = parts[2] if len(parts) > 2 else ""
             articles.append({"d": date, "t": title, "u": url})
 
-        prose = prose.strip()
-        if prose or articles:
-            notes[slugify(head.strip())] = {"c": prose, "news": articles}
+        if prose or earnings or articles:
+            notes[slugify(head.strip())] = {
+                "c": prose, "e": earnings, "news": articles,
+            }
     return notes
 
 
@@ -165,10 +178,9 @@ def attach_asset_notes(instruments: dict, aliases: dict, notes: dict) -> None:
         if not target:
             unmatched.append(key)
             continue
-        if note["c"]:
-            instruments[target]["c"] = note["c"]
-        if note["news"]:
-            instruments[target]["news"] = note["news"]
+        for field in ("c", "e", "news"):
+            if note.get(field):
+                instruments[target][field] = note[field]
 
     if unmatched:
         logger.warning("Asset notes matched nothing: %s", ", ".join(sorted(unmatched)))
@@ -917,6 +929,15 @@ tr.clickable:focus-visible td.name::after { opacity: 1; }
 
 .chart-wrap { margin: 0; display: flex; flex-direction: column; gap: 7px; }
 
+/* The hidden attribute loses to any author rule that sets display, and the
+   three elements below all set display: flex. Without this they are never
+   actually hidden — an empty hovercard parks on every chart and an empty
+   note leaves a stray rule under the stats. */
+#sheet-hover[hidden],
+#sheet-note[hidden],
+#sheet-earnings[hidden],
+#sheet-news[hidden] { display: none; }
+
 .chart-plot { position: relative; }
 
 #sheet-chart { width: 100%; height: 180px; display: block; overflow: visible; }
@@ -968,16 +989,40 @@ tr.clickable:focus-visible td.name::after { opacity: 1; }
 
 .asset-note p { margin: 0; }
 
-.asset-news { display: flex; flex-direction: column; gap: 0; }
+.asset-earnings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 15px;
+}
 
+.asset-earnings .earnings-label,
 .asset-news .news-label {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: .12em;
   text-transform: uppercase;
   color: var(--ink-3);
-  margin-bottom: 9px;
 }
+
+.asset-earnings p {
+  margin: 0;
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 15.5px;
+  line-height: 1.68;
+  color: var(--ink);
+}
+
+.asset-news {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-top: 1px solid var(--border);
+  padding-top: 15px;
+}
+
+.asset-news .news-label { margin-bottom: 9px; }
 
 .news-item {
   display: flex;
@@ -1243,6 +1288,24 @@ SCRIPT = r"""
     });
   }
 
+  function renderEarnings(inst) {
+    var box = document.getElementById('sheet-earnings');
+    box.textContent = '';
+    box.hidden = !inst.e;
+    if (!inst.e) return;
+
+    var label = document.createElement('span');
+    label.className = 'earnings-label';
+    label.textContent = 'Most recent earnings report';
+    box.appendChild(label);
+
+    inst.e.split(/\n\s*\n/).forEach(function (para) {
+      var p = document.createElement('p');
+      p.textContent = para.trim();     // text, never markup
+      box.appendChild(p);
+    });
+  }
+
   function renderNews(inst) {
     var box = document.getElementById('sheet-news');
     box.textContent = '';
@@ -1307,6 +1370,7 @@ SCRIPT = r"""
     });
 
     renderNote(inst);
+    renderEarnings(inst);
     renderNews(inst);
 
     if (inst.d) draw(inst, inst.d);
@@ -1518,6 +1582,7 @@ def render_html(market: dict, watch: dict, instruments: dict,
       </figure>
       <div class="stats" id="sheet-stats"></div>
       <div class="asset-note" id="sheet-note" hidden></div>
+      <div class="asset-earnings" id="sheet-earnings" hidden></div>
       <div class="asset-news" id="sheet-news" hidden></div>
     </div>
   </dialog>

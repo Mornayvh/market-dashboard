@@ -83,8 +83,8 @@ def patch_assets(page: str, notes: dict, path: str) -> str:
     # Clear last week's notes first, or an asset dropped from the file keeps
     # the commentary it had.
     for inst in data.values():
-        inst.pop("c", None)
-        inst.pop("news", None)
+        for field in ("c", "e", "news"):
+            inst.pop(field, None)
 
     unmatched = []
     for key, note in notes.items():
@@ -92,10 +92,9 @@ def patch_assets(page: str, notes: dict, path: str) -> str:
         if not target:
             unmatched.append(key)
             continue
-        if note["c"]:
-            data[target]["c"] = note["c"]
-        if note["news"]:
-            data[target]["news"] = note["news"]
+        for field in ("c", "e", "news"):
+            if note.get(field):
+                data[target][field] = note[field]
 
     if unmatched:
         logger.warning("Asset notes matched nothing: %s", ", ".join(sorted(unmatched)))
