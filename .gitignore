@@ -17,3 +17,7 @@ Reports/
 # every pull. The blank form is weekly/commentary.template.md.
 weekly/commentary.md
 weekly/assets.md
+
+# Skill bundle dropped in by hand; installed at ~/.claude/skills/earnings-review
+# and kept at ~/.claude/plugins/. Not part of the dashboard.
+earnings-review-v1.zip
