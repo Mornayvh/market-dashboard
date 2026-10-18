@@ -46,12 +46,50 @@ def _get_value_at(df: pd.DataFrame, target_date: pd.Timestamp) -> float | None:
     return float(subset["Close"].iloc[-1])
 
 
-def compute_metrics(asset: Asset, df: pd.DataFrame) -> dict:
+def _last_bar(df: pd.DataFrame) -> pd.Timestamp | None:
+    """The latest date in a price frame, as a tz-naive midnight timestamp."""
+    if df is None or df.empty:
+        return None
+    last = pd.Timestamp(df.index.max())
+    if last.tzinfo is not None:
+        last = last.tz_localize(None)
+    return last.normalize()
+
+
+# The asset whose last bar dates the whole set. build_report_html anchors the
+# brief's "as at" line on the same series for the same reason: crypto and FX
+# trade through the weekend, so the latest bar across all assets is no use.
+ANCHOR_ASSET = "S&P 500"
+
+
+def latest_trading_day(data: dict[str, pd.DataFrame]) -> pd.Timestamp:
+    """The date the prices actually describe, capped at today.
+
+    Every window is measured back from this one date rather than from the wall
+    clock, so the whole set covers the same calendar span. Without it a brief
+    built over the weekend resolves both "today" and "yesterday" to Friday's
+    close and reports every equity as 0.00% on the day; anchoring each asset on
+    its own last bar would fix that but put FRED's day-lagged spreads on a
+    different week to the equities.
+    """
+    today = pd.Timestamp(datetime.today().date())
+    bar = _last_bar(data.get(ANCHOR_ASSET))
+    if bar is None:   # no benchmark in this set — fall back to the newest bar
+        bars = [b for b in (_last_bar(df) for df in data.values()) if b is not None]
+        bar = max(bars) if bars else None
+    return min(today, bar) if bar is not None else today
+
+
+def compute_metrics(asset: Asset, df: pd.DataFrame,
+                    as_of: pd.Timestamp | None = None) -> dict:
     """
     Compute all dashboard metrics for a single asset.
     Uses Last Twelve Months (LTM) instead of YTD.
+
+    as_of is the date every window is measured back from; it defaults to today
+    for callers that hold a single asset and have no dataset to anchor against.
     """
-    today = pd.Timestamp(datetime.today().date())
+    today = as_of or pd.Timestamp(datetime.today().date())
     one_day_ago = today - timedelta(days=1)
     one_week_ago = today - timedelta(days=7)
     # LTM: 12 months ago
@@ -156,11 +194,12 @@ def process_all(
     """
     Compute metrics for all assets. Returns a DataFrame indexed by asset name.
     """
+    as_of = latest_trading_day(data)
     rows = []
     for asset in assets:
         df = data.get(asset.name)
         if df is not None and not df.empty:
-            rows.append(compute_metrics(asset, df))
+            rows.append(compute_metrics(asset, df, as_of))
         else:
             rows.append({
                 "name": asset.name,
