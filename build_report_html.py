@@ -55,6 +55,10 @@ KEY_LEVELS = [
 
 MOVERS_PER_SIDE = 3  # top N risers and N fallers in the movers strip
 
+# How far back "reported this week" reaches. Seven days from the build date
+# covers the Friday-evening Actions run and a weekend rebuild alike.
+REPORTED_WITHIN_DAYS = 7
+
 # Refuse to write a page where this share of holdings came back priceless.
 # Yahoo rate-limits a datacentre IP, and on 10 October 2026 that silently
 # produced a brief with 31 of 36 holdings blank which the workflow committed
@@ -368,7 +372,7 @@ def collect_watchlist(instruments: dict, aliases: dict) -> dict:
     # no earnings history simply has no figures block.
     earnings = fetch_earnings(tickers)
 
-    groups, movers, blank = [], [], 0
+    groups, movers, reported, blank = [], [], [], 0
     for group, stocks in WATCHLIST.items():
         rows = []
         for name, ticker, currency in stocks:
@@ -396,6 +400,21 @@ def collect_watchlist(instruments: dict, aliases: dict) -> dict:
             rows.append(row)
             if c1m is not None:
                 movers.append({"name": name, "chg": c1m, "label": fmt_pct(c1m)})
+
+            # Who reported since last week's brief. Built from the fetched
+            # earnings rather than written by hand, so it cannot drift from
+            # the figures in the modal it points at.
+            er = earnings.get(ticker) or {}
+            if er.get("on") and er.get("age") is not None \
+                    and er["age"] <= REPORTED_WITHIN_DAYS:
+                reported.append({
+                    "name": name,
+                    "slug": row["slug"],
+                    "on": er["on"],
+                    "when": _short_date(er["on"]),
+                    "surp": er.get("surp"),
+                    "age": er["age"],
+                })
 
             stats = [["1 day", changes[0][1], tone(c1d)],
                      ["1 month", changes[1][1], tone(c1m)],
@@ -430,7 +449,9 @@ def collect_watchlist(instruments: dict, aliases: dict) -> dict:
     movers.sort(key=lambda m: m["chg"], reverse=True)
     top = movers[:MOVERS_PER_SIDE]
     bottom = [m for m in movers[-MOVERS_PER_SIDE:] if m not in top]
-    return {"groups": groups, "movers": top + list(reversed(bottom))}
+    reported.sort(key=lambda r: (-r["age"], r["name"]))   # earliest report first
+    return {"groups": groups, "movers": top + list(reversed(bottom)),
+            "reported": reported}
 
 
 # ---------------------------------------------------------------------------
@@ -448,6 +469,14 @@ def fmt_price(val, currency) -> str:
     if val >= 100:
         return f"{sym}{val:,.1f}"
     return f"{sym}{val:,.2f}"
+
+
+def _short_date(value: str) -> str:
+    """"13 October 2026" -> "13 Oct", for the reported-this-week chips."""
+    try:
+        return datetime.strptime(value, "%d %B %Y").strftime("%d %b").lstrip("0")
+    except (TypeError, ValueError):
+        return value
 
 
 def fmt_pct(val) -> str:
@@ -669,6 +698,42 @@ body {
   font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---- Reported this week ---- */
+
+/* A chip that opens its holding's modal. Same shape as a movers chip, with
+   the affordance a button needs: the table rows carry one too. */
+.chip.jump {
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+
+.chip.jump:hover,
+.chip.jump:focus-visible {
+  border-color: var(--ink-3);
+  background: var(--surface-alt);
+}
+
+.chip.jump:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.chip .when {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Always its own line under the chips rather than trailing whichever one
+   happens to end the row, which reads as a stray fragment. */
+.reported .hint {
+  flex-basis: 100%;
+  margin-top: 1px;
+  font-size: 11px;
+  color: var(--ink-3);
+  font-style: italic;
 }
 
 /* ---- Weekly commentary ---- */
@@ -1618,6 +1683,12 @@ SCRIPT = r"""
     });
   });
 
+  // The reported-this-week chips point at the same payloads. They are real
+  // buttons, so Enter and Space come free and need no key handler.
+  Array.prototype.forEach.call(document.querySelectorAll('.jump'), function (el) {
+    el.addEventListener('click', function () { open(el.dataset.id); });
+  });
+
   document.getElementById('sheet-close')
           .addEventListener('click', function () { sheet.close(); });
 
@@ -1704,6 +1775,33 @@ def render_range(r: dict) -> str:
     )
 
 
+def render_reported(reported: list) -> str:
+    """The "reported this week" strip above the watchlist tables.
+
+    Each chip opens the same modal as its table row, so a reader can go from
+    "who reported" straight to the figures without hunting for the line.
+    Generated from the fetched earnings, never hand-written.
+    """
+    if not reported:
+        return ""
+    chips = "".join(
+        f'<button type="button" class="chip jump" data-id="{esc(r["slug"])}" '
+        f'title="Reported {esc(r["on"])} — open the figures">'
+        f'{esc(r["name"])}<span class="when">{esc(r["when"])}</span>'
+        + (f'<b class="{tone(r["surp"])}">{fmt_pct(r["surp"])}</b>'
+           if r.get("surp") is not None else "")
+        + "</button>"
+        for r in reported
+    )
+    return (
+        '<div class="movers reported">'
+        '<span class="caption">Reported this week</span>'
+        f'{chips}'
+        '<span class="hint">versus consensus · select for detail</span>'
+        "</div>"
+    )
+
+
 def render_watchlist_group(group: dict) -> str:
     rows = "".join(
         f'<tr class="clickable" tabindex="0" role="button" data-id="{r["slug"]}" '
@@ -1747,6 +1845,7 @@ def render_html(market: dict, watch: dict, instruments: dict,
         f'<div class="movers"><span class="caption">Biggest 1M moves</span>{movers}</div>'
         if movers else ""
     )
+    reported_block = render_reported(watch.get("reported", []))
 
     n_holdings = sum(len(g["rows"]) for g in watch["groups"])
 
@@ -1794,6 +1893,7 @@ def render_html(market: dict, watch: dict, instruments: dict,
       <span class="note">{n_holdings} holdings · priced in the listing currency</span>
     </div>
     <!--commentary:watchlist-->{render_commentary(commentary.get("Stock Watchlist"))}<!--/commentary:watchlist-->
+    {reported_block}
     {movers_block}
     {"".join(render_watchlist_group(g) for g in watch["groups"])}
   </section>
